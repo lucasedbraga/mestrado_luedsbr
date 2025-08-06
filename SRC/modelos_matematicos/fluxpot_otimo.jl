@@ -22,12 +22,10 @@ idx_map = Dict{String,Int}()
 for (i, barra) in enumerate(barras)
     id = barra["ID_Barra"]
     tipo = barra["tipo"]
-    println("Barra ID: $id, Tipo: $tipo")
     push!(bus_ids, id)
     idx_map[id] = i
 
     if tipo == "Slack"
-        println("Barra slack encontrada: $id")
         push!(slack_bus, id)
     elseif tipo == "PV"
         push!(pv_buses, id)
@@ -45,7 +43,6 @@ end
 
 # Acessa o ID da barra slack
 slack_id = slack_bus[1]
-println("Barra slack: ", slack_id)
 
 model = Model(Ipopt.Optimizer)
 
