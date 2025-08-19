@@ -101,7 +101,7 @@ end
 optimize!(model)
 
 println("\nResultados do Fluxo de Potência Injeção de Correntes:")
-println("Barra |   V (pu)   |  θ (graus)  | Pg (pu)   | Qg (pu)  ")
+println("Barra |   V (pu)   |  Ang (graus)  | Pg (pu)   | Qg (pu)  ")
 
 # Extrai os valores otimizados
 Vm_vals = [sqrt(value(Vr[i])^2 + value(Vi[i])^2) for i in 1:n]

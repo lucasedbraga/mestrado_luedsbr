@@ -6,6 +6,8 @@ using JSON3
 using LinearAlgebra
 using Printf
 
+arquivo_input = "DATA/input/ieee14_BASE.json"
+
 function ler_dados_sistema(caminho_arquivo)
     json = JSON3.read(open(caminho_arquivo), Dict)
     barras = json["BARRAS"]
@@ -183,7 +185,7 @@ end
 
 function print_results(θ, V, Pg, Qg)
     println("\nResultados do Fluxo de Potência Newthon Raphson:")
-    println("Barra |   V (pu)   |  θ (graus)  | Pg (pu)   | Qg (pu)  ")
+    println("Barra |   V (pu)   |  Ang (graus)  | Pg (pu)   | Qg (pu)  ")
     
     # Garante que todos sejam arrays do mesmo tamanho
     n = length(V)
@@ -202,5 +204,5 @@ function print_results(θ, V, Pg, Qg)
 end
 
 # Uso:
-θ, V, Pg, Qg = fluxo_potencia_newtonraphson("DATA/input/ieee14_BASE.json")
+θ, V, Pg, Qg = fluxo_potencia_newtonraphson(arquivo_input)
 print_results(θ, V, Pg, Qg)

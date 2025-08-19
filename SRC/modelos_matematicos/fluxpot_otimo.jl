@@ -161,7 +161,7 @@ optimize!(model)
 # Resultados
 if termination_status(model) in [MOI.OPTIMAL, MOI.LOCALLY_SOLVED]
     println("\nResultados do Fluxo de Potência Ótimo:")
-    println("Barra |   V (pu)   |  θ (graus)  | Pg (pu)   | Qg (pu)   | Tipo")
+    println("Barra |   V (pu)   |  Ang (graus)  | Pg (pu)   | Qg (pu)   | Tipo")
     
     for id in sort(bus_ids, by=x->parse(Int, x))
         i = idx_map[id]
