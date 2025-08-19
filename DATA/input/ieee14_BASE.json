@@ -1,0 +1,287 @@
+{
+  "BARRAS": [
+    {
+      "ID_Barra": "1",
+      "tipo": "Slack",
+      "P": 0.0,
+      "Q": 0.0,
+      "P_Gen": 2.32,
+      "Q_Gen": -0.16,
+      "P_inst": 2.32,
+      "Custo_P_inst": 50,
+      "V_ref": 1.06
+    },
+    {
+      "ID_Barra": "2",
+      "tipo": "PV",
+      "P": 0.217,
+      "Q": 0.127,
+      "P_Gen": 0.4,
+      "P_inst": 0.4,
+      "Custo_P_inst": 45,
+      "V_ref": 1.045
+    },
+    {
+      "ID_Barra": "3",
+      "tipo": "PQ",
+      "P": 0.942,
+      "Q": 0.19,
+      "P_Gen": 0.0,
+      "Q_Gen": 0.0,
+      "P_inst": -0.942,
+      "Custo_P_inst": 999999
+    },
+    {
+      "ID_Barra": "4",
+      "tipo": "PQ",
+      "P": 0.478,
+      "Q": -0.039,
+      "P_Gen": 0.0,
+      "Q_Gen": 0.0,
+      "P_inst": -0.478,
+      "Custo_P_inst": 999999
+    },
+    {
+      "ID_Barra": "5",
+      "tipo": "PQ",
+      "P": 0.076,
+      "Q": 0.016,
+      "P_Gen": 0.0,
+      "Q_Gen": 0.0,
+      "P_inst": -0.076,
+      "Custo_P_inst": 999999
+    },
+    {
+      "ID_Barra": "6",
+      "tipo": "PV",
+      "P": 0.112,
+      "Q": 0.075,
+      "P_Gen": 0.0,
+      "P_inst": 0.0,
+      "Custo_P_inst": 0,
+      "V_ref": 1.07
+    },
+    {
+      "ID_Barra": "7",
+      "tipo": "PQ",
+      "P": 0.0,
+      "Q": 0.0,
+      "P_Gen": 0.0,
+      "Q_Gen": 0.0,
+      "P_inst": 0.0,
+      "Custo_P_inst": 0
+    },
+    {
+      "ID_Barra": "8",
+      "tipo": "PV",
+      "P": 0.0,
+      "Q": 0.0,
+      "P_Gen": 0.0,
+      "P_inst": 0.0,
+      "Custo_P_inst": 0,
+      "V_ref": 1.09
+    },
+    {
+      "ID_Barra": "9",
+      "tipo": "PQ",
+      "P": 0.295,
+      "Q": 0.166,
+      "P_Gen": 0.0,
+      "Q_Gen": 0.0,
+      "P_inst": -0.295,
+      "Custo_P_inst": 999999
+    },
+    {
+      "ID_Barra": "10",
+      "tipo": "PQ",
+      "P": 0.09,
+      "Q": 0.058,
+      "P_Gen": 0.0,
+      "Q_Gen": 0.0,
+      "P_inst": -0.09,
+      "Custo_P_inst": 999999
+    },
+    {
+      "ID_Barra": "11",
+      "tipo": "PQ",
+      "P": 0.035,
+      "Q": 0.018,
+      "P_Gen": 0.0,
+      "Q_Gen": 0.0,
+      "P_inst": -0.035,
+      "Custo_P_inst": 999999
+    },
+    {
+      "ID_Barra": "12",
+      "tipo": "PQ",
+      "P": 0.061,
+      "Q": 0.016,
+      "P_Gen": 0.0,
+      "Q_Gen": 0.0,
+      "P_inst": -0.061,
+      "Custo_P_inst": 999999
+    },
+    {
+      "ID_Barra": "13",
+      "tipo": "PQ",
+      "P": 0.135,
+      "Q": 0.058,
+      "P_Gen": 0.0,
+      "Q_Gen": 0.0,
+      "P_inst": -0.135,
+      "Custo_P_inst": 999999
+    },
+    {
+      "ID_Barra": "14",
+      "tipo": "PQ",
+      "P": 0.149,
+      "Q": 0.05,
+      "P_Gen": 0.0,
+      "Q_Gen": 0.0,
+      "P_inst": -0.149,
+      "Custo_P_inst": 999999
+    }
+  ],
+  "LINHAS": [
+    {
+      "ID_linha": "1-2",
+      "ID_Barra_Origem": "1",
+      "ID_Barra_Destino": "2",
+      "R": 0.01938,
+      "X": 0.05917
+    },
+    {
+      "ID_linha": "1-5",
+      "ID_Barra_Origem": "1",
+      "ID_Barra_Destino": "5",
+      "R": 0.05403,
+      "X": 0.22304
+    },
+    {
+      "ID_linha": "2-3",
+      "ID_Barra_Origem": "2",
+      "ID_Barra_Destino": "3",
+      "R": 0.04699,
+      "X": 0.19797
+    },
+    {
+      "ID_linha": "2-4",
+      "ID_Barra_Origem": "2",
+      "ID_Barra_Destino": "4",
+      "R": 0.05811,
+      "X": 0.17632
+    },
+    {
+      "ID_linha": "2-5",
+      "ID_Barra_Origem": "2",
+      "ID_Barra_Destino": "5",
+      "R": 0.05695,
+      "X": 0.17388
+    },
+    {
+      "ID_linha": "3-4",
+      "ID_Barra_Origem": "3",
+      "ID_Barra_Destino": "4",
+      "R": 0.06701,
+      "X": 0.17103
+    },
+    {
+      "ID_linha": "4-5",
+      "ID_Barra_Origem": "4",
+      "ID_Barra_Destino": "5",
+      "R": 0.01335,
+      "X": 0.04211
+    },
+    {
+      "ID_linha": "4-7",
+      "ID_Barra_Origem": "4",
+      "ID_Barra_Destino": "7",
+      "R": 0.0,
+      "X": 0.20912
+    },
+    {
+      "ID_linha": "4-9",
+      "ID_Barra_Origem": "4",
+      "ID_Barra_Destino": "9",
+      "R": 0.0,
+      "X": 0.55618
+    },
+    {
+      "ID_linha": "5-6",
+      "ID_Barra_Origem": "5",
+      "ID_Barra_Destino": "6",
+      "R": 0.0,
+      "X": 0.25202
+    },
+    {
+      "ID_linha": "6-11",
+      "ID_Barra_Origem": "6",
+      "ID_Barra_Destino": "11",
+      "R": 0.09498,
+      "X": 0.1989
+    },
+    {
+      "ID_linha": "6-12",
+      "ID_Barra_Origem": "6",
+      "ID_Barra_Destino": "12",
+      "R": 0.12291,
+      "X": 0.25581
+    },
+    {
+      "ID_linha": "6-13",
+      "ID_Barra_Origem": "6",
+      "ID_Barra_Destino": "13",
+      "R": 0.06615,
+      "X": 0.13027
+    },
+    {
+      "ID_linha": "7-8",
+      "ID_Barra_Origem": "7",
+      "ID_Barra_Destino": "8",
+      "R": 0.0,
+      "X": 0.17615
+    },
+    {
+      "ID_linha": "7-9",
+      "ID_Barra_Origem": "7",
+      "ID_Barra_Destino": "9",
+      "R": 0.0,
+      "X": 0.11001
+    },
+    {
+      "ID_linha": "9-10",
+      "ID_Barra_Origem": "9",
+      "ID_Barra_Destino": "10",
+      "R": 0.03181,
+      "X": 0.0845
+    },
+    {
+      "ID_linha": "9-14",
+      "ID_Barra_Origem": "9",
+      "ID_Barra_Destino": "14",
+      "R": 0.12711,
+      "X": 0.27038
+    },
+    {
+      "ID_linha": "10-11",
+      "ID_Barra_Origem": "10",
+      "ID_Barra_Destino": "11",
+      "R": 0.08205,
+      "X": 0.19207
+    },
+    {
+      "ID_linha": "12-13",
+      "ID_Barra_Origem": "12",
+      "ID_Barra_Destino": "13",
+      "R": 0.22092,
+      "X": 0.19988
+    },
+    {
+      "ID_linha": "13-14",
+      "ID_Barra_Origem": "13",
+      "ID_Barra_Destino": "14",
+      "R": 0.17093,
+      "X": 0.34802
+    }
+  ]
+}

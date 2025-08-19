@@ -1,6 +1,12 @@
+using Pkg
+Pkg.activate(".")
+Pkg.instantiate()
+
 using JSON3
 using LinearAlgebra
 using Printf
+
+arquivo_input = "DATA/input/ieee14_BASE.json"
 
 function ler_dados_sistema(caminho_arquivo)
     json = JSON3.read(open(caminho_arquivo), Dict)
@@ -147,26 +153,56 @@ function fluxo_potencia_newtonraphson(arquivo_input; tol=1e-6, max_iter=20)
         end
     end
 
-    # Cálculo da geração na slack
+    # Calculo de Geração na Slack
     Pg_slack = 0.0
     Qg_slack = 0.0
-    i = idx_slack
+    
     for j = 1:n
-        θ_diff = θ[i] - θ[j]
-        Pg_slack += V[i]*V[j]*(G[i,j]*cos(θ_diff) + B[i,j]*sin(θ_diff))
-        Qg_slack += V[i]*V[j]*(G[i,j]*sin(θ_diff) - B[i,j]*cos(θ_diff))
+        θ_diff = θ[idx_slack] - θ[j]
+        Pg_slack += V[idx_slack]*V[j]*(G[idx_slack,j]*cos(θ_diff) + B[idx_slack,j]*sin(θ_diff))
+        Qg_slack += V[idx_slack]*V[j]*(G[idx_slack,j]*sin(θ_diff) - B[idx_slack,j]*cos(θ_diff))
     end
-    Pg_slack += barras[i]["P"]
-    Qg_slack += barras[i]["Q"]
+    
+    # Atualizando os vetores de geração
+    Pg = zeros(n)
+    Qg = zeros(n)
+    Pg[idx_slack] = Pg_slack + barras[idx_slack]["P"]
+    Qg[idx_slack] = Qg_slack + barras[idx_slack]["Q"]
+    
+    # Calculando geração nas barras PV
+    for i in idx_pv
+        Pg[i] = barras[i]["P_Gen"]
+        Qg[i] = 0.0
+        for j = 1:n
+            θ_diff = θ[i] - θ[j]
+            Qg[i] += V[i]*V[j]*(G[i,j]*sin(θ_diff) - B[i,j]*cos(θ_diff))
+        end
+        Qg[i] += barras[i]["Q"]  # Adiciona a demanda reativa
+    end
 
-    return θ, V, Pg_slack, Qg_slack
+    return θ, V, Pg, Qg
 end
 
-# Execução (ajuste caminho conforme necessário)
-θ, V, Pg, Qg = fluxo_potencia_newtonraphson("DATA/input/fpo_input_data.json")
-
-println("\nResultados finais:")
-for i in 1:length(V)
-    @printf("Barra %d: |V| = %.4f pu, θ = %.4f°\n", i, V[i], rad2deg(θ[i]))
+function print_results(θ, V, Pg, Qg)
+    println("\nResultados do Fluxo de Potência Newthon Raphson:")
+    println("Barra |   V (pu)   |  Ang (graus)  | Pg (pu)   | Qg (pu)  ")
+    
+    # Garante que todos sejam arrays do mesmo tamanho
+    n = length(V)
+    θ = typeof(θ) <: Number ? fill(θ, n) : θ
+    Pg = typeof(Pg) <: Number ? fill(Pg, n) : Pg
+    Qg = typeof(Qg) <: Number ? fill(Qg, n) : Qg
+    
+    for i in 1:n
+        v = round(V[i], digits=4)
+        ang = round(rad2deg(θ[i]), digits=2)
+        p = round(Pg[i], digits=4)
+        q = round(Qg[i], digits=4)
+        
+        println("$(lpad(i,4)) | $(lpad(v,8)) | $(lpad(ang,10)) | $(lpad(p,8)) | $(lpad(q,8)) ")
+    end
 end
-println("\nGeração na barra slack: Pg = $(round(Pg, digits=4)) pu, Qg = $(round(Qg, digits=4)) pu")
+
+# Uso:
+θ, V, Pg, Qg = fluxo_potencia_newtonraphson(arquivo_input)
+print_results(θ, V, Pg, Qg)

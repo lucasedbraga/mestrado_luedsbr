@@ -1,10 +1,14 @@
+using Pkg
+Pkg.activate(".")
+Pkg.instantiate()
+
 using JuMP
 using Ipopt
 using JSON
 using LinearAlgebra
 
 # Carrega os dados
-data = JSON.parsefile("DATA/input/fpo_input_data.json")
+data = JSON.parsefile("DATA/input/ieee14_BASE.json")
 
 println("Dados carregados com sucesso.")
 println("Barras: ", length(data["BARRAS"]), ", Linhas: ", length(data["LINHAS"]))
@@ -157,7 +161,7 @@ optimize!(model)
 # Resultados
 if termination_status(model) in [MOI.OPTIMAL, MOI.LOCALLY_SOLVED]
     println("\nResultados do Fluxo de Potência Ótimo:")
-    println("Barra |   V (pu)   |  θ (graus)  | Pg (pu)   | Qg (pu)   | Tipo")
+    println("Barra |   V (pu)   |  Ang (graus)  | Pg (pu)   | Qg (pu)   | Tipo")
     
     for id in sort(bus_ids, by=x->parse(Int, x))
         i = idx_map[id]
