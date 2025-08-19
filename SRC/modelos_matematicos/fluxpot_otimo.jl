@@ -1,10 +1,14 @@
+using Pkg
+Pkg.activate(".")
+Pkg.instantiate()
+
 using JuMP
 using Ipopt
 using JSON
 using LinearAlgebra
 
 # Carrega os dados
-data = JSON.parsefile("DATA/input/fpo_input_data.json")
+data = JSON.parsefile("DATA/input/ieee14_BASE.json")
 
 println("Dados carregados com sucesso.")
 println("Barras: ", length(data["BARRAS"]), ", Linhas: ", length(data["LINHAS"]))

@@ -1,10 +1,14 @@
+using Pkg
+Pkg.activate(".")
+Pkg.instantiate()
+
 using JSON
 using JuMP
 using Ipopt
 using Printf
 
 # --- Carregar dados no formato do fluxpot_NR ---
-data = JSON.parsefile("DATA/input/fpo_input_data.json")
+data = JSON.parsefile("DATA/input/ieee14_BASE.json")
 barras = data["BARRAS"]
 linhas = data["LINHAS"]
 
@@ -96,13 +100,22 @@ end
 # --- Resolver o modelo ---
 optimize!(model)
 
-# --- Resultados compatíveis com fluxpot_NR ---
-println("\nResultados finais:")
+println("\nResultados do Fluxo de Potência Injeção de Correntes:")
+println("Barra |   V (pu)   |  θ (graus)  | Pg (pu)   | Qg (pu)  ")
+
+# Extrai os valores otimizados
+Vm_vals = [sqrt(value(Vr[i])^2 + value(Vi[i])^2) for i in 1:n]
+θ_vals  = [atan(value(Vi[i]), value(Vr[i])) for i in 1:n]
+Pg_vals = value.(Pg)
+Qg_vals = value.(Qg)
+
 for i in 1:n
-    Vm = sqrt(value(Vr[i])^2 + value(Vi[i])^2)
-    θ_rad = atan(value(Vi[i]), value(Vr[i]))
-    θ_deg = rad2deg(θ_rad)
-    @printf("Barra %d: |V| = %.4f pu, θ = %.4f°\n", i, Vm, θ_deg)
+    v   = round(Vm_vals[i], digits=4)
+    ang = round(rad2deg(θ_vals[i]), digits=2)
+    p   = round(Pg_vals[i], digits=4)
+    q   = round(Qg_vals[i], digits=4)
+
+    println("$(lpad(i,4)) | $(lpad(v,8)) | $(lpad(ang,10)) | $(lpad(p,8)) | $(lpad(q,8)) ")
 end
 
 # Geração na slack (Pg, Qg)
