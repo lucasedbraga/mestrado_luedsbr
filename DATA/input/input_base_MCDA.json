@@ -1,0 +1,67 @@
+{
+  "S_base": 100.0,
+  "V_base": 230.0,
+  "f_base": 60.0,
+  "P_base": 100.0,
+  "Q_base": 100.0,
+  "Z_base": 1.0,
+  "Y_base": 1.0,
+  "T_base": 1.0,
+
+  "BARRAS": [
+    {
+      "ID_Barra": "1",
+      "tipo": "Slack",
+      "P": -1.5,               
+      "Q": 0.0,
+      "P_Gen": 0.0,            
+      "Q_Gen": 0.0,
+      "P_inst": 0.0,           
+      "Custo_P_inst": 0,
+      "V_ref": 1.0,
+      "V_min": 0.95,
+      "V_max": 1.05,
+      "theta": 0.0,
+      "Area": 1,
+      "Zona": 1,
+      "DGER": [
+        {
+          "id": "G1",
+          "ID_Barra": "1",
+          "tipo": "termica",
+          "descricao": "Térmica A (barata, mais emissora)",
+          "Pmin_MW": 20.0,
+          "Pmax_MW": 80.0,
+          "custo_var_USD_MWh": 20.0,
+          "startup_USD": 100.0,
+          "ramp_up_MW_h": 40.0,
+          "ramp_down_MW_h": 40.0,
+          "emissao_tCO2_MWh": 0.7,
+          "usar_no_UC": true
+        },
+        {
+          "id": "G2",
+          "ID_Barra": "1",
+          "tipo": "termica",
+          "descricao": "Térmica B (mais cara, menos emissora)",
+          "Pmin_MW": 0.0,
+          "Pmax_MW": 50.0,
+          "custo_var_USD_MWh": 50.0,
+          "startup_USD": 50.0,
+          "ramp_up_MW_h": 50.0,
+          "ramp_down_MW_h": 50.0,
+          "emissao_tCO2_MWh": 0.3,
+          "usar_no_UC": true
+        }
+              ],
+      "DLOAD": [
+        {
+          "descricao": "Demanda total alvo por hora e regra de distribuição proporcional às cargas base das barras PQ",
+          "demanda_total_MW": [50.0, 70.0, 60.0]
+        }
+      ]
+    }
+  ],
+
+  "LINHAS": []
+}
