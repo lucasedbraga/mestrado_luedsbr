@@ -5,6 +5,7 @@ Pkg.instantiate()
 using JuMP
 using GLPK
 using JSON
+using DataStructures  # para OrderedDict
 
 # Carrega os dados
 data = JSON.parsefile("DATA/input/input_base_MCDA.json")
@@ -75,14 +76,11 @@ end
 
 # 🔹 Loop para construir o Pareto
 pareto_points = []
-
 for w_c in 0:0.1:1
     w_e = 1 - w_c
     custo, emis = despacho_economico(data, w_c, w_e)
     push!(pareto_points, (w_c, w_e, custo, emis))
 end
-
-using JSON
 
 println("\n--- Fronteira de Pareto ---")
 
@@ -100,37 +98,47 @@ for (w_c, w_e, custo, emis) in pareto_points
     ))
 end
 
-# Adiciona id_alternativa automaticamente
-alternativas_com_id = [merge(Dict("id_alternativa"=>i), alt) for (i, alt) in enumerate(alternativas)]
+
+# Cria alternativas com id, mas garantindo a ordem
+alternativas_com_id = [
+    OrderedDict(
+        "id_alternativa" => i,
+        "descricao" => alt["descricao"],
+        "Custo Operacao" => alt["Custo Operacao"],
+        "Emissao ton CO2" => alt["Emissao ton CO2"]
+    )
+    for (i, alt) in enumerate(alternativas)
+]
 
 # Escreve o JSON em arquivo
 open("DATA/output/input_alternativas.json", "w") do io
-    JSON.print(io, alternativas_com_id)   # com indentação de 4 espaços
+    JSON.print(io, alternativas_com_id)  # identação de 4 espaços
 end
 
 
-using Plots
-# Extrair eixos
-custos = [p[3] for p in pareto_points]
-emissoes = [p[4] for p in pareto_points]
 
-# Plotar
-scatter(
-    custos, emissoes;
-    xlabel = "Custo (milhares de \$)",
-    ylabel = "Emissão (ton CO₂)",
-    title = "Fronteira de Pareto: Custo vs Emissão",
-    legend = false,
-    markersize = 6,
-    color = :blue,
-    xlims=(0, maximum(custos)*1.1),  # força eixo x começar em 0
-    ylims=(0, maximum(emissoes)*1.1), # força eixo y começar em 0
-    xformatter = x -> string(round(x/1000, digits=1), "k"), # escala em 10^3
-    yformatter = y -> string(round(y/1000, digits=1), "k") # escala em 10^3
-)
+# using Plots
+# # Extrair eixos
+# custos = [p[3] for p in pareto_points]
+# emissoes = [p[4] for p in pareto_points]
+
+# # Plotar
+# scatter(
+#     custos, emissoes;
+#     xlabel = "Custo (milhares de \$)",
+#     ylabel = "Emissão (ton CO₂)",
+#     title = "Fronteira de Pareto: Custo vs Emissão",
+#     legend = false,
+#     markersize = 6,
+#     color = :blue,
+#     xlims=(0, maximum(custos)*1.1),  # força eixo x começar em 0
+#     ylims=(0, maximum(emissoes)*1.1), # força eixo y começar em 0
+#     xformatter = x -> string(round(x/1000, digits=1), "k"), # escala em 10^3
+#     yformatter = y -> string(round(y/1000, digits=1), "k") # escala em 10^3
+# )
 
 
-# Salvar em PNG
-savefig("pareto.png")
+# # Salvar em PNG
+# savefig("pareto.png")
 
-println("Gráfico salvo como pareto.png")
+# println("Gráfico salvo como pareto.png")
