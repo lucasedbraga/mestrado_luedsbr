@@ -58,14 +58,14 @@ function despacho_economico(data, w_c, w_e)
         @constraint(model, sum(p[g,t] for g in keys(geradores)) == demandas[t])
     end
 
-    custo_credito_carbono_tonelada_co2 = 26
+    custo_credito_carbono_tonelada_co2 = 26 #R$/tCO2
+
     # Objetivos
     @expression(model, custo_total, sum(geradores[g]["custo_var_USD_MWh"] * p[g,t] for g in keys(geradores), t in 1:T))
     @expression(model, emis_total,  sum(custo_credito_carbono_tonelada_co2*geradores[g]["emissao_tCO2_MWh"] * p[g,t] for g in keys(geradores), t in 1:T))
 
     # Soma ponderada
     @objective(model, Min, w_c * custo_total + w_e * emis_total)
-
     optimize!(model)
 
     # Retorna valores dos objetivos
@@ -82,12 +82,32 @@ for w_c in 0:0.1:1
     push!(pareto_points, (w_c, w_e, custo, emis))
 end
 
+using JSON
+
 println("\n--- Fronteira de Pareto ---")
+
+alternativas = []
+
 for (w_c, w_e, custo, emis) in pareto_points
-    println("w_c=$(round(w_c,digits=2)), w_e=$(round(w_e,digits=2)) -> Custo=$(round(custo, digits=2)) USD, Emissões=$(round(emis, digits=2)) tCO2")
+
+    descricao = "w_c=$(round(w_c, digits=2)), w_e=$(round(w_e, digits=2))"
+    println("$(descricao) -> Custo=$(round(custo, digits=2)) USD, Emissões=$(round(emis, digits=2)) tCO2")
+
+    push!(alternativas, Dict(
+        "descricao" => descricao,
+        "Custo Operacao" => round(custo, digits=2),
+        "Emissao ton CO2" => round(emis, digits=2)
+    ))
 end
 
-#-------------
+# Adiciona id_alternativa automaticamente
+alternativas_com_id = [merge(Dict("id_alternativa"=>i), alt) for (i, alt) in enumerate(alternativas)]
+
+# Escreve o JSON em arquivo
+open("DATA/output/input_alternativas.json", "w") do io
+    JSON.print(io, alternativas_com_id)   # com indentação de 4 espaços
+end
+
 
 using Plots
 # Extrair eixos
