@@ -38,18 +38,26 @@ class AHP:
         
         # Normaliza os valores das alternativas
         df_normalizado = self.alternativas.copy()
-        df_normalizado["Custo Operacao"] = df_normalizado["Custo Operacao"] / df_normalizado["Custo Operacao"].max()
-        df_normalizado["Emissao ton CO2"] = df_normalizado["Emissao ton CO2"] / df_normalizado["Emissao ton CO2"].max()
+        df_normalizado["Custo Operacao_calc"] = df_normalizado["Custo Operacao"] / df_normalizado["Custo Operacao"].max()
+        df_normalizado["Emissao ton CO2_calc"] = df_normalizado["Emissao ton CO2"] / df_normalizado["Emissao ton CO2"].max()
         
         # Calcula o score ponderado
-        df_normalizado['Score'] = (df_normalizado["Custo Operacao"]  * pesos['Custo Operacao'] +
-                                   df_normalizado["Emissao ton CO2"] * pesos['Emissao ton CO2'])
+        df_normalizado['Score'] = (df_normalizado["Custo Operacao_calc"]  * pesos['Custo Operacao'] +
+                                   df_normalizado["Emissao ton CO2_calc"] * pesos['Emissao ton CO2'])
         
+        # Normaliza Score
+        df_normalizado = df_normalizado[[col for col in df_normalizado.columns if not col.endswith('_calc')]]
         df_resultados = df_normalizado.sort_values(by='Score', ascending=False)
+        
+        print('-'*80)
+        print("Pesos dos critérios (AHP):")
+        print(pesos)
+
         
         colunas_criterios = colunas_criterios + ['Score']
         # elimina duplicados com base apenas nos critérios
         df_unico = df_resultados.drop_duplicates(subset=colunas_criterios, keep="first").reset_index(drop=True)
+        df_unico["Score"] = df_unico["Score"]/sum(df_unico["Score"])
         return df_unico
 
 class AHP_Gaussiano(AHP):
@@ -80,11 +88,16 @@ class AHP_Gaussiano(AHP):
         # 4) Calcula Score
         df["Score"] = norm.dot(w_norm)
 
+
+
         # 5) Ordena e remove duplicatas nos critérios + Score
         df = df.sort_values(by="Score", ascending=False)
         df = df.drop_duplicates(subset=criterios + ["Score"], keep="first").reset_index(drop=True)
-
-        print("Pesos dos critérios (Gaussian):")
+                # Normaliza Score
+        df["Score"] = df["Score"]/sum(df["Score"])
+        print('\n')
+        print('-'*80)
+        print("Pesos dos critérios (AHP-Gaussiano):")
         print(w_norm)
 
         return df
