@@ -39,7 +39,7 @@ def exporta_comparativo_excel():
     waspas = WASPAS()
     lopcow = LOPCOW()
     mpsi = MPSI()
-    #wisp = WISP()
+    wisp = WISP()
 
     # Gera os rankings
     df_ahp = ahp.rank_alternativas().rename(columns={"Score": "AHP"})
@@ -47,7 +47,7 @@ def exporta_comparativo_excel():
     df_waspas = waspas.rank_alternativas().rename(columns={"Score": "WASPAS"})
     df_lopcow = lopcow.rank_alternativas().rename(columns={"Score": "LOPCOW"})
     df_mpsi = mpsi.rank_alternativas().rename(columns={"Score": "MPSI"})
-    #df_wisp = wisp.rank_alternativas().rename(columns={"Score": "WISP"})
+    df_wisp = wisp.rank_alternativas().rename(columns={"Score": "WISP"})
 
     # Seleciona colunas-chave
     base_cols = ["id_alternativa", "descricao"]
@@ -58,11 +58,11 @@ def exporta_comparativo_excel():
         .merge(df_waspas[base_cols + ["WASPAS"]], on=base_cols, how="outer") \
         .merge(df_lopcow[base_cols + ["LOPCOW"]], on=base_cols, how="outer") \
         .merge(df_mpsi[base_cols + ["MPSI"]], on=base_cols, how="outer") \
-       # .merge(df_wisp[base_cols + ["WISP"]], on=base_cols, how="outer")
+        .merge(df_wisp[base_cols + ["WISP"]], on=base_cols, how="outer")
 
     # Ordena por uma média dos scores (opcional)
     df_merged = df_merged.fillna(0)
-    df_merged["Score_Medio"] = df_merged[["AHP", "AHP_Gaussiano", "WASPAS", "LOPCOW", "MPSI"]].mean(axis=1) # ,"WISP",].mean(axis=1)
+    df_merged["Score_Medio"] = df_merged[["AHP", "AHP_Gaussiano", "WASPAS", "LOPCOW", "MPSI","WISP"]].mean(axis=1)
     df_merged = df_merged.sort_values(by="Score_Medio", ascending=False).reset_index(drop=True)
 
     print('-'*80)
