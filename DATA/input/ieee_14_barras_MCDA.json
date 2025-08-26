@@ -49,7 +49,7 @@
                     "startup_USD": 50.0,
                     "ramp_up_MW_h": 50.0,
                     "ramp_down_MW_h": 50.0,
-                    "emissao_tCO2_MWh": 1,
+                    "emissao_tCO2_MWh": 1.5,
                     "usar_no_UC": true
                 },
                 {
@@ -63,7 +63,7 @@
                     "startup_USD": 50.0,
                     "ramp_up_MW_h": 50.0,
                     "ramp_down_MW_h": 50.0,
-                    "emissao_tCO2_MWh": 0.8,
+                    "emissao_tCO2_MWh": 1,
                     "usar_no_UC": true
                 },
                 {
@@ -79,6 +79,16 @@
                     "ramp_down_MW_h": 50.0,
                     "emissao_tCO2_MWh": 0.25,
                     "usar_no_UC": true
+                },
+                {
+                    "id": "Defict",
+                    "ID_Barra": "1",
+                    "tipo": "Defict",
+                    "descricao": "Corte de Carga",
+                    "Pmin_MW": 0.0,
+                    "Pmax_MW": 10000.0,
+                    "custo_var_USD_MWh": 1e6,
+                    "emissao_tCO2_MWh": 0
                 }
             ],
             "DLOAD": []

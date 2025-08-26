@@ -28,10 +28,10 @@
           "id": "G1",
           "ID_Barra": "1",
           "tipo": "termica",
-          "descricao": "Térmica A (barata, mais emissora)",
+          "descricao": "Térmica A (-cara + poluente)",
           "Pmin_MW": 0.0,
-          "Pmax_MW": 25.0,
-          "custo_var_USD_MWh": 6.0,
+          "Pmax_MW": 30.0,
+          "custo_var_USD_MWh": 10.0,
           "startup_USD": 100.0,
           "ramp_up_MW_h": 40.0,
           "ramp_down_MW_h": 40.0,
@@ -44,8 +44,8 @@
           "tipo": "termica",
           "descricao": "Térmica B (intermediaria)",
           "Pmin_MW": 0.0,
-          "Pmax_MW": 15.0,
-          "custo_var_USD_MWh": 10.0,
+          "Pmax_MW": 25.0,
+          "custo_var_USD_MWh": 15.0,
           "startup_USD": 50.0,
           "ramp_up_MW_h": 50.0,
           "ramp_down_MW_h": 50.0,
@@ -54,32 +54,26 @@
         },
         {
           "id": "G3",
-          "ID_Barra": "1",
-          "tipo": "termica",
-          "descricao": "Térmica C (mais cara, menos emissora)",
+          "descricao": "Térmica C (+ cara - poluente)",
           "Pmin_MW": 0.0,
-          "Pmax_MW": 5.0,
-          "custo_var_USD_MWh": 50.0,
-          "startup_USD": 50.0,
-          "ramp_up_MW_h": 50.0,
-          "ramp_down_MW_h": 50.0,
-          "emissao_tCO2_MWh": 0.25,
-          "usar_no_UC": true
-        },  
-        {
-          "id": "G4",
-          "ID_Barra": "1",
-          "tipo": "termica",
-          "descricao": "Térmica B (intermediaria)",
-          "Pmin_MW": 0.0,
-          "Pmax_MW": 5.0,
-          "custo_var_USD_MWh": 30.0,
+          "Pmax_MW": 30.0,
+          "custo_var_USD_MWh": 20.0,
           "startup_USD": 50.0,
           "ramp_up_MW_h": 50.0,
           "ramp_down_MW_h": 50.0,
           "emissao_tCO2_MWh": 0.8,
           "usar_no_UC": true
-        }        
+        },
+        {
+          "id": "Defict",
+          "ID_Barra": "1",
+          "tipo": "Defict",
+          "descricao": "Corte de Carga",
+          "Pmin_MW": 0.0,
+          "Pmax_MW": 1e6,
+          "custo_var_USD_MWh": 1e6,
+          "emissao_tCO2_MWh": 0
+        }
       ],
       "DLOAD": [
         {
@@ -110,9 +104,9 @@
             46,
             44
           ]
-      }
-    ]
-  }
-],
-"LINHAS": []
+        }
+      ]
+    }
+  ],
+  "LINHAS": []
 }

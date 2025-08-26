@@ -7,7 +7,8 @@ using JuMP, GLPK
 using Plots
 
 # Carrega os dados
-data = JSON.parsefile("DATA/input/ieee_14_barras_MCDA.json")
+#data = JSON.parsefile("DATA/input/ieee_14_barras_MCDA.json")
+data = JSON.parsefile("DATA/input/input_base_MCDA.json")
 
 """
 Função que resolve o despacho econômico para dados e pesos dados
@@ -77,8 +78,10 @@ function despacho_economico(data, w_c, w_e)
     @expression(model, custo_total, sum(geradores[g]["custo_var_USD_MWh"] * p[g,t] for g in keys(geradores), t in 1:T))
     @expression(model, emis_total,  sum(custo_credito_carbono_tonelada_co2 * geradores[g]["emissao_tCO2_MWh"] * p[g,t] for g in keys(geradores), t in 1:T))
 
-    # Soma ponderada
-    @objective(model, Min, w_c * custo_total + w_e * emis_total)
+    w_c_efetivo = w_c == 0 ? 0.01 : w_c
+    w_e_efetivo = w_e == 0 ? 0.01 : w_e
+    
+    @objective(model, Min, w_c_efetivo * custo_total + w_e_efetivo * emis_total)
     optimize!(model)
 
     println("Resultados do despacho econômico:\n")
@@ -95,7 +98,7 @@ end
 
 # Loop para construir a Fronteira de Pareto
 pareto_points = []
-for w_c in 0:0.1:1
+for w_c in 1:-0.1:0
     w_e = 1 - w_c
     custo, emis = despacho_economico(data, w_c, w_e)
     push!(pareto_points, (w_c, w_e, custo, emis))
