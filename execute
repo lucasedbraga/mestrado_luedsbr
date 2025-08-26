@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+
+nome_cenario=${1:-"cenario_padrao"}
+hora=$(date +"%H:%M:%S")
+
+echo "Executando rodada \"$nome_cenario\" às $hora"
+
+# --- Endereço dos Arquivos ---
+DIR_ATUAL=$(pwd)
+# SCRIPT_JULIA="$DIR_ATUAL/kickoff/test_julia_esforco_computacional.jl"
+DIR_SCRIPT_PYTHON="$DIR_ATUAL/main.py"
+DIR_LOG="$DIR_ATUAL/logs/"
+
+# --- Verificação de dependências ---
+if ! command -v julia >/dev/null 2>&1; then
+    echo "Erro: Julia não encontrada no PATH."
+    exit 1
+fi
+
+if ! command -v python3 >/dev/null 2>&1 && ! command -v python >/dev/null 2>&1; then
+    echo "Erro: Python não encontrado no PATH."
+    exit 1
+fi
+
+# --- Execução do script Julia ---
+echo ""
+#echo "Executando Julia..."
+#julia "$SCRIPT_JULIA" 2>&1 | tee log_julia.txt
+
+# # --- Execução do script Python ---
+echo ""
+echo "Executando Python: $DIR_SCRIPT_PYTHON ..."
+python3 "$DIR_SCRIPT_PYTHON" 2>&1 | tee "$DIR_LOG"/log_python.txt
+
+# # --- Finalização da Rodada ---
+# echo ""
+# echo "Execuções concluídas. Logs salvos em:"
+# echo " - $DIR_ATUAL/log_julia.txt"
+# echo " - $DIR_ATUAL/log_python.txt"
