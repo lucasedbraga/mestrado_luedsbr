@@ -2,3 +2,6 @@ tests/__pycache__/
 *.token
 *.venv
 *DATA/input/cenarios/
+SRC/decisao_multicriterio/__pycache__/
+pareto.png
+DATA/output/MCDA/ranking_comparativo_metodos.xlsx
