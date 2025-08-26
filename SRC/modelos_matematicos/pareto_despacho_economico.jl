@@ -2,10 +2,8 @@ using Pkg
 Pkg.activate(".")
 Pkg.instantiate()
 
-using JuMP
-using GLPK
-using JSON
-using DataStructures  # para OrderedDict
+using DataFrames, JSON, OrderedCollections, DataStructures
+using JuMP , GLPK
 
 # Carrega os dados
 data = JSON.parsefile("DATA/input/input_base_MCDA.json")
@@ -69,12 +67,21 @@ function despacho_economico(data, w_c, w_e)
     @objective(model, Min, w_c * custo_total + w_e * emis_total)
     optimize!(model)
 
+    println("Resultados do despacho econômico:\n")
+    for t in 1:T
+        println("Hora $t - Demanda: $(demandas[t]) MW")
+        for g in keys(geradores)
+            println("  Gerador $g: $(value(p[g, t])) MW")
+        end
+        println()
+    end
+
     # Retorna valores dos objetivos
     return value(custo_total), value(emis_total)/custo_credito_carbono_tonelada_co2
 end
 
 
-# 🔹 Loop para construir o Pareto
+# Loop para construir o Pareto
 pareto_points = []
 for w_c in 0:0.1:1
     w_e = 1 - w_c
@@ -83,7 +90,6 @@ for w_c in 0:0.1:1
 end
 
 println("\n--- Fronteira de Pareto ---")
-
 alternativas = []
 
 for (w_c, w_e, custo, emis) in pareto_points
@@ -99,46 +105,56 @@ for (w_c, w_e, custo, emis) in pareto_points
 end
 
 
-# Cria alternativas com id, mas garantindo a ordem
+# Converte a lista de alternativas para DataFrame
+df = DataFrame(alternativas)
+# Cria uma chave única com base nos valores de custo e emissão
+df[!,:_chave] = string.(df[!,"Custo Operacao"]) .* "|" .* string.(df[!,"Emissao ton CO2"])
+# Agrupa por chave e mantém apenas a primeira ocorrência
+df_filtrado = combine(groupby(df, :_chave)) do sdf
+    first(sdf)
+end
+
+# Remove a coluna auxiliar
+select!(df_filtrado, Not(:_chave))
+
+# Cria lista de OrderedDicts com id
 alternativas_com_id = [
     OrderedDict(
         "id_alternativa" => i,
-        "descricao" => alt["descricao"],
-        "Custo Operacao" => alt["Custo Operacao"],
-        "Emissao ton CO2" => alt["Emissao ton CO2"]
+        "descricao" => row["descricao"],
+        "Custo Operacao" => row["Custo Operacao"],
+        "Emissao ton CO2" => row["Emissao ton CO2"]
     )
-    for (i, alt) in enumerate(alternativas)
+    for (i, row) in enumerate(eachrow(df_filtrado))
 ]
 
-# Escreve o JSON em arquivo
+# Escreve o JSON
 open("DATA/output/input_alternativas.json", "w") do io
-    JSON.print(io, alternativas_com_id)  # identação de 4 espaços
+    JSON.print(io, alternativas_com_id)
 end
 
 
+using Plots
 
-# using Plots
-# # Extrair eixos
-# custos = [p[3] for p in pareto_points]
-# emissoes = [p[4] for p in pareto_points]
+# Extrai os eixos a partir do DataFrame filtrado
+custos = df_filtrado[!,"Custo Operacao"]
+emissoes = df_filtrado[!,"Emissao ton CO2"]
 
-# # Plotar
-# scatter(
-#     custos, emissoes;
-#     xlabel = "Custo (milhares de \$)",
-#     ylabel = "Emissão (ton CO₂)",
-#     title = "Fronteira de Pareto: Custo vs Emissão",
-#     legend = false,
-#     markersize = 6,
-#     color = :blue,
-#     xlims=(0, maximum(custos)*1.1),  # força eixo x começar em 0
-#     ylims=(0, maximum(emissoes)*1.1), # força eixo y começar em 0
-#     xformatter = x -> string(round(x/1000, digits=1), "k"), # escala em 10^3
-#     yformatter = y -> string(round(y/1000, digits=1), "k") # escala em 10^3
-# )
+# Cria o gráfico de dispersão
+scatter(
+    custos, emissoes;
+    xlabel = "Custo (milhares de \$)",
+    ylabel = "Emissão (ton CO₂)",
+    title = "Fronteira de Pareto: Custo vs Emissão",
+    legend = false,
+    markersize = 6,
+    color = :blue,
+    xlims = (0, maximum(custos) * 1.1),
+    ylims = (0, maximum(emissoes) * 1.1),
+    xformatter = x -> string(round(x / 1000, digits=1), "k"),
+    yformatter = y -> string(round(y / 1000, digits=1), "k")
+)
 
-
-# # Salvar em PNG
-# savefig("pareto.png")
-
-# println("Gráfico salvo como pareto.png")
+# Salva o gráfico como imagem
+savefig("pareto.png")
+println("Gráfico salvo como pareto.png")

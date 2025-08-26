@@ -73,6 +73,10 @@ class WASPAS:
         # Normaliza os scores
         df_unico["Score"] = df_unico["Score"] / df_unico["Score"].sum()
 
+        # Exibe o resultado
+        print("\nRanking das Alternativas: - WASPAS")
+        print(df_unico)
+
         return df_unico
 
 class LOPCOW(WASPAS):
@@ -117,6 +121,9 @@ class LOPCOW(WASPAS):
         # Elimina duplicatas com base nos critérios + Score
         df_unico = df_resultados.drop_duplicates(subset=colunas_criterios + ["Score"], keep="first").reset_index(drop=True)
         df_unico["Score"] = df_unico["Score"] / df_unico["Score"].sum()
+        
+        print("\nRanking das Alternativas: - LOPCOW")
+        print(df_unico)
 
         return df_unico
 
@@ -149,6 +156,9 @@ class MPSI(WASPAS):
         df_unico = df_resultados.drop_duplicates(subset=colunas_criterios + ["Score"], keep="first").reset_index(drop=True)
         # Normaliza os scores
         df_unico["Score"] = df_unico["Score"] / df_unico["Score"].sum()
+        
+        print('\nRanking das Alternativas: - MPSI')
+        print(df_unico)
 
         return df_unico
 
@@ -188,27 +198,16 @@ class WISP(WASPAS):
         print(pesos)
         df_unico = df_resultados.drop_duplicates(subset=colunas_criterios + ["Score"], keep="first").reset_index(drop=True)
         df_unico["Score"] = df_unico["Score"] / df_unico["Score"].sum()
+        
+        # Exibe os resultados
+        print('\nRanking das Alternativas: - WISP')
+        print(df_unico)
+    
         return df_unico
 
 
 if __name__ == "__main__":
-    waspas = WASPAS()
-    ranking_waspas = waspas.rank_alternativas()
-    print("\nRanking das Alternativas: - WASPAS")
-    print(ranking_waspas)
-
-    lopcow = LOPCOW()
-    ranking_lopcow = lopcow.rank_alternativas()
-    print("\nRanking das Alternativas: - LOPCOW")
-    print(ranking_lopcow)
-
-    mpsi = MPSI()
-    ranking_mpsi = mpsi.rank_alternativas()
-    print('\nRanking das Alternativas: - MPSI')
-    print(ranking_mpsi)
-
-    wisp = WISP()
-    ranking_wisp = wisp.rank_alternativas()
-    print('\nRanking das Alternativas: - WISP')
-    print(ranking_wisp)
-    
+    waspas = WASPAS().rank_alternativas()
+    lopcow = LOPCOW().rank_alternativas()
+    mpsi = MPSI().rank_alternativas()
+    wisp = WISP().rank_alternativas()

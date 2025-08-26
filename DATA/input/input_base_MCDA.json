@@ -7,16 +7,15 @@
   "Z_base": 1.0,
   "Y_base": 1.0,
   "T_base": 1.0,
-
   "BARRAS": [
     {
       "ID_Barra": "1",
       "tipo": "Slack",
-      "P": -1.5,               
+      "P": -1.5,
       "Q": 0.0,
-      "P_Gen": 0.0,            
+      "P_Gen": 0.0,
       "Q_Gen": 0.0,
-      "P_inst": 0.0,           
+      "P_inst": 0.0,
       "Custo_P_inst": 0,
       "V_ref": 1.0,
       "V_min": 0.95,
@@ -30,52 +29,90 @@
           "ID_Barra": "1",
           "tipo": "termica",
           "descricao": "Térmica A (barata, mais emissora)",
-          "Pmin_MW": 20.0,
-          "Pmax_MW": 80.0,
+          "Pmin_MW": 25.0,
+          "Pmax_MW": 50.0,
           "custo_var_USD_MWh": 20.0,
           "startup_USD": 100.0,
           "ramp_up_MW_h": 40.0,
           "ramp_down_MW_h": 40.0,
-          "emissao_tCO2_MWh": 3.0,
+          "emissao_tCO2_MWh": 3,
           "usar_no_UC": true
         },
         {
           "id": "G2",
           "ID_Barra": "1",
           "tipo": "termica",
-          "descricao": "Térmica B (mais cara, menos emissora)",
+          "descricao": "Térmica B (intermediaria)",
           "Pmin_MW": 0.0,
-          "Pmax_MW": 50.0,
-          "custo_var_USD_MWh": 50.0,
-          "startup_USD": 50.0,
-          "ramp_up_MW_h": 50.0,
-          "ramp_down_MW_h": 50.0,
-          "emissao_tCO2_MWh": 0.3,
-          "usar_no_UC": true
-        },
-        {
-          "id": "G3",
-          "ID_Barra": "1",
-          "tipo": "termica",
-          "descricao": "Térmica C (intermediaria)",
-          "Pmin_MW": 0.0,
-          "Pmax_MW": 50.0,
+          "Pmax_MW": 30.0,
           "custo_var_USD_MWh": 30.0,
           "startup_USD": 50.0,
           "ramp_up_MW_h": 50.0,
           "ramp_down_MW_h": 50.0,
           "emissao_tCO2_MWh": 1,
           "usar_no_UC": true
-        }
-              ],
+        },
+        {
+          "id": "G3",
+          "ID_Barra": "1",
+          "tipo": "termica",
+          "descricao": "Térmica C (mais cara, menos emissora)",
+          "Pmin_MW": 10.0,
+          "Pmax_MW": 25.0,
+          "custo_var_USD_MWh": 50.0,
+          "startup_USD": 50.0,
+          "ramp_up_MW_h": 50.0,
+          "ramp_down_MW_h": 50.0,
+          "emissao_tCO2_MWh": 0.3,
+          "usar_no_UC": true
+        },  
+        {
+          "id": "G4",
+          "ID_Barra": "1",
+          "tipo": "termica",
+          "descricao": "Térmica B (intermediaria)",
+          "Pmin_MW": 0.0,
+          "Pmax_MW": 30.0,
+          "custo_var_USD_MWh": 35.0,
+          "startup_USD": 50.0,
+          "ramp_up_MW_h": 50.0,
+          "ramp_down_MW_h": 50.0,
+          "emissao_tCO2_MWh": 0.8,
+          "usar_no_UC": true
+        }        
+      ],
       "DLOAD": [
         {
           "descricao": "Demanda total alvo por hora e regra de distribuição proporcional às cargas base das barras PQ",
-          "demanda_total_MW": [0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100, 110, 120, 130, 140, 150]
-        }
-      ]
-    }
-  ],
-
-  "LINHAS": []
+          "demanda_total_MW": [
+            42,
+            41,
+            40,
+            39.5,
+            39,
+            40,
+            42,
+            45,
+            47,
+            48,
+            49,
+            49.5,
+            50,
+            50.5,
+            51,
+            52,
+            53,
+            54,
+            53.5,
+            52,
+            50,
+            48,
+            46,
+            44
+          ]
+      }
+    ]
+  }
+],
+"LINHAS": []
 }

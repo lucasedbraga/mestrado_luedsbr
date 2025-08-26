@@ -58,7 +58,11 @@ class AHP:
         # elimina duplicados com base apenas nos critérios
         df_unico = df_resultados.drop_duplicates(subset=colunas_criterios, keep="first").reset_index(drop=True)
         df_unico["Score"] = df_unico["Score"]/sum(df_unico["Score"])
-        return df_unico
+        
+        ranking_ahp = df_unico
+        print("\nRanking das Alternativas: - AHP")
+        print(ranking_ahp)
+        return ranking_ahp
 
 class AHP_Gaussiano(AHP):
 
@@ -95,21 +99,17 @@ class AHP_Gaussiano(AHP):
         df = df.drop_duplicates(subset=criterios + ["Score"], keep="first").reset_index(drop=True)
                 # Normaliza Score
         df["Score"] = df["Score"]/sum(df["Score"])
-        print('\n')
+
         print('-'*80)
         print("Pesos dos critérios (AHP-Gaussiano):")
         print(w_norm)
+        ranking_ahp_g = df
+        print("\nRanking das Alternativas: - AHP Gaussiano")
+        print(ranking_ahp_g)
 
         return df
 
 
 if __name__ == "__main__":
-    ahp = AHP()
-    ranking_ahp = ahp.rank_alternativas()
-    print("\nRanking das Alternativas: - AHP")
-    print(ranking_ahp)
-
-    ahp_gaussiano = AHP_Gaussiano()
-    ranking_ahp_g = ahp_gaussiano.rank_alternativas()
-    print("\nRanking das Alternativas: - AHP Gaussiano")
-    print(ranking_ahp_g)
+    ahp = AHP().rank_alternativas()
+    ahp_gaussiano = AHP_Gaussiano().rank_alternativas()
