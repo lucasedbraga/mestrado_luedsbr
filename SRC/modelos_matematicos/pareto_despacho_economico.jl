@@ -7,8 +7,8 @@ using JuMP, GLPK
 using Plots
 
 # Carrega os dados
-#data = JSON.parsefile("DATA/input/ieee_14_barras_MCDA.json")
-data = JSON.parsefile("DATA/input/input_base_MCDA.json")
+data = JSON.parsefile("DATA/input/ieee_14_barras_MCDA.json")
+#data = JSON.parsefile("DATA/input/input_base_MCDA.json")
 
 """
 Função que resolve o despacho econômico para dados e pesos dados
@@ -78,8 +78,8 @@ function despacho_economico(data, w_c, w_e)
     @expression(model, custo_total, sum(geradores[g]["custo_var_USD_MWh"] * p[g,t] for g in keys(geradores), t in 1:T))
     @expression(model, emis_total,  sum(custo_credito_carbono_tonelada_co2 * geradores[g]["emissao_tCO2_MWh"] * p[g,t] for g in keys(geradores), t in 1:T))
 
-    w_c_efetivo = w_c == 0 ? 0.01 : w_c
-    w_e_efetivo = w_e == 0 ? 0.01 : w_e
+    w_c_efetivo = w_c == 0 ? 0.0001 : w_c
+    w_e_efetivo = w_e == 0 ? 0.0001 : w_e
     
     @objective(model, Min, w_c_efetivo * custo_total + w_e_efetivo * emis_total)
     optimize!(model)
@@ -113,14 +113,13 @@ for (w_c, w_e, custo, emis) in pareto_points
 
     push!(alternativas, Dict(
         "descricao" => descricao,
-        "Custo Operacao" => round(custo, digits=2),
-        "Emissao ton CO2" => round(emis, digits=2)
+        "Custo Operacao" => [round(custo, digits=2),"MIN"],
+        "Emissao ton CO2" => [round(emis, digits=2),"MIN"]
     ))
 end
 
-# Converte a lista de alternativas para DataFrame
 df = DataFrame(alternativas)
-df[!,:_chave] = string.(df[!,"Custo Operacao"]) .* "|" .* string.(df[!,"Emissao ton CO2"])
+df[!,:_chave] = [string(row["Custo Operacao"][1]) * "|" * string(row["Emissao ton CO2"][1]) for row in eachrow(df)]
 df_filtrado = combine(groupby(df, :_chave)) do sdf
     first(sdf)
 end
@@ -142,9 +141,8 @@ open("DATA/output/input_alternativas.json", "w") do io
     JSON.print(io, alternativas_com_id)
 end
 
-# Gráfico da Fronteira de Pareto
-custos = df_filtrado[!,"Custo Operacao"]
-emissoes = df_filtrado[!,"Emissao ton CO2"]
+custos = [row[1] for row in df_filtrado[!,"Custo Operacao"]]
+emissoes = [row[1] for row in df_filtrado[!,"Emissao ton CO2"]]
 
 scatter(
     custos, emissoes;

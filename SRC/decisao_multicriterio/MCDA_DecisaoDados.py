@@ -9,7 +9,7 @@ except:
     pass
 
 
-class BaseMCDA(ABC):
+class BaseMCDA_DADOS(ABC):
     """
     Classe base para todos os métodos MCDA:
 
@@ -62,56 +62,8 @@ class BaseMCDA(ABC):
     def rank_alternativas(self):
         pass
 
-class WASPAS(BaseMCDA):
-    def __init__(self, arquivo_alternativas=None):
-        super().__init__(arquivo_alternativas)
-    
-    def normalizar(self, df):
-        df_norm = df.copy()
-        for col in self.colunas_criterios:
-            if self.tipo_criterio_list[col] == 'MAX':
-                # Normalização para critérios de benefício (quanto maior melhor)
-                df_norm[col] = (df[col] ) / (df[col].max())
-            else:
-                # Normalização para critérios de custo (quanto menor melhor)
-                df_norm[col] = (df[col].min()) / (df[col])
-        return df_norm
 
-    def rank_alternativas(self, matriz_criterios, lambda_waspas=0.5):
-        # Normalização da Matriz de Desempenho
-        df = self.alternativas.copy()
-        matriz_desempenho = df[self.colunas_criterios]
-        matriz_desempenho = self.normalizar(matriz_desempenho)
-        
-        # pesos
-        pesos = matriz_criterios.sum(axis=0) / matriz_criterios.sum().sum()
-
-        # WSM
-        matriz_desempenho["WSM"] = sum(matriz_desempenho[col] * pesos[col] for col in self.colunas_criterios)
-        # WPM
-        matriz_desempenho["WPM"] = 1
-        for col in self.colunas_criterios:
-            matriz_desempenho["WPM"] *= matriz_desempenho[col] ** pesos[col]
-
-        # Score final
-        df["Score"] = (
-            lambda_waspas * matriz_desempenho["WSM"] +
-            (1 - lambda_waspas) * matriz_desempenho["WPM"]
-        )
-        df_resultados = df.sort_values(by="Score", ascending=False)
-
-        print('-'*80)
-        print("Pesos dos critérios WASPAS:")
-        print(pd.Series(np.round(pesos, 3), index=self.colunas_criterios))
-
-        df_resultados = df_resultados.drop_duplicates(subset=self.colunas_criterios + ["Score"]).reset_index(drop=True)
-        df_resultados["Score"] = df_resultados["Score"] / df_resultados["Score"].sum()
-        df_resultados["Score"] = np.round(df_resultados["Score"],3)
-        print('\nRanking das Alternativas: - WASPAS ')
-        print(df_resultados)
-        return df_resultados
-
-class LOPCOW(BaseMCDA):
+class LOPCOW(BaseMCDA_DADOS):
 
     def __init__(self, arquivo_alternativas=None):
         super().__init__(arquivo_alternativas)
@@ -154,7 +106,7 @@ class LOPCOW(BaseMCDA):
         print(df_resultados)
         return df_resultados
     
-class MPSI(BaseMCDA):
+class MPSI(BaseMCDA_DADOS):
     def __init__(self, arquivo_alternativas=None):
         super().__init__(arquivo_alternativas)
     
@@ -196,76 +148,56 @@ class MPSI(BaseMCDA):
         print(df_resultados)
         return df_resultados
     
-class WISP(BaseMCDA):
-
+class AHP_Gaussiano(BaseMCDA_DADOS):
     def __init__(self, arquivo_alternativas=None):
         super().__init__(arquivo_alternativas)
     
     def normalizar(self, df):
         df_norm = df.copy()
-
         for col in self.colunas_criterios:
-            df_norm[col] = (df[col] ) / (df[col].max())
+            if self.tipo_criterio_list[col] == 'MAX':
+                # Normalização para critérios de benefício (quanto maior melhor)
+                df_norm[col] = (df[col]) / (df[col].max())
+            else:
+                # Normalização para critérios de custo (quanto menor melhor)
+                df_norm[col] = (df[col].min()) / (df[col])
         return df_norm
-
-    def rank_alternativas(self, matriz_criterios, lambda_waspas=0.5):
+    
+    def rank_alternativas(self):
         # Normalização da Matriz de Desempenho
         df = self.alternativas.copy()
         matriz_desempenho = df[self.colunas_criterios]
         matriz_desempenho = self.normalizar(matriz_desempenho)
-        
-        # pesos
-        pesos = matriz_criterios.sum(axis=0) / matriz_criterios.sum().sum()
-        pesos = np.round(pesos,3)
-        
-        MedidaUtilidade_wsd_min = 0
-        MedidaUtilidade_wsd_max = 0
 
-        MedidaUtilidade_wsp_min = 1
-        MedidaUtilidade_wsp_max = 1
+        # 2) Média e desvio padrão dos critérios
+        media = matriz_desempenho.mean()
+        desvio = matriz_desempenho.std(ddof=0)
 
-        for col in self.colunas_criterios:
-            if self.tipo_criterio_list[col] == 'MAX':
-                MedidaUtilidade_wsd_max += matriz_desempenho[col]*pesos[col]
-                MedidaUtilidade_wsp_max *= matriz_desempenho[col]*pesos[col]
+        # 3) Fator gaussiano para cada critério
+        # Usamos a média e desvio em toda a coluna, mas aplica individual?
+        # Simplificação: w_i = exp(-σ_i^2)
+        w = np.exp(-desvio**2)
 
-            if self.tipo_criterio_list[col] == 'MIN':
-                MedidaUtilidade_wsd_min += matriz_desempenho[col]*pesos[col]
-                MedidaUtilidade_wsp_min *= matriz_desempenho[col]*pesos[col]
-               
-        MedidaUtilidade_wsd = MedidaUtilidade_wsd_max - MedidaUtilidade_wsd_min
-        MedidaUtilidade_wsp = MedidaUtilidade_wsp_max - MedidaUtilidade_wsp_min
-        MedidaUtilidade_wsr = MedidaUtilidade_wsd_max/MedidaUtilidade_wsd_min
-        MedidaUtilidade_wpr = MedidaUtilidade_wsp_max/MedidaUtilidade_wsp_min
+        # Normaliza pesos dos critérios
+        pesos = w / w.sum()
 
-        recalculoUtilidade_wsd = MedidaUtilidade_wsd/(1+MedidaUtilidade_wsd.max())
-        recalculoUtilidade_wpd = MedidaUtilidade_wsp/(1+MedidaUtilidade_wsp.max())
-        recalculoUtilidade_wsr = MedidaUtilidade_wsr/(1+MedidaUtilidade_wsr.max())
-        recalculoUtilidade_wpr = MedidaUtilidade_wpr/(1+MedidaUtilidade_wpr.max())
+        # 4) Calcula Score
+        df["Score"] = matriz_desempenho.dot(pesos)
 
-        MedidaUtilidade_global = (1/4)*(recalculoUtilidade_wsd+
-                                        recalculoUtilidade_wpd+
-                                        recalculoUtilidade_wsr+
-                                        recalculoUtilidade_wpr)    
-         # Ordenação dos Critérios
-        df["Score"] = MedidaUtilidade_global
         df_resultados = df.sort_values(by="Score", ascending=False)
 
         print('-'*80)
-        print("Pesos dos critérios WISP:")
+        print("Pesos dos critérios (AHP-Gaussiano):")
         print(pd.Series(np.round(pesos, 3), index=self.colunas_criterios))
 
         df_resultados = df_resultados.drop_duplicates(subset=self.colunas_criterios + ["Score"]).reset_index(drop=True)
-        # Subtrai o valor mínimo para eliminar negativos e normaliza pela soma
-        df_resultados["Score"] = df_resultados["Score"] - df_resultados["Score"].min()
         df_resultados["Score"] = df_resultados["Score"] / df_resultados["Score"].sum()
-        df_resultados["Score"] = np.round(df_resultados["Score"], 3)
-        print('\nRanking das Alternativas: - WISP')
+        df_resultados["Score"] = np.round(df_resultados["Score"],3)
+        print("\nRanking das Alternativas: - (AHP-Gaussiano)")
         print(df_resultados)
         return df_resultados
 
-    
-if __name__ == '__main__':
+if __name__ == "__main__":
     DATA = """
     [
         {
@@ -294,19 +226,17 @@ if __name__ == '__main__':
         }
     ]
     """
-    
+
     # Matriz de critérios para WASPAS (exemplo simplificado)
     matriz_criterios = pd.DataFrame({
-        'Custo':         [1, 3, 2, 2],
-        'Camera':        [1/3, 1, 1/2, 1],
-        'Armazenamento': [1/2, 2, 1, 1],
-        'Bateria':       [1/2, 1, 1, 1]
+    'Custo':         [1, 3, 2, 2],
+    'Camera':        [1/3, 1, 1/2, 1],
+    'Armazenamento': [1/2, 2, 1, 1],
+    'Bateria':       [1/2, 1, 1, 1]
     })
-    
 
-    
-    # Instanciar e executar métodos MCDA
-    waspas = WASPAS(arquivo_alternativas= DATA).rank_alternativas(matriz_criterios=matriz_criterios)
+
     lopcow = LOPCOW(arquivo_alternativas=DATA).rank_alternativas()
     mpsi = MPSI(arquivo_alternativas=DATA).rank_alternativas()
-    wisp = WISP(arquivo_alternativas=DATA).rank_alternativas(matriz_criterios=matriz_criterios)
+    ahp_gauss = AHP_Gaussiano(arquivo_alternativas=DATA).rank_alternativas()
+
