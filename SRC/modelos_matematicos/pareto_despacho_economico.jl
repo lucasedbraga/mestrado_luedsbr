@@ -7,8 +7,8 @@ using JuMP, GLPK
 using Plots
 
 # Carrega os dados
-data = JSON.parsefile("DATA/input/ieee_14_barras_MCDA.json")
-#data = JSON.parsefile("DATA/input/input_base_MCDA.json")
+#data = JSON.parsefile("/home/lucasedbraga/projetos/ufjf/mestrado_luedsbr/DATA/input/ieee_14_barras_MCDA.json")
+data = JSON.parsefile("/home/lucasedbraga/projetos/ufjf/mestrado_luedsbr/DATA/input/input_base_MCDA.json")
 
 """
 Função que resolve o despacho econômico para dados e pesos dados
@@ -84,14 +84,14 @@ function despacho_economico(data, w_c, w_e)
     @objective(model, Min, w_c_efetivo * custo_total + w_e_efetivo * emis_total)
     optimize!(model)
 
-    println("Resultados do despacho econômico:\n")
-    for t in 1:T
-        println("Hora $t - Demanda: $(demandas[t]) MW")
-        for g in keys(geradores)
-            println("  Gerador $g: $(value(p[g, t])) MW")
-        end
-        println()
-    end
+    # println("Resultados do despacho econômico:\n")
+    # for t in 1:T
+    #     println("Hora $t - Demanda: $(demandas[t]) MW")
+    #     for g in keys(geradores)
+    #         println("  Gerador $g: $(value(p[g, t])) MW")
+    #     end
+    #     println()
+    # end
 
     return value(custo_total), value(emis_total) / custo_credito_carbono_tonelada_co2
 end
@@ -137,7 +137,7 @@ alternativas_com_id = [
 ]
 
 # Escreve o JSON
-open("DATA/output/input_alternativas.json", "w") do io
+open("/home/lucasedbraga/projetos/ufjf/mestrado_luedsbr/DATA/output/input_alternativas.json", "w") do io
     JSON.print(io, alternativas_com_id)
 end
 
