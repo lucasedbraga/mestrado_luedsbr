@@ -4,4 +4,6 @@ tests/__pycache__/
 *DATA/input/cenarios/
 SRC/decisao_multicriterio/__pycache__/
 pareto.png
-DATA/output/MCDA/ranking_comparativo_metodos.xlsx
+DATA/output/input_alternativas.json
+DATA/output/MCDA/fluxpot/
+*relatorios/
