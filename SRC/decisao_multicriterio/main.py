@@ -1,7 +1,7 @@
 import sys
 import os
 import subprocess
-
+import json
 
 sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -12,60 +12,35 @@ from decisao_multicriterio.MCDA_DecisaoDados import *
 
 
 def exporta_comparativo_excel():
+    # Caminho para o script Julia
+    script = "pareto_despacho_economico"    
+    script_julia = "SRC/modelos_matematicos/"+script+".jl"
 
-    # # Caminho para o script Julia
-    # script = "pareto_despacho_economico"    
-    # script_julia = "SRC/modelos_matematicos/"+script+".jl"
+    if not os.path.exists(script_julia):
+        print(f"Arquivo Julia '{script_julia}' não encontrado.")
+        sys.exit(1)
+    else:
+        # Comando para executar
+        comando = ["julia", script_julia]
+        print(f"Executando '{script_julia}' via subprocesso...")
 
-    # if not os.path.exists(script_julia):
-    #     print(f"Arquivo Julia '{script_julia}' não encontrado.")
-    #     sys.exit(1)
-    # else:
-    #     # Comando para executar
-    #     comando = ["julia", script_julia]
-    #     print(f"Executando '{script_julia}' via subprocesso...")
+        # Executa e captura a saída
+        try:
+            resultado = subprocess.run(comando, capture_output=True, text=True, check=True)
+            print("Execução concluída com sucesso:")
+            print(resultado.stdout)
+        except subprocess.CalledProcessError as e:
+            print("Erro durante a execução do script Julia:")
+            print(e.stderr)
 
-    #     # Executa e captura a saída
-    #     try:
-    #         resultado = subprocess.run(comando, capture_output=True, text=True, check=True)
-    #         print("Execução concluída com sucesso:")
-    #         print(resultado.stdout)
-    #     except subprocess.CalledProcessError as e:
-    #         print("Erro durante a execução do script Julia:")
-    #         print(e.stderr)
 
-    DATA = {
-            "criterios": {
-                "Custo Operacao": "MIN",
-                "Emissao ton CO2": "MIN"
-            },
-            "alternativas": [
-                {
-                    "id_alternativa": 1, 
-                    "descricao": "w_c=1.0, w_e=0.0",
-                    "Custo Operacao": 13290.0,
-                    "Emissao ton CO2": 2566.0
-                },
-                {
-                    "id_alternativa": 2,
-                    "descricao": "w_c=0.9, w_e=0.1",
-                    "Custo Operacao": 14260.0,
-                    "Emissao ton CO2": 2178.0
-                },
-                {
-                    "id_alternativa": 3,
-                    "descricao": "w_c=0.8, w_e=0.2",
-                    "Custo Operacao": 19520.0,
-                    "Emissao ton CO2": 1020.8
-                },
-                {
-                    "id_alternativa": 4,
-                    "descricao": "w_c=0.5, w_e=0.5",
-                    "Custo Operacao": 20490.0,
-                    "Emissao ton CO2": 982.0
-                }
-            ]
-        }
+    # Caminho do arquivo
+    path = "DATA/output/input_alternativas.json"
+
+    with open(path, "r") as f:
+        DATA = json.load(f)
+
+
 
     # Matriz de critérios para WASPAS (exemplo simplificado)
     matriz_preferencias_decisor = pd.DataFrame({
@@ -88,17 +63,12 @@ def exporta_comparativo_excel():
     df_ahp = ahp.rename(columns={"Score": "AHP"})
     df_waspas = waspas.rename(columns={"Score": "WASPAS"})
     #df_wisp = wisp.rename(columns={"Score": "WISP"})
-    
     df_ahp_gauss = ahp_gauss.rename(columns={"Score": "AHP_Gaussiano"})
     df_lopcow = lopcow.rename(columns={"Score": "LOPCOW"})
     df_mpsi = mpsi.rename(columns={"Score": "MPSI"})
+
     # Seleciona colunas-chave
     base_cols = ["id_alternativa", "descricao"]
-
-
-    #
-        #.merge(, on=base_cols, how="outer") 
-        #.merge(df_ahp[base_cols + ["AHP"]], on=base_cols, how="outer") \
 
     df_merged =  df_ahp[base_cols + ["AHP"]] \
         .merge(df_waspas[base_cols + ["WASPAS"]], on=base_cols, how="outer") \
@@ -112,7 +82,7 @@ def exporta_comparativo_excel():
     df_merged["Score_Medio"] = df_merged[["AHP","WASPAS","AHP_Gaussiano","LOPCOW", "MPSI"]].mean(axis=1)
     df_merged = df_merged.sort_values(by="Score_Medio", ascending=False).reset_index(drop=True)
 
-    print('-'*80)
+    print('-'*90)
     # Exporta para Excel
     df_merged.to_excel("DATA/output/MCDA/ranking_comparativo_metodos.xlsx", index=False)
     print(df_merged)

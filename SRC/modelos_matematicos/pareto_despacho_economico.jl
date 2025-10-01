@@ -7,14 +7,14 @@ using JuMP, GLPK
 using Plots
 
 # Carrega os dados
-#data = JSON.parsefile("/home/lucasedbraga/projetos/ufjf/mestrado_luedsbr/DATA/input/ieee_14_barras_MCDA.json")
-data = JSON.parsefile("/home/lucasedbraga/projetos/ufjf/mestrado_luedsbr/DATA/input/input_base_MCDA.json")
+data = JSON.parsefile("/home/lucasedbraga/projetos/ufjf/mestrado_luedsbr/DATA/input/ieee_14_barras_MCDA.json")
+#data = JSON.parsefile("/home/lucasedbraga/projetos/ufjf/mestrado_luedsbr/DATA/input/input_base_MCDA.json")
 
 """
 Função que resolve o despacho econômico para dados e pesos dados
 Retorna custo, emissões e despacho ótimo
 """
-function despacho_economico(data, w_c, w_e)
+function despacho_economico(data, w_c, w_e, cenario_id) 
 
     barras = data["BARRAS"]
 
@@ -84,24 +84,59 @@ function despacho_economico(data, w_c, w_e)
     @objective(model, Min, w_c_efetivo * custo_total + w_e_efetivo * emis_total)
     optimize!(model)
 
-    # println("Resultados do despacho econômico:\n")
-    # for t in 1:T
-    #     println("Hora $t - Demanda: $(demandas[t]) MW")
-    #     for g in keys(geradores)
-    #         println("  Gerador $g: $(value(p[g, t])) MW")
-    #     end
-    #     println()
-    # end
 
+    # Verificar se a otimização foi bem-sucedida
+    if termination_status(model) != MOI.OPTIMAL
+        error("Otimização não convergiu para o cenário $cenario_id")
+    end
+
+    # Inicializar resultados
+    resultados = []
+
+    for t in 1:T
+        geracao_dict = OrderedDict()
+        emissao_dict = OrderedDict()
+        for g in keys(geradores)
+            geracao_dict[g] = round(value(p[g,t]), digits=4)
+            emissao_dict[g] = round(value(geradores[g]["emissao_tCO2_MWh"] * p[g,t]), digits=4)
+        end
+        
+        push!(resultados, OrderedDict(
+            "hora" => t,
+            "demanda" => round(demandas[t], digits=4),
+            "geracao" => geracao_dict,
+            "emissao" => emissao_dict
+        ))
+    end
+
+    # Estrutura final com metadados
+    DATA = OrderedDict(
+        "cenario_id" => cenario_id,
+        "peso_custo" => round(w_c, digits=2),
+        "peso_emissao" => round(w_e, digits=2),
+        "resultados" => resultados,
+        "custo_total" => round(value(custo_total), digits=2),
+        "emissao_total" => round(value(emis_total) / custo_credito_carbono_tonelada_co2, digits=2)
+    )
+
+    # Salvar em JSON
+    open("/home/lucasedbraga/projetos/ufjf/mestrado_luedsbr/DATA/output/MCDA/fluxpot/output_fluxpot_cenario_$(cenario_id).json", "w") do io
+        JSON.print(io, DATA, 4)
+    end
+
+    println("Cenário $cenario_id salvo com sucesso!")
     return value(custo_total), value(emis_total) / custo_credito_carbono_tonelada_co2
+
 end
 
 # Loop para construir a Fronteira de Pareto
 pareto_points = []
 for w_c in 1:-0.1:0
     w_e = 1 - w_c
-    custo, emis = despacho_economico(data, w_c, w_e)
+    cenario_id = round(Int, 10 * w_e)
+    custo, emis = despacho_economico(data, w_c, w_e, cenario_id)
     push!(pareto_points, (w_c, w_e, custo, emis))
+
 end
 
 println("\n--- Fronteira de Pareto ---")
@@ -113,32 +148,43 @@ for (w_c, w_e, custo, emis) in pareto_points
 
     push!(alternativas, Dict(
         "descricao" => descricao,
-        "Custo Operacao" => [round(custo, digits=2),"MIN"],
-        "Emissao ton CO2" => [round(emis, digits=2),"MIN"]
+        "Custo Operacao" => [round(custo, digits=2)],
+        "Emissao ton CO2" => [round(emis, digits=2)]
     ))
 end
 
+# Coloca em DataFrame para tratar duplicados
 df = DataFrame(alternativas)
 df[!,:_chave] = [string(row["Custo Operacao"][1]) * "|" * string(row["Emissao ton CO2"][1]) for row in eachrow(df)]
+
 df_filtrado = combine(groupby(df, :_chave)) do sdf
     first(sdf)
 end
 select!(df_filtrado, Not(:_chave))
 
-# Cria lista de OrderedDicts com id
+
 alternativas_com_id = [
     OrderedDict(
         "id_alternativa" => i,
         "descricao" => row["descricao"],
-        "Custo Operacao" => row["Custo Operacao"],
-        "Emissao ton CO2" => row["Emissao ton CO2"]
+        "Custo Operacao" => row["Custo Operacao"][1],
+        "Emissao ton CO2" => row["Emissao ton CO2"][1]
     )
     for (i, row) in enumerate(eachrow(df_filtrado))
 ]
 
+# Estrutura final com critérios + alternativas
+DATA = OrderedDict(
+    "criterios" => OrderedDict(
+        "Custo Operacao" => "MIN",
+        "Emissao ton CO2" => "MIN"
+    ),
+    "alternativas" => alternativas_com_id
+)
+
 # Escreve o JSON
 open("/home/lucasedbraga/projetos/ufjf/mestrado_luedsbr/DATA/output/input_alternativas.json", "w") do io
-    JSON.print(io, alternativas_com_id)
+    JSON.print(io, DATA, 4)
 end
 
 custos = [row[1] for row in df_filtrado[!,"Custo Operacao"]]
@@ -158,5 +204,5 @@ scatter(
     yformatter = y -> string(round(y / 1000, digits=1), "k")
 )
 
-savefig("pareto.png")
+savefig("/home/lucasedbraga/projetos/ufjf/mestrado_luedsbr/relatorios/pareto.png")
 println("Gráfico salvo como pareto.png")
