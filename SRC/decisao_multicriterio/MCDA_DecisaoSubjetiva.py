@@ -42,7 +42,9 @@ class BaseMCDA_SUBJETIVO(ABC):
         self.avaliacoes_subjetivas = avaliacoes_subjetivas
         self.matriz_preferencias_decisor = matriz_preferencias_decisor.T
         
-        # Identifica critérios subjetivos automaticamente
+        # Identifica critérios objetivos 
+        self.criterios_objetivos = [c for c, t in tipo_criterio_list.items() if t != "QUALITATIVO"]
+        # Identifica critérios subjetivos 
         self.criterios_subjetivos = [c for c, t in tipo_criterio_list.items() if t == "QUALITATIVO"]
         self.matrizes_subjetivas = {}
 
@@ -221,30 +223,70 @@ class AHP(BaseMCDA_SUBJETIVO):
 
 ### LESTE EUROPEU 
 
-class WASPAS(BaseMCDA_SUBJETIVO):
+class AHP_WASPAS(BaseMCDA_SUBJETIVO):
+     
     def __init__(self, arquivo_alternativas=None, matriz_preferencias_decisor=None):
+        """
+        Inicializa o AHP_WASPAS com dados das alternativas e matriz de preferências
+        
+        Args:
+            arquivo_alternativas: Dicionário ou JSON com dados
+            matriz_preferencias_decisor: Matriz de comparação entre critérios
+        """
         super().__init__(arquivo_alternativas,matriz_preferencias_decisor)
-    
+
     def normalizar(self, df):
+        """Normaliza critérios objetivos"""
         df_norm = df.copy()
         col = df_norm.name
         if col in self.tipo_criterio_list and self.tipo_criterio_list[col] in ['MAX', 'MIN']:
             if self.tipo_criterio_list[col] == 'MAX':
-                # Normalização para critérios de benefício (quanto maior melhor)
-                df_norm = (df) / (df.max())
+                df_norm = df / df.sum()  # Quanto maior melhor
             else:
-                # Normalização para critérios de custo (quanto menor melhor)
-                df_norm = (df.min()) / (df)
+                df_norm = 1 / df  # Quanto menor melhor
         return df_norm
+ 
+    def calcula_pesos_ahp(self, matriz):
+        """Calcula pesos usando método AHP de Saaty"""
+        if isinstance(matriz, pd.DataFrame):
+            arr = matriz.values.astype(float)
+        else:
+            arr = np.array(matriz, dtype=float)
+
+        n = arr.shape[0]
+    
+        pesos = matriz / matriz.sum()
+        vetor_prioridade = pesos.sum(axis=1) / n
+
+        # Verificação de consistência
+        matriz_de_consistencia = matriz * vetor_prioridade
+
+        pesos_consistencia = matriz_de_consistencia.sum(axis=1)
+        vetor_lambdas = pesos_consistencia / vetor_prioridade
+
+        lambda_max = float(vetor_lambdas.sum())/n
+
+        ci = (lambda_max - n) / (n - 1) if n > 1 else 0.0        
+        RI = {1: 0.00, 2: 0.00, 3: 0.58, 4: 0.90, 5: 1.12, 6: 1.24, 7: 1.32}
+        ri = RI.get(n, 0)
+        cr = ci / ri if ri > 0 else float('inf')
+        
+        # if cr > 0.1:
+        #     print(f"AVISO: CR = {cr:.3f} > 0.10 - Revisar comparações!")
+        # else:
+        #     print(f"CR = {cr:.3f} (ok)")
+        
+        return vetor_prioridade
 
     def rank_alternativas(self, lambda_waspas=0.5):
+        """Calcula ranking final das alternativas"""
         
         # 1. Construir matrizes para critérios subjetivos
         self.construir_matrizes_subjetivas()
         
         # 2. Calcular pesos dos critérios objetivos
-        pesos = self.calcula_pesos(self.matriz_preferencias_decisor)
-  
+        pesos = self.calcula_pesos_ahp(self.matriz_preferencias_decisor)
+        
         # 3. Construir matriz de desempenho
         df = self.alternativas.copy()
         matriz_desempenho = pd.DataFrame(index=df.index)
@@ -255,12 +297,12 @@ class WASPAS(BaseMCDA_SUBJETIVO):
             desempenho_objetivo = self.normalizar(df[criterio])*pesos[criterio]
             desempenho_objetivo = desempenho_objetivo / desempenho_objetivo.sum()
             matriz_desempenho = pd.concat([matriz_desempenho, desempenho_objetivo], axis=1)
-
+        
         # Critérios subjetivos
         for criterio in self.criterios_subjetivos:
             if criterio in self.matrizes_subjetivas:
                 df_criterio_subjetivo = pd.DataFrame(self.matrizes_subjetivas[criterio])
-                desempenho_subjetivo = self.calcula_pesos(df_criterio_subjetivo)
+                desempenho_subjetivo = self.calcula_pesos_ahp(df_criterio_subjetivo)
                 matriz_desempenho[criterio] = desempenho_subjetivo
         
         for c in self.colunas_criterios:
@@ -283,13 +325,13 @@ class WASPAS(BaseMCDA_SUBJETIVO):
         df_resultados = df.sort_values(by="Score", ascending=False)
 
         print('-'*80)
-        print("Pesos dos critérios WASPAS:")
+        print(f"Pesos dos critérios AHP+WASPAS com lambda = {lambda_waspas}:")
         print(pd.Series(np.round(pesos, 3), index=self.colunas_criterios))
 
         df_resultados = df_resultados.drop_duplicates().reset_index(drop=True)
         df_resultados["Score"] = df_resultados["Score"] / df_resultados["Score"].sum()
         df_resultados["Score"] = np.round(df_resultados["Score"],3)
-        print('\nRanking das Alternativas: - WASPAS ')
+        print('\nRanking das Alternativas: - AHP+WASPAS ')
         print(df_resultados)
         return df_resultados
 
@@ -436,5 +478,5 @@ if __name__ == '__main__':
 
 
     ahp = AHP(arquivo_alternativas=DATA, matriz_preferencias_decisor=matriz_preferencias_decisor).rank_alternativas()
-    waspas = WASPAS(arquivo_alternativas=DATA, matriz_preferencias_decisor=matriz_preferencias_decisor).rank_alternativas()
+    waspas = AHP_WASPAS(arquivo_alternativas=DATA, matriz_preferencias_decisor=matriz_preferencias_decisor).rank_alternativas()
     #wisp = WISP(arquivo_alternativas=DATA, matriz_preferencias_decisor=matriz_preferencias_decisor).rank_alternativas()

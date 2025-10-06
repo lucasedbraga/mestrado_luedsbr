@@ -7,3 +7,4 @@ pareto.png
 DATA/output/input_alternativas.json
 DATA/output/MCDA/fluxpot/
 *relatorios/
+modelo_opf_dc_com_deficit.lp

@@ -3,181 +3,526 @@ Pkg.activate(".")
 Pkg.instantiate()
 
 using JuMP
-using Ipopt
-using JSON
+using Clp
 using LinearAlgebra
+using JSON
 
-# Carrega os dados
-data = JSON.parsefile("DATA/input/ieee14_BASE.json")
+# ==============================================================================
+# CONFIGURAÇÕES INICIAIS E PARÂMETROS
+# ==============================================================================
 
-println("Dados carregados com sucesso.")
-println("Barras: ", length(data["BARRAS"]), ", Linhas: ", length(data["LINHAS"]))
+PB = 100.0  # Potência base do sistema (MVA)
+NITER_MAX = 10  # Número máximo de iterações
+TOL = 1e-6   # Tolerância para convergência
 
+println("=== OPF DC ITERATIVO COM PERDAS ===")
+
+# ==============================================================================
+# CARREGAMENTO E PROCESSAMENTO DOS DADOS DO SISTEMA
+# ==============================================================================
+
+# Carrega dados da rede elétrica do arquivo JSON
+data = JSON.parsefile("DATA/input/3barras_BASE.json")
+#data = JSON.parsefile("DATA/input/B6L8_BASE.json")
+#data = JSON.parsefile("DATA/input/ieee14_BASE.json")
+#data = JSON.parsefile("DATA/input/IEEE_118_BASE.json")
+# Extrai informações das barras e linhas
 barras = data["BARRAS"]
 linhas = data["LINHAS"]
 
-# Identificação de barras
-slack_bus = String[]
-pv_buses = String[]
-pq_buses = String[]
-bus_ids = String[]
-idx_map = Dict{String,Int}()
+# Mapeamento de IDs das barras para índices numéricos
+bus_ids = [b["ID_Barra"] for b in barras]
+idx_map = Dict(id => i for (i,id) in enumerate(bus_ids))
+NBAR = length(bus_ids)
+NLIN = length(linhas)
 
-for (i, barra) in enumerate(barras)
-    id = barra["ID_Barra"]
-    tipo = barra["tipo"]
-    push!(bus_ids, id)
-    idx_map[id] = i
+# ==============================================================================
+# IDENTIFICAÇÃO DA BARRA SLACK
+# ==============================================================================
 
-    if tipo == "Slack"
-        push!(slack_bus, id)
-    elseif tipo == "PV"
-        push!(pv_buses, id)
-    elseif tipo == "PQ"
-        push!(pq_buses, id)
-    end
+slack_list = filter(b->b["tipo"]=="Slack", barras)
+if length(slack_list) != 1
+    error("Deve haver exatamente 1 barra Slack no JSON")
 end
+slack_id = slack_list[1]["ID_Barra"]
+slack_idx = idx_map[slack_id]
 
-# Verificação de barra slack
-if isempty(slack_bus)
-    error("Nenhuma barra Slack encontrada no sistema!")
-elseif length(slack_bus) > 1
-    error("Mais de uma barra Slack encontrada no sistema!")
-end
+# ==============================================================================
+# PARÂMETROS DAS LINHAS DE TRANSMISSÃO
+# ==============================================================================
 
-# Acessa o ID da barra slack
-slack_id = slack_bus[1]
+line_fr = Vector{Int}(undef, NLIN)
+line_to = Vector{Int}(undef, NLIN)  
+r_line = zeros(NLIN)
+x_line = zeros(NLIN)
+y_line = zeros(NLIN)
+g_line = zeros(NLIN)
+FLIM = zeros(NLIN)
 
-model = Model(Ipopt.Optimizer)
-
-# Configurações do solver
-set_optimizer_attribute(model, "tol", 1e-8)
-set_optimizer_attribute(model, "max_iter", 1000)
-set_optimizer_attribute(model, "print_level", 0)
-
-# Variáveis de decisão
-@variable(model, θ[bus in bus_ids])  # Ângulo da tensão (radianos)
-@variable(model, V[bus in bus_ids])  # Magnitude de tensão
-@variable(model, Pg[bus in bus_ids]) # Geração de potência ativa
-@variable(model, Qg[bus in bus_ids]) # Geração de potência reativa
-
-# Fixa valores na barra slack
-barra_slack = barras[idx_map[slack_id]]
-@constraint(model, θ[slack_id] == 0)
-@constraint(model, V[slack_id] == barra_slack["V_ref"])
-
-# Fixa tensão nas barras PV
-for pv_bus in pv_buses
-    barra_pv = barras[idx_map[pv_bus]]
-    @constraint(model, V[pv_bus] == barra_pv["V_ref"])
-end
-
-# Construir matriz de admitância Ybus
-function construir_Ybus(barras, linhas, idx_map)
-    n = length(barras)
-    Ybus = zeros(ComplexF64, n, n)
+for (e, ln) in enumerate(linhas)
+    fr = ln["ID_Barra_Origem"]
+    to = ln["ID_Barra_Destino"]
+    line_fr[e] = idx_map[fr]
+    line_to[e] = idx_map[to]
     
-    for linha in linhas
-        orig = linha["ID_Barra_Origem"]
-        dest = linha["ID_Barra_Destino"]
-        r = linha["R"]
-        x = linha["X"]
-        z = complex(r, x)
-        y = 1 / z  # admitância série
-        
-        i = idx_map[orig]
-        j = idx_map[dest]
-        
-        Ybus[i, i] += y
-        Ybus[j, j] += y
-        Ybus[i, j] -= y
-        Ybus[j, i] -= y
-    end
-    return Ybus
+    r = get(ln, "R", 0.0)
+    x = get(ln, "X", 1e-6)
+    
+    r_line[e] = r
+    x_line[e] = x
+    
+    denom = r^2 + x^2
+    g_line[e] = denom > 0 ? r/denom : 0.0
+    y_line[e] = abs(x) > 0 ? 1.0/x : 0.0
+    
+    FLIM[e] = get(ln, "FLIM", 1.0)
 end
 
-Ybus = construir_Ybus(barras, linhas, idx_map)
-G = real(Ybus)
-B = imag(Ybus)
+# ==============================================================================
+# MONTAGEM DA MATRIZ DE SUSCEPTÂNCIA Bbus 
+# ==============================================================================
 
-# Expressões de potência injetada
-P_inj = Dict{String, Any}()
-Q_inj = Dict{String, Any}()
+Bbus = zeros(NBAR, NBAR)
 
-for id in bus_ids
-    i = idx_map[id]
-    P_inj[id] = @expression(model, 
-        V[id] * sum(V[j] * (G[i, idx_map[j]] * cos(θ[id]-θ[j]) + 
-                            B[i, idx_map[j]] * sin(θ[id]-θ[j])) 
-                   for j in bus_ids)
+for e in 1:NLIN
+    i = line_fr[e]
+    j = line_to[e]
+    y = y_line[e]
+    
+    Bbus[i,i] += y
+    Bbus[j,j] += y
+    Bbus[i,j] -= y
+    Bbus[j,i] -= y
+end
+
+# ==============================================================================
+# DADOS DOS GERADORES E CARGAS
+# ==============================================================================
+
+# Identifica geradores
+geradores = filter(b -> get(b, "has_gen", false), barras)
+
+NGER_ORIGINAL = length(geradores)
+BARPG_ORIGINAL = Vector{Int}(undef, NGER_ORIGINAL)
+PGMIN_ORIGINAL = zeros(NGER_ORIGINAL)
+PGMAX_ORIGINAL = zeros(NGER_ORIGINAL)  
+CPG_ORIGINAL = zeros(NGER_ORIGINAL)
+
+for (i, b) in enumerate(geradores)
+    id = b["ID_Barra"]
+    BARPG_ORIGINAL[i] = idx_map[id]
+    PGMIN_ORIGINAL[i] = get(b, "Pmin", 0.0)
+    PGMAX_ORIGINAL[i] = get(b, "Pmax", 1.0)
+    CPG_ORIGINAL[i] = get(b, "C", 0.0) * PB
+end
+
+# ==============================================================================
+# IDENTIFICAÇÃO DAS BARRAS PQ E ADIÇÃO DE GERADORES DE DÉFICIT
+# ==============================================================================
+
+barras_PQ = filter(b -> b["tipo"] == "PQ", barras)
+
+NGER_DEFICIT = length(barras_PQ)
+custo_maximo_existente = isempty(CPG_ORIGINAL) ? 1000.0 : maximum(CPG_ORIGINAL)
+CUSTO_DEFICIT = 10.0 * custo_maximo_existente
+
+BARPG_DEFICIT = Vector{Int}(undef, NGER_DEFICIT)
+PGMIN_DEFICIT = zeros(NGER_DEFICIT)
+PGMAX_DEFICIT = zeros(NGER_DEFICIT)
+CPG_DEFICIT = zeros(NGER_DEFICIT)
+
+for (i, b) in enumerate(barras_PQ)
+    id = b["ID_Barra"]
+    idx = idx_map[id]
+    BARPG_DEFICIT[i] = idx
+    PGMIN_DEFICIT[i] = 0.0
+    PGMAX_DEFICIT[i] = get(b, "PLOAD", 1.0)
+    CPG_DEFICIT[i] = CUSTO_DEFICIT
+end
+
+# ==============================================================================
+# COMBINA GERADORES ORIGINAIS E DE DÉFICIT
+# ==============================================================================
+
+NGER = NGER_ORIGINAL + NGER_DEFICIT
+println("Total de geradores: $NGER_ORIGINAL originais + $NGER_DEFICIT de déficit = $NGER")
+
+BARPG = vcat(BARPG_ORIGINAL, BARPG_DEFICIT)
+PGMIN = vcat(PGMIN_ORIGINAL, PGMIN_DEFICIT)
+PGMAX = vcat(PGMAX_ORIGINAL, PGMAX_DEFICIT)
+CPG = vcat(CPG_ORIGINAL, CPG_DEFICIT)
+
+PLOAD = zeros(NBAR)
+for b in barras
+    i = idx_map[b["ID_Barra"]]
+    PLOAD[i] = get(b, "PLOAD", 0.0)
+end
+
+
+# ==============================================================================
+# INICIALIZAÇÃO DAS VARIÁVEIS GLOBAIS
+# ==============================================================================
+
+# Variáveis de estado do sistema
+ANGLE = zeros(NBAR)
+PINJ = zeros(NBAR)
+perdas = zeros(NLIN)
+fij = zeros(NLIN)
+fji = zeros(NLIN)
+
+# Armazenamento da solução final
+final_PG = zeros(NGER)
+final_ANGLE = zeros(NBAR)
+
+# Coeficientes de Lagrange
+lambda_balance = zeros(NBAR)
+lambda_flow = zeros(2*NLIN)
+
+# Variável para controle de convergência de perdas
+prev_total_perdas = 0.0
+
+println("Iniciando processo iterativo...")
+
+# LOOP PRINCIPAL DE ITERAÇÕES
+for iter in 1:NITER_MAX
+    println("\n--- Iteração $iter ---")
+    
+    # ==========================================================================
+    # FORMULAÇÃO DO PROBLEMA DE OTIMIZAÇÃO
+    # ==========================================================================
+    
+    model = Model(Clp.Optimizer)
+    set_silent(model)
+    
+    # Variáveis de decisão
+    @variable(model, v_PG[i=1:NGER] >= 0)
+    @variable(model, v_ANG[i=1:NBAR])
+    
+    # Aplicação dos limites físicos
+    for i in 1:NGER
+        set_upper_bound(v_PG[i], PGMAX[i])
+    end
+    
+    for i in 1:NBAR
+        set_lower_bound(v_ANG[i], -pi)
+        set_upper_bound(v_ANG[i], pi)
+    end
+    
+    # RESTRIÇÃO DA BARRA SLACK
+    @constraint(model, v_ANG[slack_idx] == 0.0)
+    
+    # ==========================================================================
+    # RESTRIÇÕES DE BALANÇO DE POTÊNCIA
+    # ==========================================================================
+    print(PINJ)
+    balance_constraints = @constraint(model, balance[i=1:NBAR],
+        sum(v_PG[g] for g in 1:NGER if BARPG[g] == i) - 
+        sum(Bbus[i,j] * v_ANG[j] for j in 1:NBAR) == PLOAD[i] + PINJ[i]
     )
     
-    Q_inj[id] = @expression(model,
-        V[id] * sum(V[j] * (G[i, idx_map[j]] * sin(θ[id]-θ[j]) - 
-                            B[i, idx_map[j]] * cos(θ[id]-θ[j])) 
-                   for j in bus_ids)
-    )
-end
-
-# Restrições de balanço
-for barra in barras
-    id = barra["ID_Barra"]
-    P_load = get(barra, "P", 0.0)
-    Q_load = get(barra, "Q", 0.0)
+    # ==========================================================================
+    # RESTRIÇÕES DE LIMITES DE FLUXO NAS LINHAS
+    # ==========================================================================
     
-    # Balanço de potência ativa
-    @constraint(model, Pg[id] - P_load == P_inj[id])
-    
-    # Balanço de potência reativa
-    if barra["tipo"] == "PQ"
-        @constraint(model, Qg[id] - Q_load == Q_inj[id])
-    end
-end
-
-# Fixa gerações especificadas
-for barra in barras
-    id = barra["ID_Barra"]
-    if barra["tipo"] == "PV"
-        @constraint(model, Pg[id] == get(barra, "P_Gen", 0.0))
-    elseif barra["tipo"] == "PQ"
-        @constraint(model, Pg[id] == get(barra, "P_Gen", 0.0))
-        @constraint(model, Qg[id] == get(barra, "Q_Gen", 0.0))
-    end
-end
-
-# Função objetivo neutra
-@objective(model, Min, 0)
-
-# Inicialização
-for id in bus_ids
-    set_start_value(θ[id], 0)
-    set_start_value(V[id], 1.0)
-    set_start_value(Pg[id], get(barras[idx_map[id]], "P_Gen", 0.0))
-    set_start_value(Qg[id], get(barras[idx_map[id]], "Q_Gen", 0.0))
-end
-
-optimize!(model)
-
-# Resultados
-if termination_status(model) in [MOI.OPTIMAL, MOI.LOCALLY_SOLVED]
-    println("\nResultados do Fluxo de Potência Ótimo:")
-    println("Barra |   V (pu)   |  Ang (graus)  | Pg (pu)   | Qg (pu)   | Tipo")
-    
-    for id in sort(bus_ids, by=x->parse(Int, x))
-        i = idx_map[id]
-        v_val = round(value(V[id]), digits=4)
-        θ_deg = round(rad2deg(value(θ[id])), digits=4)
-        pg_val = round(value(Pg[id]), digits=4)
-        qg_val = round(value(Qg[id]), digits=4)
-        tipo = barras[i]["tipo"]
+    flow_constraints = []
+    for e in 1:NLIN
+        i = line_fr[e]
+        j = line_to[e]
+        y = y_line[e]
         
-        println("$(lpad(id,4)) | $(lpad(v_val,8)) | $(lpad(θ_deg,10)) | $(lpad(pg_val,8)) | $(lpad(qg_val,8)) | $tipo")
+        # Fluxo da linha i->j
+        fluxo_ij = y * (v_ANG[i] - v_ANG[j])
+        
+        # Restrições de limite (ambos os sentidos)
+        c1 = @constraint(model, fluxo_ij <= FLIM[e])
+        c2 = @constraint(model, fluxo_ij >= -FLIM[e])
+        
+        push!(flow_constraints, c1)
+        push!(flow_constraints, c2)
     end
     
-    total_gen = sum(value(Pg[id]) for id in bus_ids)
-    total_load = sum(get(barras[idx_map[id]], "P", 0.0) for id in bus_ids)
-    losses = total_gen - total_load
-    println("\nPerdas de transmissão: $(round(losses, digits=6)) pu")
-else
-    println("Otimização falhou: ", termination_status(model))
+    # ==========================================================================
+    # FUNÇÃO OBJETIVO
+    # ==========================================================================
+
+    @objective(model, Min, sum(CPG[g] * v_PG[g] for g in 1:NGER))
+    
+    # ==========================================================================
+    # RESOLUÇÃO DO PROBLEMA
+    # ==========================================================================
+
+    #println(model)    
+    optimize!(model)
+
+    status = termination_status(model)
+    println("Status da solução: $status")
+    
+    # ==========================================================================
+    # PROCESSAMENTO DA SOLUÇÃO
+    # ==========================================================================
+    
+    # Verifica se há solução disponível
+    if has_values(model)
+        PG_new = value.(v_PG)
+        ANGLE_NEW = value.(v_ANG)
+        
+        DIFMAX = maximum(abs.(ANGLE_NEW - ANGLE))
+        
+        # ==========================================================================
+        # ATUALIZAÇÃO DAS PERDAS E FLUXOS 
+        # ==========================================================================
+        
+        total_perdas = 0.0
+        fill!(PINJ, 0.0)
+        
+        for i in 1:NLIN
+            fr = line_fr[i]
+            to = line_to[i]
+            delta_theta = ANGLE_NEW[fr] - ANGLE_NEW[to]
+            g = g_line[i]
+            y = y_line[i]
+            
+            # Cálculo de perdas
+            perdas[i] = g * delta_theta^2
+            total_perdas += perdas[i]
+            
+            # Fluxos com perdas
+            fij[i] = y * delta_theta + g * delta_theta^2 / 2
+            fji[i] = -y * delta_theta + g * delta_theta^2 / 2
+            
+            # Distribuição de perdas (50% em cada extremidade)
+            PINJ[fr] += perdas[i] / 2
+            PINJ[to] += perdas[i] / 2
+            print(PINJ)
+        end
+        
+        # Critério de convergência
+        loss_diff = abs(total_perdas - prev_total_perdas)
+        
+        println("Iteração $iter:")
+        println("  delta_theta_max = $(round(DIFMAX, digits=6))")
+        println("  delta_Perdas = $(round(loss_diff, digits=6))") 
+        println("  Perdas = $(round(total_perdas, digits=6))")
+        
+        # ==========================================================================
+        # ATUALIZAÇÃO PARA PRÓXIMA ITERAÇÃO
+        # ==========================================================================
+        
+        global ANGLE = copy(ANGLE_NEW)
+        global prev_total_perdas = total_perdas
+        global final_PG = copy(PG_new)
+        global final_ANGLE = copy(ANGLE_NEW)
+    else
+        println("Nenhuma solução disponível na iteração $iter")
+        # Se não há solução, mantemos os valores anteriores
+        DIFMAX = 1.0
+        loss_diff = 1.0
+    end
+    
+    # ==========================================================================
+    # EXTRAÇÃO DOS MULTIPLICADORES DE LAGRANGE
+    # ==========================================================================
+
+    # Coeficiente do balanço de potência - ATUALIZAÇÃO GLOBAL
+    try
+        for i in 1:NBAR
+            lambda_balance[i] = dual(balance_constraints[i])
+        end
+        println("Multiplicadores de balanço extraídos")
+    catch e
+        println("Erro ao extrair multiplicadores de balanço: $e")
+        # Mantém os valores anteriores em caso de erro
+    end
+
+    # Coeficientes das restrições de fluxo
+    try
+        for i in 1:length(flow_constraints)
+            lambda_flow[i] = dual(flow_constraints[i])
+        end
+    catch e
+        println("Erro ao extrair multiplicadores de fluxo: $e")
+        # Mantém os valores anteriores em caso de erro
+    end
+    
+    # Critério de convergência
+    if has_values(model) && DIFMAX < TOL && loss_diff < TOL
+        println("Convergência atingida na iteração $iter")
+        break
+    elseif iter == NITER_MAX
+        println("Número máximo de iterações atingido")
+    end
 end
+
+# ==============================================================================
+# PÓS-PROCESSAMENTO DOS RESULTADOS
+# ==============================================================================
+
+Pg_original = zeros(NBAR)
+Pg_deficit = zeros(NBAR)
+Pg_total = zeros(NBAR)
+
+for g in 1:NGER
+    bar_idx = BARPG[g]
+    if g <= NGER_ORIGINAL
+        Pg_original[bar_idx] += final_PG[g]
+    else
+        Pg_deficit[bar_idx] += final_PG[g]
+    end
+    Pg_total[bar_idx] += final_PG[g]
+end
+
+V_final = ones(NBAR)
+Qg_final = zeros(NBAR)
+
+# ==============================================================================
+# FUNÇÕES DE IMPRESSÃO DE RESULTADOS - CORRIGIDAS
+# ==============================================================================
+
+function print_results_detalhado(theta, V, Pg_original, Pg_deficit, Pg_total, Qg)
+    println("\n" * "="^100)
+    println("RESULTADOS FINAIS DO OPF DC COM GERADORES DE DÉFICIT")
+    println("="^100)
+    println("Barra |   V (pu)   |  Ang (graus)  | Pg_orig (pu) | Pg_def (pu) | Pg_total (pu) | Qg (pu)  | Tipo")
+    println("-"^100)
+    
+    n = length(V)
+    theta_deg = rad2deg.(theta)
+    
+    for i in 1:n
+        v = round(V[i], digits=2)
+        ang = round(theta_deg[i], digits=2)
+        p_orig = round(Pg_original[i], digits=2)
+        p_def = round(Pg_deficit[i], digits=2)
+        p_total = round(Pg_total[i], digits=2)
+        q = round(Qg[i], digits=2)
+        
+        tipo = "PQ"
+        if i == slack_idx
+            tipo = "SLACK"
+        elseif any(BARPG_ORIGINAL .== i)
+            tipo = "PV"
+        end
+        
+        marcador_def = p_def > 0.001 ? " ⚠️ " : "   "
+        
+        println("$(lpad(i,4)) | $(lpad(v,8)) | $(lpad(ang,10)) | $(lpad(p_orig,10)) | $(lpad(p_def,9)) | $(lpad(p_total,11)) | $(lpad(q,8)) | $tipo$marcador_def")
+    end
+    
+    total_pg_original = round(sum(Pg_original), digits=10)
+    total_pg_deficit = round(sum(Pg_deficit), digits=10)
+    total_pg = round(sum(Pg_total), digits=10)
+    total_pl = round(sum(PLOAD), digits=10)
+    total_perdas_val = round(sum(perdas), digits=10)
+    custo_original = round(sum(CPG_ORIGINAL .* final_PG[1:NGER_ORIGINAL]), digits=10)
+    custo_deficit_calc = round(sum(CPG_DEFICIT .* final_PG[NGER_ORIGINAL+1:end]), digits=10)
+    custo_total = round(custo_original + custo_deficit_calc, digits=10)
+    
+    println("-"^100)
+    println("Total Geração Original: $total_pg_original pu")
+    println("Total Geração Déficit:  $total_pg_deficit pu") 
+    println("Total Geração:          $total_pg pu")
+    println("Total Carga:            $total_pl pu") 
+    println("Total Perdas:           $total_perdas_val pu")
+    println("Custo Geração Original: $custo_original USD/h")
+    println("Custo Geração Déficit:  $custo_deficit_calc USD/h")
+    println("Custo Total:            $custo_total USD/h")
+    
+    # Verificação de balanço energético
+    balanco = total_pg - total_pl - total_perdas_val
+    println("Balanço (Geração - Carga - Perdas): $balanco pu")
+    
+    if abs(balanco) > 0.001
+        println("⚠️  ALERTA: Desbalanço energético significativo!")
+    end
+    
+    if total_pg_deficit > 0.01
+        println("\n⚠️  ALERTA: Sistema com déficit de geração!")
+        println("   Foram necessários $(round(total_pg_deficit, digits=4)) pu de geração de déficit")
+        println("   Custo adicional: $custo_deficit_calc USD/h")
+    else
+        println("\n✓ Sistema operando sem déficit de geração")
+    end
+    println("="^100)
+end
+
+function print_lagrange()
+    println("\n" * "="^60)
+    println("ANÁLISE ECONÔMICA - COEFICIENTES DE LAGRANGE")
+    println("="^60)
+    
+    println("\nPREÇOS NODAIS (Custo Marginal - USD/MWh):")
+    println("Barra | Preço Nodal")
+    println("-"^30)
+    for i in 1:NBAR
+        println("$(lpad(i,4)) | $(round(lambda_balance[i], digits=6))")
+    end
+    
+    println("\nCUSTOS DE CONGESTIONAMENTO NAS LINHAS:")
+    println("Linha | De->Para | Coef. Lagrange")
+    println("-"^50)
+    for i in 1:NLIN
+        idx_fwd = 2*i - 1
+        idx_rev = 2*i
+        if idx_fwd <= length(lambda_flow) && idx_rev <= length(lambda_flow)
+            if abs(lambda_flow[idx_fwd]) > 1e-6 || abs(lambda_flow[idx_rev]) > 1e-6
+                fr = line_fr[i]
+                to = line_to[i]
+                println("$(lpad(i,4)) | $(lpad(fr,2))->$(lpad(to,2))   | $(float(round(lambda_flow[idx_fwd], digits=6)))")
+            end
+        end
+    end
+end
+
+function print_geradores_detalhado()
+    println("\n" * "="^80)
+    println("DETALHAMENTO DOS GERADORES")
+    println("="^80)
+    println("Gerador | Barra |   Tipo    | Pg (pu) | Pmin (pu) | Pmax (pu) | Custo (USD/MWh)")
+    println("-"^80)
+    
+    for g in 1:NGER
+        barra = BARPG[g]
+        pg_val = round(final_PG[g], digits=2)
+        pmin = round(PGMIN[g], digits=2)
+        pmax = round(PGMAX[g], digits=2)
+        custo = round(CPG[g], digits=2)
+        
+        tipo = g <= NGER_ORIGINAL ? "Original " : "Déficit  "
+        
+        marcador = (g > NGER_ORIGINAL && pg_val > 0.001) ? " ⚠️" : ""
+        
+        println("$(lpad(g,6)) | $(lpad(barra,4)) | $tipo | $(lpad(pg_val,7)) | $(lpad(pmin,9)) | $(lpad(pmax,9)) | $(lpad(custo,15))$marcador")
+    end
+end
+
+function print_fluxos_linhas()
+    println("\n" * "="^70)
+    println("FLUXOS DE POTÊNCIA NAS LINHAS")
+    println("="^70)
+    println("Linha |   De->Para   |   Fluxo (pu)   |  Limite (pu) | Utilização | Perdas (pu)")
+    println("-"^85)
+    
+    for i in 1:NLIN
+        fr = line_fr[i]
+        to = line_to[i]
+        fluxo = round(max(abs(fij[i]), abs(fji[i])), digits=2)
+        limite = round(FLIM[i], digits=2)
+        utilizacao = limite > 0 ? round(fluxo/limite * 100, digits=1) : 0.0
+        perda_linha = round(perdas[i], digits=2)
+        
+        status = utilizacao > 95 ? "CRÍTICO" : "NORMAL"
+        
+        println("$(lpad(i,4)) | $(lpad(fr,3))->$(lpad(to,3))   | $(lpad(fluxo,8))     | $(lpad(limite,8))   | $(lpad(utilizacao,5))% ($status) | $perda_linha")
+    end
+end
+
+# ==============================================================================
+# EXECUÇÃO DAS IMPRESSÕES
+# ==============================================================================
+
+print_results_detalhado(final_ANGLE, V_final, Pg_original, Pg_deficit, Pg_total, Qg_final)
+print_geradores_detalhado()
+print_lagrange() 
+print_fluxos_linhas()
+
+println("\n=== ANÁLISE CONCLUÍDA ===")

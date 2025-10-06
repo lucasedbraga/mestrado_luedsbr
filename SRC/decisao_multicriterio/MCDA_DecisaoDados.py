@@ -35,6 +35,10 @@ class BaseMCDA_DADOS(ABC):
         self.alternativas = df_alternativas
         self.colunas_criterios = criterios_list
         self.tipo_criterio_list = tipo_criterio_list
+        
+        # Identifica critérios objetivos 
+        self.criterios_objetivos = [c for c, t in tipo_criterio_list.items() if t != "QUALITATIVO"]
+
 
 
     def leitura_alternativas(self, data):
@@ -64,7 +68,7 @@ class BaseMCDA_DADOS(ABC):
         pass
 
 
-### ESCOLA AMERICANA
+### ESCOLA BRASILEIRA
 
 class AHP_Gaussiano(BaseMCDA_DADOS):
     def __init__(self, arquivo_alternativas=None):
@@ -115,29 +119,101 @@ class AHP_Gaussiano(BaseMCDA_DADOS):
         print(df_resultados)
         return df_resultados
 
+
+class AHP_Gaussiano_WASPAS(BaseMCDA_DADOS):
+    def __init__(self, arquivo_alternativas=None):
+        super().__init__(arquivo_alternativas)
+    
+    def normalizar(self, df):
+        df_norm = df.copy()
+        for col in df_norm.columns:
+            if col in self.tipo_criterio_list and self.tipo_criterio_list[col] in ['MAX', 'MIN']:
+                if self.tipo_criterio_list[col] == 'MAX':
+                    pass
+                else:
+                    # Normalização para critérios de custo (quanto menor melhor)
+                    df_norm[col] = (1) / (df[col])
+        return df_norm
+    
+    def rank_alternativas(self,lambda_waspas=0.5):
+        # Normalização da Matriz de Desempenho
+        df = self.alternativas.copy()
+        matriz_desempenho = df[self.colunas_criterios]
+        matriz_desempenho = self.normalizar(matriz_desempenho)
+        matriz_desempenho = matriz_desempenho / matriz_desempenho.sum()
+        # 2) Média e desvio padrão dos critérios
+        media = matriz_desempenho.mean()
+        desvio = matriz_desempenho.std()
+
+        # 3) Fator gaussiano para cada critério
+        # Usamos a média e desvio em toda a coluna, mas aplica individual?
+        # Simplificação: w_i = exp(-σ_i^2)
+        w = desvio/media
+
+        # Normaliza pesos dos critérios
+        pesos = w / w.sum()
+
+        # WSM
+        matriz_desempenho["WSM"] = sum(matriz_desempenho[col] * pesos[col] for col in self.colunas_criterios)
+        # WPM
+        matriz_desempenho["WPM"] = 1
+        for col in self.colunas_criterios:
+            matriz_desempenho["WPM"] *= matriz_desempenho[col] ** pesos[col]
+
+        # Score final
+        df["Score"] = (
+            lambda_waspas * matriz_desempenho["WSM"] +
+            (1 - lambda_waspas) * matriz_desempenho["WPM"]
+        )
+
+        df_resultados = df.sort_values(by="Score", ascending=False)
+
+        print('-'*80)
+        print(f"Pesos dos critérios AHP-Gaussiano+WASPAS com lambda = {lambda_waspas}:")
+        print(pd.Series(np.round(pesos, 3), index=self.colunas_criterios))
+
+        df_resultados = df_resultados.drop_duplicates().reset_index(drop=True)
+        df_resultados["Score"] = df_resultados["Score"] / df_resultados["Score"].sum()
+        df_resultados["Score"] = np.round(df_resultados["Score"],3)
+        print(f'\nRanking das Alternativas: - AHP-Gaussiano+WASPAS')
+        print(df_resultados)
+        return df_resultados
+
+    
 ### LESTE EUROPEU
 
-class LOPCOW(BaseMCDA_DADOS):
+
+class LOPCOW_WASPAS(BaseMCDA_DADOS):
 
     def __init__(self, arquivo_alternativas=None):
         super().__init__(arquivo_alternativas)
     
     def normalizar(self, df):
         df_norm = df.copy()
-        for col in self.colunas_criterios:
+        col = df_norm.name
+        if col in self.tipo_criterio_list and self.tipo_criterio_list[col] in ['MAX', 'MIN']:
             if self.tipo_criterio_list[col] == 'MAX':
                 # Normalização para critérios de benefício (quanto maior melhor)
-                df_norm[col] = (df[col] - df[col].min()) / (df[col].max() - df[col].min())
+                df_norm = (df - df.min()) / (df.max() - df.min())
             else:
                 # Normalização para critérios de custo (quanto menor melhor)
-                df_norm[col] = (df[col].max() - df[col]) / (df[col].max() - df[col].min())
+                df_norm = (df.max() - df) / (df.max() - df.min())
         return df_norm
 
-    def rank_alternativas(self):
-        # Normalização da Matriz de Desempenho
+    def rank_alternativas(self,lambda_waspas=0.5):
+
         df = self.alternativas.copy()
-        matriz_desempenho = df[self.colunas_criterios]
-        matriz_desempenho = self.normalizar(matriz_desempenho)
+        # Critérios objetivos
+        criterios_objetivos = [c for c in self.criterios_objetivos]
+        matriz_desempenho = pd.DataFrame()
+        for criterio in criterios_objetivos:
+            desempenho_objetivo = self.normalizar(df[criterio])
+            desempenho_objetivo = desempenho_objetivo / desempenho_objetivo.sum()
+            matriz_desempenho = pd.concat([matriz_desempenho, desempenho_objetivo], axis=1)
+
+        for c in self.colunas_criterios:
+                if c not in matriz_desempenho.columns:
+                    matriz_desempenho[c] = 0.0
 
         # Cálculo dos Valores Percentuais (PV) de cada critério
         RMS = np.sqrt(np.mean(np.square(matriz_desempenho), axis=0))
@@ -145,60 +221,91 @@ class LOPCOW(BaseMCDA_DADOS):
         PV = abs(np.log(RMS/DESVPAD))
         # Cálculo dos Pesos Objetivos
         pesos = PV/PV.sum()
-        # Ordenação dos Critérios
-        df["Score"] = (matriz_desempenho * pesos).sum(axis=1)
+        
+        # WSM
+        matriz_desempenho["WSM"] = sum(matriz_desempenho[col] * pesos[col] for col in self.colunas_criterios)
+        # WPM
+        matriz_desempenho["WPM"] = 1
+        for col in self.colunas_criterios:
+            matriz_desempenho["WPM"] *= matriz_desempenho[col] ** pesos[col]
+
+        # Score final
+        df["Score"] = (
+            lambda_waspas * matriz_desempenho["WSM"] +
+            (1 - lambda_waspas) * matriz_desempenho["WPM"]
+        )
         df_resultados = df.sort_values(by="Score", ascending=False)
 
         print('-'*80)
-        print("Pesos dos critérios LOPCOW:")
+        print(f"Pesos dos critérios LOPCOW+WASPAS com lambda = {lambda_waspas}:")
         print(pd.Series(np.round(pesos, 3), index=self.colunas_criterios))
 
-        df_resultados = df_resultados.drop_duplicates(subset=self.colunas_criterios + ["Score"]).reset_index(drop=True)
+        df_resultados = df_resultados.drop_duplicates().reset_index(drop=True)
         df_resultados["Score"] = df_resultados["Score"] / df_resultados["Score"].sum()
         df_resultados["Score"] = np.round(df_resultados["Score"],3)
-        print("\nRanking das Alternativas: - LOPCOW")
+        print(f'\nRanking das Alternativas: - LOPCOW+WASPAS')
         print(df_resultados)
         return df_resultados
+
     
-class MPSI(BaseMCDA_DADOS):
+class MPSI_WASPAS(BaseMCDA_DADOS):
     def __init__(self, arquivo_alternativas=None):
         super().__init__(arquivo_alternativas)
     
     def normalizar(self, df):
         df_norm = df.copy()
-        for col in self.colunas_criterios:
+        col = df_norm.name
+        if col in self.tipo_criterio_list and self.tipo_criterio_list[col] in ['MAX', 'MIN']:
             if self.tipo_criterio_list[col] == 'MAX':
                 # Normalização para critérios de benefício (quanto maior melhor)
-                df_norm[col] = (df[col]) / (df[col].max())
+                df_norm = (df) / (df.max())
             else:
                 # Normalização para critérios de custo (quanto menor melhor)
-                df_norm[col] = (df[col].min()) / (df[col])
+                df_norm = (df.min()) / (df)
         return df_norm
 
-    def rank_alternativas(self):
-        # Normalização da Matriz de Desempenho
+    def rank_alternativas(self,lambda_waspas=0.5):
         df = self.alternativas.copy()
-        matriz_desempenho = df[self.colunas_criterios]
-        matriz_desempenho = self.normalizar(matriz_desempenho)
+        # Critérios objetivos
+        criterios_objetivos = [c for c in self.criterios_objetivos]
+        matriz_desempenho = pd.DataFrame()
+        for criterio in criterios_objetivos:
+            desempenho_objetivo = self.normalizar(df[criterio])
+            desempenho_objetivo = desempenho_objetivo / desempenho_objetivo.sum()
+            matriz_desempenho = pd.concat([matriz_desempenho, desempenho_objetivo], axis=1)
+
+        for c in self.colunas_criterios:
+                if c not in matriz_desempenho.columns:
+                    matriz_desempenho[c] = 0.0
 
         # Cálculo MPSI
         valor_medio = matriz_desempenho.mean()
         VariacaoPreferencia = ((matriz_desempenho - valor_medio) ** 2).sum(axis=0)
         # Cálculo dos Pesos Objetivos
         pesos = VariacaoPreferencia / VariacaoPreferencia.sum()
+        
+        # WSM
+        matriz_desempenho["WSM"] = sum(matriz_desempenho[col] * pesos[col] for col in self.colunas_criterios)
+        # WPM
+        matriz_desempenho["WPM"] = 1
+        for col in self.colunas_criterios:
+            matriz_desempenho["WPM"] *= matriz_desempenho[col] ** pesos[col]
 
-        # Ordenação dos Critérios
-        df["Score"] = (matriz_desempenho * pesos).sum(axis=1)
+        # Score final
+        df["Score"] = (
+            lambda_waspas * matriz_desempenho["WSM"] +
+            (1 - lambda_waspas) * matriz_desempenho["WPM"]
+        )
         df_resultados = df.sort_values(by="Score", ascending=False)
 
         print('-'*80)
-        print("Pesos dos critérios MPSI:")
+        print(f"Pesos dos critérios MPSI+WASPAS com lambda = {lambda_waspas}:")
         print(pd.Series(np.round(pesos, 3), index=self.colunas_criterios))
 
-        df_resultados = df_resultados.drop_duplicates(subset=self.colunas_criterios + ["Score"]).reset_index(drop=True)
+        df_resultados = df_resultados.drop_duplicates().reset_index(drop=True)
         df_resultados["Score"] = df_resultados["Score"] / df_resultados["Score"].sum()
         df_resultados["Score"] = np.round(df_resultados["Score"],3)
-        print("\nRanking das Alternativas: - MPSI")
+        print('\nRanking das Alternativas: - MPSI+WASPAS ')
         print(df_resultados)
         return df_resultados
     
@@ -257,7 +364,8 @@ if __name__ == "__main__":
     }
 
     ahp_gauss = AHP_Gaussiano(arquivo_alternativas=DATA).rank_alternativas()
-    lopcow = LOPCOW(arquivo_alternativas=DATA).rank_alternativas()
-    mpsi = MPSI(arquivo_alternativas=DATA).rank_alternativas()
+    ahp_gauss_waspas = AHP_Gaussiano_WASPAS(arquivo_alternativas=DATA).rank_alternativas()
+    lopcow = LOPCOW_WASPAS(arquivo_alternativas=DATA).rank_alternativas()
+    mpsi = MPSI_WASPAS(arquivo_alternativas=DATA).rank_alternativas()
 
 
