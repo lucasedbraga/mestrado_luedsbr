@@ -1,270 +1,128 @@
 {
+  "S_base": 100.0,
+  "V_base": 230.0,
+  "f_base": 60.0,
+  "P_base": 100.0,
+  "Q_base": 100.0,
+  "Z_base": 1.0,
+  "Y_base": 1.0,
+  "T_base": 1.0,
+
   "BARRAS": [
+    {"ID_Barra": "1", "tipo": "Slack"},
+    {"ID_Barra": "2", "tipo": "PV"},
+    {"ID_Barra": "3", "tipo": "PV"},
+    {"ID_Barra": "4", "tipo": "PQ"},
+    {"ID_Barra": "5", "tipo": "PQ"},
+    {"ID_Barra": "6", "tipo": "PV"},
+    {"ID_Barra": "7", "tipo": "PQ"},
+    {"ID_Barra": "8", "tipo": "PV"},
+    {"ID_Barra": "9", "tipo": "PQ"},
+    {"ID_Barra": "10", "tipo": "PQ"},
+    {"ID_Barra": "11", "tipo": "PQ"},
+    {"ID_Barra": "12", "tipo": "PQ"},
+    {"ID_Barra": "13", "tipo": "PQ"},
+    {"ID_Barra": "14", "tipo": "PQ"}
+  ],
+
+  "GERADORES": [
     {
+      "ID_Gerador": "G1",
       "ID_Barra": "1",
-      "tipo": "Slack",
-      "PLOAD": 0.0,
-      "has_gen": true,
-      "P_Gen": 0.0,
-      "Pmin": 0.0,
-      "Pmax": 5.0,
-      "C": 10.0
+      "Tipo": "UTE",
+      "PGERmin_MW": 0.0,
+      "PGERmax_MW": 5.0,
+      "ramp_up_MW_h": 40.0,
+      "ramp_down_MW_h": 40.0,
+      "startup_USD": 100.0,
+      "custo_var_USD_MWh": 5.0,
+      "emissao_tCO2_MWh": 3.0,
+      "Unidade": "MW"
     },
     {
+      "ID_Gerador": "G2",
       "ID_Barra": "2",
-      "tipo": "PV",
-      "PLOAD": 0.217,
-      "has_gen": true,
-      "P_Gen": 0.4,
-      "Pmin": 0.0,
-      "Pmax": 5.0,
-      "C": 25.0
+      "Tipo": "UTH",
+      "PGERmin_MW": 0.0,
+      "PGERmax_MW": 5.0,
+      "custo_var_USD_MWh": 1.0,
+      "emissao_tCO2_MWh": 0.1,
+      "engol": 0.6,
+      "Unidade": "MW"
     },
     {
+      "ID_Gerador": "G3",
       "ID_Barra": "3",
-      "tipo": "PV",
-      "PLOAD": 0.942,
-      "has_gen": true,
-      "P_Gen": 0.0,
-      "Pmin": 0.0,
-      "Pmax": 1.0,
-      "C": 400.0
+      "Tipo": "GWD",
+      "PGERmin": 0.0,
+      "PGERmax": 1.0,
+      "custo_var_USD_MWh": 1.0,
+      "custo_curtailment_USD_MWh": 1.0,
+      "emissao_tCO2_MWh": 0.1,
+      "Unidade": "MW"
     },
     {
-      "ID_Barra": "4",
-      "tipo": "PQ",
-      "PLOAD": 0.478,
-      "has_gen": false
-    },
-    {
-      "ID_Barra": "5",
-      "tipo": "PQ",
-      "PLOAD": 0.076,
-      "has_gen": false
-    },
-    {
+      "ID_Gerador": "G4",
       "ID_Barra": "6",
-      "tipo": "PV",
-      "PLOAD": 0.112,
-      "has_gen": true,
-      "P_Gen": 0.0,
-      "Pmin": 0.0,
-      "Pmax": 1.0,
-      "C": 400.0
+      "Tipo": "UTE",
+      "PGERmin_MW": 0.0,
+      "PGERmax_MW": 5.0,
+      "ramp_up_MW_h": 40.0,
+      "ramp_down_MW_h": 40.0,
+      "startup_USD": 100.0,
+      "custo_var_USD_MWh": 400.0,
+      "emissao_tCO2_MWh": 3.0,
+      "Unidade": "MW"
     },
     {
-      "ID_Barra": "7",
-      "tipo": "PQ",
-      "PLOAD": 0.0,
-      "has_gen": false
-    },
-    {
+      "ID_Gerador": "G5",
       "ID_Barra": "8",
-      "tipo": "PV",
-      "PLOAD": 0.0,
-      "has_gen": true,
-      "P_Gen": 0.0,
-      "Pmin": 0.0,
-      "Pmax": 1.0,
-      "C": 400.0
-    },
-    {
-      "ID_Barra": "9",
-      "tipo": "PQ",
-      "PLOAD": 0.295,
-      "has_gen": false
-    },
-    {
-      "ID_Barra": "10",
-      "tipo": "PQ",
-      "PLOAD": 0.09,
-      "has_gen": false
-    },
-    {
-      "ID_Barra": "11",
-      "tipo": "PQ",
-      "PLOAD": 0.035,
-      "has_gen": false
-    },
-    {
-      "ID_Barra": "12",
-      "tipo": "PQ",
-      "PLOAD": 0.061,
-      "has_gen": false
-    },
-    {
-      "ID_Barra": "13",
-      "tipo": "PQ",
-      "PLOAD": 0.135,
-      "has_gen": false
-    },
-    {
-      "ID_Barra": "14",
-      "tipo": "PQ",
-      "PLOAD": 0.149,
-      "has_gen": false
+      "Tipo": "UTH",
+      "PGERmin_MW": 0.0,
+      "PGERmax_MW": 5.0,
+      "custo_var_USD_MWh": 1.0,
+      "emissao_tCO2_MWh": 0.1,
+      "engol": 0.6,
+      "Unidade": "MW"
     }
   ],
+
+  "DEMANDAS": [
+    {"ID_Demanda": "D1", "ID_Barra": "2", "Tipo_Demanda": "Load", "PLOAD": 0.217, "Unidade": "MW"},
+    {"ID_Demanda": "D2", "ID_Barra": "3", "Tipo_Demanda": "Load", "PLOAD": 0.942, "Unidade": "MW"},
+    {"ID_Demanda": "D3", "ID_Barra": "4", "Tipo_Demanda": "Load", "PLOAD": 0.478, "Unidade": "MW"},
+    {"ID_Demanda": "D4", "ID_Barra": "5", "Tipo_Demanda": "Load", "PLOAD": 0.076, "Unidade": "MW"},
+    {"ID_Demanda": "D5", "ID_Barra": "6", "Tipo_Demanda": "Load", "PLOAD": 0.112, "Unidade": "MW"},
+    {"ID_Demanda": "D6", "ID_Barra": "7", "Tipo_Demanda": "Load", "PLOAD": 0.0, "Unidade": "MW"},
+    {"ID_Demanda": "D7", "ID_Barra": "8", "Tipo_Demanda": "Load", "PLOAD": 0.0, "Unidade": "MW"},
+    {"ID_Demanda": "D8", "ID_Barra": "9", "Tipo_Demanda": "Load", "PLOAD": 0.295, "Unidade": "MW"},
+    {"ID_Demanda": "D9", "ID_Barra": "10", "Tipo_Demanda": "Load", "PLOAD": 0.09, "Unidade": "MW"},
+    {"ID_Demanda": "D10", "ID_Barra": "11", "Tipo_Demanda": "Load", "PLOAD": 0.035, "Unidade": "MW"},
+    {"ID_Demanda": "D11", "ID_Barra": "12", "Tipo_Demanda": "Load", "PLOAD": 0.061, "Unidade": "MW"},
+    {"ID_Demanda": "D12", "ID_Barra": "13", "Tipo_Demanda": "Load", "PLOAD": 0.135, "Unidade": "MW"},
+    {"ID_Demanda": "D13", "ID_Barra": "14", "Tipo_Demanda": "Load", "PLOAD": 0.149, "Unidade": "MW"}
+  ],
+
   "LINHAS": [
-    {
-      "ID_linha": "1-2",
-      "ID_Barra_Origem": "1",
-      "ID_Barra_Destino": "2",
-      "R": 0.01938,
-      "X": 0.05917,
-      "FLIM": 1.5
-    },
-    {
-      "ID_linha": "1-5",
-      "ID_Barra_Origem": "1",
-      "ID_Barra_Destino": "5",
-      "R": 0.05403,
-      "X": 0.22304,
-      "FLIM": 0.75
-    },
-    {
-      "ID_linha": "2-3",
-      "ID_Barra_Origem": "2",
-      "ID_Barra_Destino": "3",
-      "R": 0.04699,
-      "X": 0.19797,
-      "FLIM": 1.0
-    },
-    {
-      "ID_linha": "2-4",
-      "ID_Barra_Origem": "2",
-      "ID_Barra_Destino": "4",
-      "R": 0.05811,
-      "X": 0.17632,
-      "FLIM": 1.0
-    },
-    {
-      "ID_linha": "2-5",
-      "ID_Barra_Origem": "2",
-      "ID_Barra_Destino": "5",
-      "R": 0.05695,
-      "X": 0.17388,
-      "FLIM": 1.0
-    },
-    {
-      "ID_linha": "3-4",
-      "ID_Barra_Origem": "3",
-      "ID_Barra_Destino": "4",
-      "R": 0.06701,
-      "X": 0.17103,
-      "FLIM": 1.0
-    },
-    {
-      "ID_linha": "4-5",
-      "ID_Barra_Origem": "4",
-      "ID_Barra_Destino": "5",
-      "R": 0.01335,
-      "X": 0.04211,
-      "FLIM": 2.5
-    },
-    {
-      "ID_linha": "4-7",
-      "ID_Barra_Origem": "4",
-      "ID_Barra_Destino": "7",
-      "R": 0.0,
-      "X": 0.20912,
-      "FLIM": 0.5
-    },
-    {
-      "ID_linha": "4-9",
-      "ID_Barra_Origem": "4",
-      "ID_Barra_Destino": "9",
-      "R": 0.0,
-      "X": 0.55618,
-      "FLIM": 0.25
-    },
-    {
-      "ID_linha": "5-6",
-      "ID_Barra_Origem": "5",
-      "ID_Barra_Destino": "6",
-      "R": 0.0,
-      "X": 0.25202,
-      "FLIM": 0.5
-    },
-    {
-      "ID_linha": "6-11",
-      "ID_Barra_Origem": "6",
-      "ID_Barra_Destino": "11",
-      "R": 0.09498,
-      "X": 0.1989,
-      "FLIM": 0.55
-    },
-    {
-      "ID_linha": "6-12",
-      "ID_Barra_Origem": "6",
-      "ID_Barra_Destino": "12",
-      "R": 0.12291,
-      "X": 0.25581,
-      "FLIM": 0.5
-    },
-    {
-      "ID_linha": "6-13",
-      "ID_Barra_Origem": "6",
-      "ID_Barra_Destino": "13",
-      "R": 0.06615,
-      "X": 0.13027,
-      "FLIM": 1.0
-    },
-    {
-      "ID_linha": "7-8",
-      "ID_Barra_Origem": "7",
-      "ID_Barra_Destino": "8",
-      "R": 0.0,
-      "X": 0.17615,
-      "FLIM": 1.0
-    },
-    {
-      "ID_linha": "7-9",
-      "ID_Barra_Origem": "7",
-      "ID_Barra_Destino": "9",
-      "R": 0.0,
-      "X": 0.11001,
-      "FLIM": 1.0
-    },
-    {
-      "ID_linha": "9-10",
-      "ID_Barra_Origem": "9",
-      "ID_Barra_Destino": "10",
-      "R": 0.03181,
-      "X": 0.0845,
-      "FLIM": 1.5
-    },
-    {
-      "ID_linha": "9-14",
-      "ID_Barra_Origem": "9",
-      "ID_Barra_Destino": "14",
-      "R": 0.12711,
-      "X": 0.27038,
-      "FLIM": 0.6
-    },
-    {
-      "ID_linha": "10-11",
-      "ID_Barra_Origem": "10",
-      "ID_Barra_Destino": "11",
-      "R": 0.08205,
-      "X": 0.19207,
-      "FLIM": 1.0
-    },
-    {
-      "ID_linha": "12-13",
-      "ID_Barra_Origem": "12",
-      "ID_Barra_Destino": "13",
-      "R": 0.22092,
-      "X": 0.19988,
-      "FLIM": 1.0
-    },
-    {
-      "ID_linha": "13-14",
-      "ID_Barra_Origem": "13",
-      "ID_Barra_Destino": "14",
-      "R": 0.17093,
-      "X": 0.34802,
-      "FLIM": 0.5
-    }
+    {"ID_linha": "1-2", "ID_Barra_Origem": "1", "ID_Barra_Destino": "2", "R": 0.01938, "X": 0.05917, "FLIM": 1.5},
+    {"ID_linha": "1-5", "ID_Barra_Origem": "1", "ID_Barra_Destino": "5", "R": 0.05403, "X": 0.22304, "FLIM": 0.75},
+    {"ID_linha": "2-3", "ID_Barra_Origem": "2", "ID_Barra_Destino": "3", "R": 0.04699, "X": 0.19797, "FLIM": 1.0},
+    {"ID_linha": "2-4", "ID_Barra_Origem": "2", "ID_Barra_Destino": "4", "R": 0.05811, "X": 0.17632, "FLIM": 1.0},
+    {"ID_linha": "2-5", "ID_Barra_Origem": "2", "ID_Barra_Destino": "5", "R": 0.05695, "X": 0.17388, "FLIM": 1.0},
+    {"ID_linha": "3-4", "ID_Barra_Origem": "3", "ID_Barra_Destino": "4", "R": 0.06701, "X": 0.17103, "FLIM": 1.0},
+    {"ID_linha": "4-5", "ID_Barra_Origem": "4", "ID_Barra_Destino": "5", "R": 0.01335, "X": 0.04211, "FLIM": 2.5},
+    {"ID_linha": "4-7", "ID_Barra_Origem": "4", "ID_Barra_Destino": "7", "R": 0.0, "X": 0.20912, "FLIM": 0.5},
+    {"ID_linha": "4-9", "ID_Barra_Origem": "4", "ID_Barra_Destino": "9", "R": 0.0, "X": 0.55618, "FLIM": 0.25},
+    {"ID_linha": "5-6", "ID_Barra_Origem": "5", "ID_Barra_Destino": "6", "R": 0.0, "X": 0.25202, "FLIM": 0.5},
+    {"ID_linha": "6-11", "ID_Barra_Origem": "6", "ID_Barra_Destino": "11", "R": 0.09498, "X": 0.1989, "FLIM": 0.55},
+    {"ID_linha": "6-12", "ID_Barra_Origem": "6", "ID_Barra_Destino": "12", "R": 0.12291, "X": 0.25581, "FLIM": 0.5},
+    {"ID_linha": "6-13", "ID_Barra_Origem": "6", "ID_Barra_Destino": "13", "R": 0.06615, "X": 0.13027, "FLIM": 1.0},
+    {"ID_linha": "7-8", "ID_Barra_Origem": "7", "ID_Barra_Destino": "8", "R": 0.0, "X": 0.17615, "FLIM": 1.0},
+    {"ID_linha": "7-9", "ID_Barra_Origem": "7", "ID_Barra_Destino": "9", "R": 0.0, "X": 0.11001, "FLIM": 1.0},
+    {"ID_linha": "9-10", "ID_Barra_Origem": "9", "ID_Barra_Destino": "10", "R": 0.03181, "X": 0.0845, "FLIM": 1.5},
+    {"ID_linha": "9-14", "ID_Barra_Origem": "9", "ID_Barra_Destino": "14", "R": 0.12711, "X": 0.27038, "FLIM": 0.6},
+    {"ID_linha": "10-11", "ID_Barra_Origem": "10", "ID_Barra_Destino": "11", "R": 0.08205, "X": 0.19207, "FLIM": 1.0},
+    {"ID_linha": "12-13", "ID_Barra_Origem": "12", "ID_Barra_Destino": "13", "R": 0.22092, "X": 0.19988, "FLIM": 1.0},
+    {"ID_linha": "13-14", "ID_Barra_Origem": "13", "ID_Barra_Destino": "14", "R": 0.17093, "X": 0.34802, "FLIM": 0.5}
   ]
 }

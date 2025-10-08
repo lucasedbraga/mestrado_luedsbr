@@ -1,118 +1,75 @@
 {
   "BARRAS": [
+    {"ID_Barra": "1", "tipo": "Slack"},
+    {"ID_Barra": "2", "tipo": "PQ"},
+    {"ID_Barra": "3", "tipo": "PQ"},
+    {"ID_Barra": "4", "tipo": "PQ"},
+    {"ID_Barra": "5", "tipo": "PQ"},
+    {"ID_Barra": "6", "tipo": "PQ"}
+  ],
+
+  "GERADORES": [
     {
+      "ID_Gerador": "G1",
       "ID_Barra": "1",
-      "tipo": "Slack",
-      "PLOAD": 0.0,
-      "has_gen": true,
-      "Pmin": 0.0,
-      "Pmax": 0.5,
-      "C": 10.0
+      "Tipo": "UTE",
+      "PGERmin_MW": 0.0,
+      "PGERmax_MW": 0.5,
+      "ramp_up_MW_h": 40.0,
+      "ramp_down_MW_h": 40.0,
+      "startup_USD": 100.0,
+      "custo_var_USD_MWh": 10.0,
+      "emissao_tCO2_MWh": 3.0,
+      "Unidade": "MW"
     },
     {
+      "ID_Gerador": "G2",
       "ID_Barra": "2",
-      "tipo": "PQ",
-      "PLOAD": 0.20,
-      "has_gen": true,
-      "Pmin": 0.0,
-      "Pmax": 0.6,
-      "C": 400.0
+      "Tipo": "UTH",
+      "PGERmin_MW": 0.0,
+      "PGERmax_MW": 0.6,
+      "custo_var_USD_MWh": 400.0,
+      "emissao_tCO2_MWh": 0.1,
+      "engol": 0.6,
+      "Unidade": "MW"
     },
     {
+      "ID_Gerador": "G3",
       "ID_Barra": "3",
-      "tipo": "PQ",
-      "PLOAD": 0.40,
-      "has_gen": true,
-      "Pmin": 0.0,
-      "Pmax": 0.7,
-      "C": 20.0
+      "Tipo": "GWD",
+      "PGERmin": 0.0,
+      "PGERmax": 0.7,
+      "custo_var_USD_MWh": 20.0,
+      "custo_curtailment_USD_MWh": 1.0,
+      "emissao_tCO2_MWh": 0.1,
+      "Unidade": "MW"
     },
     {
+      "ID_Gerador": "G4",
       "ID_Barra": "4",
-      "tipo": "PQ",
-      "PLOAD": 0.30,
-      "has_gen": true,
-      "Pmin": 0.0,
-      "Pmax": 0.6,
-      "C": 30.0
-    },
-    {
-      "ID_Barra": "5",
-      "tipo": "PQ",
-      "PLOAD": 0.30,
-      "has_gen": false
-    },
-    {
-      "ID_Barra": "6",
-      "tipo": "PQ",
-      "PLOAD": 0.40,
-      "has_gen": false
+      "Tipo": "UTH",
+      "PGERmin_MW": 0.0,
+      "PGERmax_MW": 0.6,
+      "custo_var_USD_MWh": 30.0,
+      "emissao_tCO2_MWh": 0.1,
+      "engol": 0.6,
+      "Unidade": "MW"
     }
   ],
+
+  "DEMANDAS": [
+    {"ID_Demanda": "D5", "ID_Barra": "5", "Tipo_Demanda": "Residencial", "PLOAD": 0.3, "Unidade": "MW"},
+    {"ID_Demanda": "D6", "ID_Barra": "6", "Tipo_Demanda": "Industrial", "PLOAD": 0.4, "Unidade": "MW"}
+  ],
+
   "LINHAS": [
-    {
-      "ID_linha": "1-2",
-      "ID_Barra_Origem": "1",
-      "ID_Barra_Destino": "2",
-      "R": 0.01,
-      "X": 0.10,
-      "FLIM": 0.15
-    },
-    {
-      "ID_linha": "2-3",
-      "ID_Barra_Origem": "2",
-      "ID_Barra_Destino": "3",
-      "R": 0.02,
-      "X": 0.17,
-      "FLIM": 0.15
-    },
-    {
-      "ID_linha": "3-4",
-      "ID_Barra_Origem": "3",
-      "ID_Barra_Destino": "4",
-      "R": 0.05,
-      "X": 0.10,
-      "FLIM": 0.10
-    },
-    {
-      "ID_linha": "4-5",
-      "ID_Barra_Origem": "4",
-      "ID_Barra_Destino": "5",
-      "R": 0.01,
-      "X": 0.15,
-      "FLIM": 0.25
-    },
-    {
-      "ID_linha": "5-6",
-      "ID_Barra_Origem": "5",
-      "ID_Barra_Destino": "6",
-      "R": 0.02,
-      "X": 0.18,
-      "FLIM": 0.20
-    },
-    {
-      "ID_linha": "3-6",
-      "ID_Barra_Origem": "3",
-      "ID_Barra_Destino": "6",
-      "R": 0.03,
-      "X": 0.13,
-      "FLIM": 0.30
-    },
-    {
-      "ID_linha": "1-5",
-      "ID_Barra_Origem": "1",
-      "ID_Barra_Destino": "5",
-      "R": 0.01,
-      "X": 0.14,
-      "FLIM": 0.30
-    },
-    {
-      "ID_linha": "4-2",
-      "ID_Barra_Origem": "4",
-      "ID_Barra_Destino": "2",
-      "R": 0.02,
-      "X": 0.12,
-      "FLIM": 0.20
-    }
+    {"ID_linha": "1-2", "ID_Barra_Origem": "1", "ID_Barra_Destino": "2", "R": 0.01, "R_Unidade": "pu", "X": 0.10, "X_Unidade": "pu", "LIM_Fluxo": 0.15, "LIM_Fluxo_Unidade": "pu"},
+    {"ID_linha": "2-3", "ID_Barra_Origem": "2", "ID_Barra_Destino": "3", "R": 0.02, "R_Unidade": "pu", "X": 0.17, "X_Unidade": "pu", "LIM_Fluxo": 0.15, "LIM_Fluxo_Unidade": "pu"},
+    {"ID_linha": "3-4", "ID_Barra_Origem": "3", "ID_Barra_Destino": "4", "R": 0.05, "R_Unidade": "pu", "X": 0.10, "X_Unidade": "pu", "LIM_Fluxo": 0.10, "LIM_Fluxo_Unidade": "pu"},
+    {"ID_linha": "4-5", "ID_Barra_Origem": "4", "ID_Barra_Destino": "5", "R": 0.01, "R_Unidade": "pu", "X": 0.15, "X_Unidade": "pu", "LIM_Fluxo": 0.25, "LIM_Fluxo_Unidade": "pu"},
+    {"ID_linha": "5-6", "ID_Barra_Origem": "5", "ID_Barra_Destino": "6", "R": 0.02, "R_Unidade": "pu", "X": 0.18, "X_Unidade": "pu", "LIM_Fluxo": 0.20, "LIM_Fluxo_Unidade": "pu"},
+    {"ID_linha": "3-6", "ID_Barra_Origem": "3", "ID_Barra_Destino": "6", "R": 0.03, "R_Unidade": "pu", "X": 0.13, "X_Unidade": "pu", "LIM_Fluxo": 0.30, "LIM_Fluxo_Unidade": "pu"},
+    {"ID_linha": "1-5", "ID_Barra_Origem": "1", "ID_Barra_Destino": "5", "R": 0.01, "R_Unidade": "pu", "X": 0.14, "X_Unidade": "pu", "LIM_Fluxo": 0.30, "LIM_Fluxo_Unidade": "pu"},
+    {"ID_linha": "4-2", "ID_Barra_Origem": "4", "ID_Barra_Destino": "2", "R": 0.02, "R_Unidade": "pu", "X": 0.12, "X_Unidade": "pu", "LIM_Fluxo": 0.20, "LIM_Fluxo_Unidade": "pu"}
   ]
 }
