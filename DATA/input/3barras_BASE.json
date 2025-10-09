@@ -47,7 +47,7 @@
       "PGERmax": 0.02,
       "custo_var_USD_MWh": 1.0,
       "custo_curtailment_USD_MWh": 100.0,
-      "emissao_tCO2_MWh": 0.1,
+      "emissao_tCO2_MWh": 0.01,
       "Unidade": "MW"
     }
   ],
