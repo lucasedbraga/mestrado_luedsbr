@@ -1,4 +1,13 @@
 {
+  "S_base": 1.0,
+  "V_base": 1.0,
+  "f_base": 1.0,
+  "P_base": 1.0,
+  "Q_base": 1.0,
+  "Z_base": 1.0,
+  "Y_base": 1.0,
+  "T_base": 1.0,  
+  
   "BARRAS": [
     {"ID_Barra": "1", "tipo": "Slack"},
     {"ID_Barra": "2", "tipo": "PQ"},

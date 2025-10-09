@@ -6,12 +6,12 @@ using JuMP
 using Clp
 using LinearAlgebra
 using JSON
+using Distributions
 
 # ==============================================================================
 # CONFIGURAÇÕES INICIAIS E PARÂMETROS
 # ==============================================================================
 
-PB = 100.0  # Potência base do sistema (MVA)
 NITER_MAX = 10  # Número máximo de iterações
 TOL = 1e-6   # Tolerância para convergência
 
@@ -26,9 +26,13 @@ data = JSON.parsefile("DATA/input/3barras_BASE.json")
 #data = JSON.parsefile("DATA/input/B6L8_BASE.json")
 #data = JSON.parsefile("DATA/input/ieee14_BASE.json")
 #data = JSON.parsefile("DATA/input/IEEE_118_BASE.json")
-# Extrai informações das barras e linhas
+
+# Extrai informações das listas separadas
 barras = data["BARRAS"]
+geradores_data = data["GERADORES"]
+demandas_data = data["DEMANDAS"]
 linhas = data["LINHAS"]
+PB = data["P_base"] # Potência base do sistema (MVA)
 
 # Mapeamento de IDs das barras para índices numéricos
 bus_ids = [b["ID_Barra"] for b in barras]
@@ -75,11 +79,11 @@ for (e, ln) in enumerate(linhas)
     g_line[e] = denom > 0 ? r/denom : 0.0
     y_line[e] = abs(x) > 0 ? 1.0/x : 0.0
     
-    FLIM[e] = get(ln, "FLIM", 1.0)
+    FLIM[e] = get(ln, "LIM_Fluxo", 1.0)
 end
 
 # ==============================================================================
-# MONTAGEM DA MATRIZ DE SUSCEPTÂNCIA Bbus 
+# MONTAGEM DA MATRIZ DE SUSCEPTÂNCIA B_bus 
 # ==============================================================================
 
 Bbus = zeros(NBAR, NBAR)
@@ -96,24 +100,74 @@ for e in 1:NLIN
 end
 
 # ==============================================================================
-# DADOS DOS GERADORES E CARGAS
+# DADOS DOS GERADORES
 # ==============================================================================
 
-# Identifica geradores
-geradores = filter(b -> get(b, "has_gen", false), barras)
-
-NGER_ORIGINAL = length(geradores)
+# Processa geradores da lista separada
+NGER_ORIGINAL = length(geradores_data)
 BARPG_ORIGINAL = Vector{Int}(undef, NGER_ORIGINAL)
 PGMIN_ORIGINAL = zeros(NGER_ORIGINAL)
-PGMAX_ORIGINAL = zeros(NGER_ORIGINAL)  
+PGMAX_ORIGINAL = zeros(NGER_ORIGINAL) 
+PGMIN_EFETIVO = zeros(NGER_ORIGINAL)
+PGMAX_EFETIVO = zeros(NGER_ORIGINAL)   
 CPG_ORIGINAL = zeros(NGER_ORIGINAL)
 
-for (i, b) in enumerate(geradores)
-    id = b["ID_Barra"]
-    BARPG_ORIGINAL[i] = idx_map[id]
-    PGMIN_ORIGINAL[i] = get(b, "Pmin", 0.0)
-    PGMAX_ORIGINAL[i] = get(b, "Pmax", 1.0)
-    CPG_ORIGINAL[i] = get(b, "C", 0.0) * PB
+for (i, g) in enumerate(geradores_data)
+    id_barra = g["ID_Barra"]
+    BARPG_ORIGINAL[i] = idx_map[id_barra]
+    tipo_ger = g["Tipo"]
+    
+    if tipo_ger == "UTE"
+        PGMIN_ORIGINAL[i] = get(g, "PGERmin_MW", 0.0) / PB
+        PGMAX_ORIGINAL[i] = get(g, "PGERmax_MW", 1.0) / PB
+        CPG_ORIGINAL[i] = get(g, "custo_var_USD_MWh", 0.0) * PB
+
+        PGMAX_EFETIVO[i] = PGMAX_ORIGINAL[i]
+        
+    elseif tipo_ger == "UTH"
+        PGMIN_ORIGINAL[i] = get(g, "PGERmin_MW", 0.0) / PB
+        PGMAX_ORIGINAL[i] = get(g, "PGERmax_MW", 1.0) / PB
+        CPG_ORIGINAL[i] = get(g, "custo_var_USD_MWh", 0.0) * PB
+
+        PGMAX_EFETIVO[i] = PGMAX_ORIGINAL[i]
+        
+    elseif tipo_ger == "GWD"
+        PGMIN_ORIGINAL[i] = get(g, "PGERmin", 0.0) / PB
+        PGMAX_ORIGINAL[i] = get(g, "PGERmax", 1.0) / PB
+        CPG_ORIGINAL[i] = get(g, "custo_var_USD_MWh", 0.0) * PB
+
+        # Parâmetros do gerador
+        PGmax = PGMAX_ORIGINAL[i]
+
+        # Parâmetros da distribuição de Weibull para a velocidade do vento
+        lambda_weibull = 2.5 # parâmetro de escala
+        fator_de_forma_weibull = 1.3 # parâmetro de forma
+
+        # Cria a distribuição de Weibull
+        distribuicao_weibull = Weibull(lambda_weibull, fator_de_forma_weibull)
+        velocidade_vento = rand(distribuicao_weibull)
+        PGMAX_EFETIVO[i] = velocidade_vento*PGMAX_ORIGINAL[i]
+
+    else
+        PGMIN_ORIGINAL[i] = 0.0
+        PGMAX_ORIGINAL[i] = 1.0
+
+        PGMAX_EFETIVO[i] = PGMAX_ORIGINAL[i]
+        CPG_ORIGINAL[i] = 0.0
+    end
+end
+
+# ==============================================================================
+# DADOS DAS DEMANDAS
+# ==============================================================================
+
+PLOAD = zeros(NBAR)
+for d in demandas_data
+    id_barra = d["ID_Barra"]
+    idx = idx_map[id_barra]
+    
+    potencia_demanda = get(d, "PLOAD",0.0)
+    PLOAD[idx] += potencia_demanda / PB
 end
 
 # ==============================================================================
@@ -122,7 +176,11 @@ end
 
 barras_PQ = filter(b -> b["tipo"] == "PQ", barras)
 
-NGER_DEFICIT = length(barras_PQ)
+# Identifica barras que já têm geradores
+barras_com_gerador = Set(BARPG_ORIGINAL)
+barras_PQ_sem_gerador = [b for b in barras_PQ if idx_map[b["ID_Barra"]] ∉ barras_com_gerador]
+
+NGER_DEFICIT = length(barras_PQ_sem_gerador)
 custo_maximo_existente = isempty(CPG_ORIGINAL) ? 1000.0 : maximum(CPG_ORIGINAL)
 CUSTO_DEFICIT = 10.0 * custo_maximo_existente
 
@@ -131,12 +189,13 @@ PGMIN_DEFICIT = zeros(NGER_DEFICIT)
 PGMAX_DEFICIT = zeros(NGER_DEFICIT)
 CPG_DEFICIT = zeros(NGER_DEFICIT)
 
-for (i, b) in enumerate(barras_PQ)
+for (i, b) in enumerate(barras_PQ_sem_gerador)
     id = b["ID_Barra"]
     idx = idx_map[id]
     BARPG_DEFICIT[i] = idx
     PGMIN_DEFICIT[i] = 0.0
-    PGMAX_DEFICIT[i] = get(b, "PLOAD", 1.0)
+    # Limite máximo baseado na carga da barra
+    PGMAX_DEFICIT[i] = PLOAD[idx] > 0 ? PLOAD[idx] * 1.5 : 1.0  # 150% da carga como limite
     CPG_DEFICIT[i] = CUSTO_DEFICIT
 end
 
@@ -151,13 +210,6 @@ BARPG = vcat(BARPG_ORIGINAL, BARPG_DEFICIT)
 PGMIN = vcat(PGMIN_ORIGINAL, PGMIN_DEFICIT)
 PGMAX = vcat(PGMAX_ORIGINAL, PGMAX_DEFICIT)
 CPG = vcat(CPG_ORIGINAL, CPG_DEFICIT)
-
-PLOAD = zeros(NBAR)
-for b in barras
-    i = idx_map[b["ID_Barra"]]
-    PLOAD[i] = get(b, "PLOAD", 0.0)
-end
-
 
 # ==============================================================================
 # INICIALIZAÇÃO DAS VARIÁVEIS GLOBAIS
@@ -214,7 +266,6 @@ for iter in 1:NITER_MAX
     # ==========================================================================
     # RESTRIÇÕES DE BALANÇO DE POTÊNCIA
     # ==========================================================================
-    print(PINJ)
     balance_constraints = @constraint(model, balance[i=1:NBAR],
         sum(v_PG[g] for g in 1:NGER if BARPG[g] == i) - 
         sum(Bbus[i,j] * v_ANG[j] for j in 1:NBAR) == PLOAD[i] + PINJ[i]
@@ -293,7 +344,6 @@ for iter in 1:NITER_MAX
             # Distribuição de perdas (50% em cada extremidade)
             PINJ[fr] += perdas[i] / 2
             PINJ[to] += perdas[i] / 2
-            print(PINJ)
         end
         
         # Critério de convergência
