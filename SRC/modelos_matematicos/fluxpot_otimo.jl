@@ -79,7 +79,7 @@ for (e, ln) in enumerate(linhas)
     g_line[e] = denom > 0 ? r/denom : 0.0
     y_line[e] = abs(x) > 0 ? 1.0/x : 0.0
     
-    FLIM[e] = get(ln, "LIM_Fluxo", 1.0)
+    FLIM[e] = get(ln, "LIM_Fluxo", 0.0)
 end
 
 # ==============================================================================
@@ -119,7 +119,7 @@ for (i, g) in enumerate(geradores_data)
     
     if tipo_ger == "UTE"
         PGMIN_ORIGINAL[i] = get(g, "PGERmin_MW", 0.0) / PB
-        PGMAX_ORIGINAL[i] = get(g, "PGERmax_MW", 1.0) / PB
+        PGMAX_ORIGINAL[i] = get(g, "PGERmax_MW", 0.0) / PB
         CPG_ORIGINAL[i] = get(g, "custo_var_USD_MWh", 0.0) * PB
 
         PGMAX_EFETIVO[i] = PGMAX_ORIGINAL[i]
@@ -133,7 +133,7 @@ for (i, g) in enumerate(geradores_data)
         
     elseif tipo_ger == "GWD"
         PGMIN_ORIGINAL[i] = get(g, "PGERmin", 0.0) / PB
-        PGMAX_ORIGINAL[i] = get(g, "PGERmax", 1.0) / PB
+        PGMAX_ORIGINAL[i] = get(g, "PGERmax", 0.0) / PB
         CPG_ORIGINAL[i] = get(g, "custo_var_USD_MWh", 0.0) * PB
 
         # Parâmetros do gerador
@@ -145,7 +145,7 @@ for (i, g) in enumerate(geradores_data)
 
         # Cria a distribuição de Weibull
         distribuicao_weibull = Weibull(lambda_weibull, fator_de_forma_weibull)
-        velocidade_vento = rand(distribuicao_weibull)
+        velocidade_vento = 0#rand(distribuicao_weibull)
         PGMAX_EFETIVO[i] = velocidade_vento*PGMAX_ORIGINAL[i]
 
     else
@@ -165,9 +165,28 @@ PLOAD = zeros(NBAR)
 for d in demandas_data
     id_barra = d["ID_Barra"]
     idx = idx_map[id_barra]
-    
-    potencia_demanda = get(d, "PLOAD",0.0)
-    PLOAD[idx] += potencia_demanda / PB
+
+    # Potência ativa nominal
+    potencia_demanda = get(d, "PLOAD", 0.0)
+
+    # Desvio padrão
+    σ = 0.13
+
+    # Fator de potência constante da barra
+    fator_potencia = get(d, "FP", 0.95)
+
+    # Distribuição truncada para garantir valores positivos dentro de NPi ± 3σ
+    dist = Normal(potencia_demanda,σ)
+
+    # Sorteio da potência ativa
+    potencia_instantanea_incerta = 3*potencia_demanda #+ rand(dist)
+
+    # Cálculo da potência reativa mantendo o fator de potência
+    #reativo_instantaneo_incerto = potencia_instantanea_incerta * tan(acos(fator_potencia))
+
+    # Normalização
+    PLOAD[idx] += potencia_instantanea_incerta / PB
+    #QLOAD[idx] += reativo_instantaneo_incerto / PB
 end
 
 # ==============================================================================
@@ -180,7 +199,7 @@ barras_PQ = filter(b -> b["tipo"] == "PQ", barras)
 barras_com_gerador = Set(BARPG_ORIGINAL)
 barras_PQ_sem_gerador = [b for b in barras_PQ if idx_map[b["ID_Barra"]] ∉ barras_com_gerador]
 
-NGER_DEFICIT = length(barras_PQ_sem_gerador)
+NGER_DEFICIT = length(barras_PQ)
 custo_maximo_existente = isempty(CPG_ORIGINAL) ? 1000.0 : maximum(CPG_ORIGINAL)
 CUSTO_DEFICIT = 10.0 * custo_maximo_existente
 
@@ -189,7 +208,7 @@ PGMIN_DEFICIT = zeros(NGER_DEFICIT)
 PGMAX_DEFICIT = zeros(NGER_DEFICIT)
 CPG_DEFICIT = zeros(NGER_DEFICIT)
 
-for (i, b) in enumerate(barras_PQ_sem_gerador)
+for (i, b) in enumerate(barras_PQ)
     id = b["ID_Barra"]
     idx = idx_map[id]
     BARPG_DEFICIT[i] = idx
@@ -208,7 +227,7 @@ println("Total de geradores: $NGER_ORIGINAL originais + $NGER_DEFICIT de défici
 
 BARPG = vcat(BARPG_ORIGINAL, BARPG_DEFICIT)
 PGMIN = vcat(PGMIN_ORIGINAL, PGMIN_DEFICIT)
-PGMAX = vcat(PGMAX_ORIGINAL, PGMAX_DEFICIT)
+PGMAX = vcat(PGMAX_EFETIVO, PGMAX_DEFICIT)
 CPG = vcat(CPG_ORIGINAL, CPG_DEFICIT)
 
 # ==============================================================================
@@ -279,15 +298,14 @@ for iter in 1:NITER_MAX
     for e in 1:NLIN
         i = line_fr[e]
         j = line_to[e]
-        y = y_line[e]
-        
-        # Fluxo da linha i->j
-        fluxo_ij = y * (v_ANG[i] - v_ANG[j])
-        
-        # Restrições de limite (ambos os sentidos)
-        c1 = @constraint(model, fluxo_ij <= FLIM[e])
-        c2 = @constraint(model, fluxo_ij >= -FLIM[e])
-        
+
+        # Restrições de limite de fluxo (ambos os sentidos)
+        @constraint(model,  y_line[e] * (v_ANG[i] - v_ANG[j]) <=  FLIM[e])
+        @constraint(model,  y_line[e] * (v_ANG[i] - v_ANG[j]) >= -FLIM[e])
+
+        c1 = @constraint(model,  y_line[e] * (v_ANG[i] - v_ANG[j]) <=  FLIM[e])
+        c2 = @constraint(model,  y_line[e] * (v_ANG[i] - v_ANG[j]) >= -FLIM[e])
+
         push!(flow_constraints, c1)
         push!(flow_constraints, c2)
     end
@@ -338,8 +356,8 @@ for iter in 1:NITER_MAX
             total_perdas += perdas[i]
             
             # Fluxos com perdas
-            fij[i] = y * delta_theta + g * delta_theta^2 / 2
-            fji[i] = -y * delta_theta + g * delta_theta^2 / 2
+            fij[i] = y * delta_theta + (g * delta_theta^2) / 2
+            fji[i] = -y * delta_theta + (g * delta_theta^2) / 2
             
             # Distribuição de perdas (50% em cada extremidade)
             PINJ[fr] += perdas[i] / 2
@@ -373,15 +391,13 @@ for iter in 1:NITER_MAX
     # EXTRAÇÃO DOS MULTIPLICADORES DE LAGRANGE
     # ==========================================================================
 
-    # Coeficiente do balanço de potência - ATUALIZAÇÃO GLOBAL
+    # Coeficiente do balanço de potência 
     try
         for i in 1:NBAR
             lambda_balance[i] = dual(balance_constraints[i])
         end
-        println("Multiplicadores de balanço extraídos")
     catch e
         println("Erro ao extrair multiplicadores de balanço: $e")
-        # Mantém os valores anteriores em caso de erro
     end
 
     # Coeficientes das restrições de fluxo
@@ -391,7 +407,6 @@ for iter in 1:NITER_MAX
         end
     catch e
         println("Erro ao extrair multiplicadores de fluxo: $e")
-        # Mantém os valores anteriores em caso de erro
     end
     
     # Critério de convergência
@@ -425,7 +440,7 @@ V_final = ones(NBAR)
 Qg_final = zeros(NBAR)
 
 # ==============================================================================
-# FUNÇÕES DE IMPRESSÃO DE RESULTADOS - CORRIGIDAS
+# FUNÇÕES DE IMPRESSÃO DE RESULTADOS
 # ==============================================================================
 
 function print_results_detalhado(theta, V, Pg_original, Pg_deficit, Pg_total, Qg)
@@ -458,7 +473,6 @@ function print_results_detalhado(theta, V, Pg_original, Pg_deficit, Pg_total, Qg
         println("$(lpad(i,4)) | $(lpad(v,8)) | $(lpad(ang,10)) | $(lpad(p_orig,10)) | $(lpad(p_def,9)) | $(lpad(p_total,11)) | $(lpad(q,8)) | $tipo$marcador_def")
     end
     
-    total_pg_original = round(sum(Pg_original), digits=10)
     total_pg_deficit = round(sum(Pg_deficit), digits=10)
     total_pg = round(sum(Pg_total), digits=10)
     total_pl = round(sum(PLOAD), digits=10)
@@ -468,19 +482,14 @@ function print_results_detalhado(theta, V, Pg_original, Pg_deficit, Pg_total, Qg
     custo_total = round(custo_original + custo_deficit_calc, digits=10)
     
     println("-"^100)
-    println("Total Geração Original: $total_pg_original pu")
-    println("Total Geração Déficit:  $total_pg_deficit pu") 
     println("Total Geração:          $total_pg pu")
-    println("Total Carga:            $total_pl pu") 
+    println("Total Carga:            $total_pl pu")
+    println("Total Geração Déficit:  $total_pg_deficit pu") 
     println("Total Perdas:           $total_perdas_val pu")
-    println("Custo Geração Original: $custo_original USD/h")
-    println("Custo Geração Déficit:  $custo_deficit_calc USD/h")
-    println("Custo Total:            $custo_total USD/h")
+    println("Custo Total Operação:            $custo_total USD/h")
     
     # Verificação de balanço energético
     balanco = total_pg - total_pl - total_perdas_val
-    println("Balanço (Geração - Carga - Perdas): $balanco pu")
-    
     if abs(balanco) > 0.001
         println("⚠️  ALERTA: Desbalanço energético significativo!")
     end

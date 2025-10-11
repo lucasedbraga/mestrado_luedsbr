@@ -17,26 +17,27 @@
   "GERADORES": [
     {
       "ID_Gerador": "G1",
-      "ID_Barra": "1",
-      "Tipo": "UTE",
+      "ID_Barra": "1",      
+      "Tipo": "UTH",
       "PGERmin_MW": 0.0,
-      "PGERmax_MW": 0.15,
-      "ramp_up_MW_h": 10.0,
-      "ramp_down_MW_h": 10.0,
-      "startup_USD": 50.0,
-      "custo_var_USD_MWh": 10.0,
-      "emissao_tCO2_MWh": 0.5,
+      "PGERmax_MW": 1,
+      "custo_var_USD_MWh": 1.0,
+      "emissao_tCO2_MWh": 0.3,
+      "engol": 0.6,
       "Unidade": "MW"
+      
     },
     {
       "ID_Gerador": "G2",
       "ID_Barra": "2",
-      "Tipo": "UTH",
+      "Tipo": "UTE",
       "PGERmin_MW": 0.0,
-      "PGERmax_MW": 0.15,
-      "custo_var_USD_MWh": 20.0,
-      "emissao_tCO2_MWh": 0.1,
-      "engol": 0.6,
+      "PGERmax_MW": 0.88,
+      "ramp_up_MW_h": 10.0,
+      "ramp_down_MW_h": 10.0,
+      "startup_USD": 50.0,
+      "custo_var_USD_MWh": 2.0,
+      "emissao_tCO2_MWh": 1,
       "Unidade": "MW"
     },
     {
@@ -45,7 +46,7 @@
       "Tipo": "GWD",
       "PGERmin": 0.0,
       "PGERmax": 0.02,
-      "custo_var_USD_MWh": 1.0,
+      "custo_var_USD_MWh": 0.3,
       "custo_curtailment_USD_MWh": 100.0,
       "emissao_tCO2_MWh": 0.01,
       "Unidade": "MW"
