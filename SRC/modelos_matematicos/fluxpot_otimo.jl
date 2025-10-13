@@ -23,16 +23,119 @@ println("=== OPF DC ITERATIVO COM PERDAS E CURTAILMENT ===")
 
 # Carrega dados da rede elétrica do arquivo JSON
 data = JSON.parsefile("DATA/input/3barras_BASE.json")
-#data = JSON.parsefile("DATA/input/B6L8_BASE.json")
-#data = JSON.parsefile("DATA/input/ieee14_BASE.json")
-#data = JSON.parsefile("DATA/input/IEEE_118_BASE.json")
+#data = JSON.parsefile("../DATA/input/B6L8_BASE.json")
+#data = JSON.parsefile("../DATA/input/ieee14_BASE.json")
+#data = JSON.parsefile("DATA/input/ieee118_BASE.json")
+
+# ==============================================================================
+# DADOS DE BASE DO SISTEMA
+# ==============================================================================
+# Extrai informações das listas separadas
+barras = data["BARRAS"]
+geradores_data = data["GERADORES"]
+demandas_data = data["DEMANDAS"]
+linhas = data["LINHAS"]
+
+# Potência base (MVA)
+SB = data["S_base"]
+PB = data["P_base"]
+# Tensão base (kV)
+VB = data["V_base"]
+# Frequência base (Hz)
+FB = data["f_base"]
+# Impedância base (Ω)
+ZB = (VB^2) / PB
+# Admitância base (S)
+YB = 1 / ZB
+# Potência reativa base (MVAr)
+QB = data["Q_base"]
+
+println("===== BASES DO SISTEMA =====")
+println("Potência base (PB): ", PB, " MVA")
+println("Tensão base (VB): ", VB, " kV")
+println("Frequência base (FB): ", FB, " Hz")
+println("Impedância base (ZB): ", round(ZB, digits=4), " Ω")
+println("Admitância base (YB): ", round(YB, digits=6), " S")
+println("============================")
+
+# ------------------------------------------------------------------------------
+# Conversão dos dados da rede para PU
+# ------------------------------------------------------------------------------
 
 # Extrai informações das listas separadas
 barras = data["BARRAS"]
 geradores_data = data["GERADORES"]
 demandas_data = data["DEMANDAS"]
 linhas = data["LINHAS"]
-PB = data["P_base"] # Potência base do sistema (MVA)
+
+# ------------------------------------------------------------------------------
+# Conversão dos dados da rede para PU
+# ------------------------------------------------------------------------------
+
+# --- Conversão das barras (cargas e tensões)
+for b in barras
+    # Se os dados já estão em MW/MVAr, converter para pu
+    if haskey(b, "P_carga_MW")
+        b["P_carga_pu"] = b["P_carga_MW"] / SB
+    else
+        b["P_carga_pu"] = 0.0
+    end
+    
+    if haskey(b, "Q_carga_MVAr")
+        b["Q_carga_pu"] = b["Q_carga_MVAr"] / SB
+    else
+        b["Q_carga_pu"] = 0.0
+    end
+end
+
+# --- Conversão dos geradores
+for g in geradores_data
+    g["Pmax_pu"] = g["PGERmax_MW"] / SB
+    g["Pmin_pu"] = g["PGERmin_MW"] / SB
+    
+    # Para geradores que não têm Qmax/Qmin definidos, usar valores padrão
+    if haskey(g, "Qmax_MVAr")
+        g["Qmax_pu"] = g["Qmax_MVAr"] / SB
+    else
+        g["Qmax_pu"] = 2.0  # 200 MVAr em pu
+    end
+    
+    if haskey(g, "Qmin_MVAr")
+        g["Qmin_pu"] = g["Qmin_MVAr"] / SB
+    else
+        g["Qmin_pu"] = -2.0  # -200 MVAr em pu
+    end
+    
+    # Valores de referência (se existirem)
+    if haskey(g, "Pg_ref_MW")
+        g["Pg_ref_pu"] = g["Pg_ref_MW"] / SB
+    else
+        g["Pg_ref_pu"] = 0.0
+    end
+    
+    if haskey(g, "Qg_ref_MVAr")
+        g["Qg_ref_pu"] = g["Qg_ref_MVAr"] / SB
+    else
+        g["Qg_ref_pu"] = 0.0
+    end
+end
+
+# --- Conversão das linhas (impedâncias e limites) - CORRIGIDO
+for l in linhas
+    # Converter resistência e reatância de ohms para pu
+    l["R_pu"] = l["R"] / ZB
+    l["X_pu"] = l["X"] / ZB
+    
+    # Se existir susceptância shunt, converter de siemens para pu
+    if haskey(l, "Bsh")
+        l["B_pu"] = l["Bsh"] * ZB
+    else
+        l["B_pu"] = 0.0
+    end
+    
+    # Converter limite de fluxo para pu
+    l["Fmax_pu"] = l["LIM_Fluxo"] / SB
+end
 
 # Mapeamento de IDs das barras para índices numéricos
 bus_ids = [b["ID_Barra"] for b in barras]
@@ -69,8 +172,8 @@ for (e, ln) in enumerate(linhas)
     line_fr[e] = idx_map[fr]
     line_to[e] = idx_map[to]
     
-    r = get(ln, "R", 0.0)
-    x = get(ln, "X", 1e-6)
+    r = ln["R_pu"]
+    x = ln["X_pu"]
     
     r_line[e] = r
     x_line[e] = x
@@ -79,7 +182,7 @@ for (e, ln) in enumerate(linhas)
     g_line[e] = denom > 0 ? r/denom : 0.0
     y_line[e] = abs(x) > 0 ? 1.0/x : 0.0
     
-    FLIM[e] = get(ln, "LIM_Fluxo", 0.0)
+    FLIM[e] = ln["Fmax_pu"]
 end
 
 # ==============================================================================
@@ -131,67 +234,37 @@ for (i, g) in enumerate(geradores_data)
     BARPG_ORIGINAL[i] = idx_map[id_barra]
     tipo_ger = g["Tipo"]
     
+    # Usar valores já convertidos para pu
+    PGMIN_ORIGINAL[i] = g["Pmin_pu"]
+    PGMAX_ORIGINAL[i] = g["Pmax_pu"]
+    
     if tipo_ger == "UTE"
-        PGMIN_ORIGINAL[i] = get(g, "PGERmin_MW", 0.0) / PB
-        PGMAX_ORIGINAL[i] = get(g, "PGERmax_MW", 0.0) / PB
-        CPG_ORIGINAL[i] = get(g, "custo_var_USD_MWh", 0.0) * PB
+        CPG_ORIGINAL[i] = get(g, "custo_var_USD_MWh", 0.0) * SB  # Custo em USD/h para 1 pu
 
-        PGMAX_EFETIVO[i] = PGMAX_ORIGINAL[i]
-        PGMIN_EFETIVO[i] = PGMIN_ORIGINAL[i]
-        
     elseif tipo_ger == "UTH"
-        PGMIN_ORIGINAL[i] = get(g, "PGERmin_MW", 0.0) / PB
-        PGMAX_ORIGINAL[i] = get(g, "PGERmax_MW", 1.0) / PB
-        CPG_ORIGINAL[i] = get(g, "custo_var_USD_MWh", 0.0) * PB
+        CPG_ORIGINAL[i] = get(g, "custo_var_USD_MWh", 0.0) * SB
 
+    elseif tipo_ger == "GWD"
+        CPG_ORIGINAL[i] = get(g, "custo_var_USD_MWh", 0.0) * SB
+
+        # # Simulação eólica (mantida igual)
+        # lambda_weibull = 8.0
+        # fator_de_forma_weibull = 2.0
+        # distribuicao_weibull = Weibull(lambda_weibull, fator_de_forma_weibull)
+        # velocidade_vento = rand(distribuicao_weibull)
+        potencia_normalizada = rand(Normal(1,0.8))
+        potencia_instantanea = potencia_normalizada * PGMAX_ORIGINAL[i]
+        
+        PGMAX_EFETIVO[i] = min(max(potencia_instantanea, 0.1*PGMAX_ORIGINAL[i]), PGMAX_ORIGINAL[i])        
+        PGMIN_EFETIVO[i] = PGMAX_EFETIVO[i]
+    else
+        CPG_ORIGINAL[i] = 0.0
+    end
+    
+    # Para geradores não-eólicos, usar limites originais
+    if tipo_ger != "GWD"
         PGMAX_EFETIVO[i] = PGMAX_ORIGINAL[i]
         PGMIN_EFETIVO[i] = PGMIN_ORIGINAL[i]
-        
-    elseif tipo_ger == "GWD"
-        PGMIN_ORIGINAL[i] = get(g, "PGERmin", 0.0) / PB
-        PGMAX_ORIGINAL[i] = get(g, "PGERmax", 0.0) / PB
-        CPG_ORIGINAL[i] = get(g, "custo_var_USD_MWh", 0.0) * PB
-
-        # Parâmetros da distribuição de Weibull para a velocidade do vento
-        lambda_weibull = 8.0  # parâmetro de escala (velocidade média do vento em m/s)
-        fator_de_forma_weibull = 2.0  # parâmetro de forma - valor típico para vento
-
-        # Cria a distribuição de Weibull
-        distribuicao_weibull = Weibull(lambda_weibull, fator_de_forma_weibull)
-        velocidade_vento = rand(distribuicao_weibull)
-
-        # # CURVA DE POTÊNCIA EÓLICA - cálculo da potência instantânea
-        # if velocidade_vento < 0.0
-        #     # Velocidade de corte inferior - turbina não gera
-        #     potencia_instantanea = 0.0
-        # elseif velocidade_vento >= 0.0 && velocidade_vento < 10.0
-        #     # # Região de operação normal - potência proporcional ao cubo da velocidade
-        #     # # Potência = 0.5 * densidade_ar * area_varredura * coeficiente_performance * velocidade^3
-        #     # # Simplificando: assumimos relação cúbica normalizada
-        #     # potencia_normalizada = ((velocidade_vento - 3.0) / (12.0 - 3.0))^3
-        #     # println(potencia_normalizada)
-        #     # potencia_instantanea = potencia_normalizada * PGMAX_ORIGINAL[i]
-            
-        # elseif velocidade_vento >= 12.0 && velocidade_vento <= 25.0
-        #     # Velocidade nominal - geração máxima
-        #     potencia_instantanea = PGMAX_ORIGINAL[i]
-        # else
-        #     # Velocidade de corte superior - turbina para por segurança
-        #     potencia_instantanea = 0.0
-        # end
-
-        potencia_normalizada = rand(Normal(1,0.5))
-        potencia_instantanea = potencia_normalizada * PGMAX_ORIGINAL[i]
-        println(potencia_instantanea)
-        # Garantir que não exceda os limites físicos do gerador
-        PGMAX_EFETIVO[i] = min(max(potencia_instantanea, 0.0), PGMAX_ORIGINAL[i])        
-        PGMIN_EFETIVO[i] = 0.0
-
-    else
-        PGMIN_ORIGINAL[i] = 0.0
-        PGMAX_ORIGINAL[i] = 1.0
-        PGMAX_EFETIVO[i] = PGMAX_ORIGINAL[i]
-        CPG_ORIGINAL[i] = 0.0
     end
 end
 
@@ -203,24 +276,13 @@ PLOAD = zeros(NBAR)
 for d in demandas_data
     id_barra = d["ID_Barra"]
     idx = idx_map[id_barra]
-
-    # Potência ativa nominal
-    potencia_demanda = get(d, "PLOAD", 0.0)
-
-    # Desvio padrão
-    σ = 0.03 #13
-
-    # Fator de potência constante da barra
-    fator_potencia = get(d, "FP", 0.95)
-
-    # Distribuição truncada para garantir valores positivos dentro de NPi ± 3σ
-    dist = Normal(potencia_demanda,σ)
-
-    # Sorteio da potência ativa
-    potencia_instantanea_incerta = max(0,rand(dist))
-
-    # Normalização
-    PLOAD[idx] += potencia_instantanea_incerta / PB
+    # Potência ativa
+    potencia_demanda = get(d, "PLOAD", 0.0) / SB
+    # Adicionar incerteza (3% de desvio padrão)
+    σ = 0.03 * potencia_demanda  
+    dist = Normal(potencia_demanda, σ)
+    potencia_instantanea_incerta = max(0, rand(dist))
+    PLOAD[idx] += potencia_instantanea_incerta
 end
 
 # ==============================================================================
@@ -343,34 +405,50 @@ for iter in 1:NITER_MAX
     @constraint(model, v_ANG[slack_idx] == 0.0)
     
     # ==========================================================================
-    # RESTRIÇÕES DE BALANÇO DE POTÊNCIA COM CURTAILMENT
+    # RESTRIÇÕES DE BALANÇO DE POTÊNCIA 
     # ==========================================================================
 
     balance_constraints = @constraint(model, balance[i=1:NBAR],
-    # GERAÇÃO CONVENCIONAL (UTE, UTH)
-    sum(v_PG[g] for g in 1:NGER_ORIGINAL if BARPG[g] == i && geradores_data[g]["Tipo"] != "GWD") +
-    # GERAÇÃO EÓLICA LÍQUIDA (GWD - Curtailment)
-    sum(v_PG[g] for g in 1:NGER_ORIGINAL if BARPG[g] == i && geradores_data[g]["Tipo"] == "GWD") -
-    sum(v_PG[g] for g in NGER_ORIGINAL+1:NGER_ORIGINAL+NGER_CURTAILMENT if BARPG[g] == i) +
-    # DÉFICIT
-    sum(v_PG[g] for g in NGER_ORIGINAL+NGER_CURTAILMENT+1:NGER if BARPG[g] == i) -
-    sum(Bbus[i,j] * v_ANG[j] for j in 1:NBAR) == PLOAD[i] + PINJ[i])
+    
+        # GERAÇÃO CONVENCIONAL (UTE, UTH)
+        sum(v_PG[g] for g in 1:NGER_ORIGINAL if BARPG[g] == i && geradores_data[g]["Tipo"] != "GWD") 
+        
+        # GERAÇÃO EÓLICA LÍQUIDA (GWD - Curtailment)
+        + sum(v_PG[g] for g in 1:NGER_ORIGINAL if BARPG[g] == i && geradores_data[g]["Tipo"] == "GWD") 
+        - sum(v_PG[g] for g in NGER_ORIGINAL+1:NGER_ORIGINAL+NGER_CURTAILMENT if BARPG[g] == i) 
+        
+        # DÉFICIT
+        + sum(v_PG[g] for g in NGER_ORIGINAL+NGER_CURTAILMENT+1:NGER if BARPG[g] == i)
+        
+        # Fluxo que sai das linhas
+        - sum(Bbus[i,j] * v_ANG[j] for j in 1:NBAR) 
+        
+        ==
+        
+        # Cargas + Perdas
+        PLOAD[i] + PINJ[i]
+    )
     
     # ==========================================================================
-    # RESTRIÇÕES ESPECÍFICAS PARA GERADORES EÓLICOS
+    # RESTRIÇÃO DE CURTAILMENT 
     # ==========================================================================
     
     # Para cada gerador eólico: Geração Real + Curtailment = Geração Disponível
     for g in geradores_data
         if g["Tipo"] == "GWD"
-            barra_idx = idx_map[g["ID_Barra"]]
-            g_idx = findfirst(i -> BARPG_ORIGINAL[i] == barra_idx, 1:NGER_ORIGINAL)
-            c_idx = findfirst(i -> BARPG_CURTAILMENT[i] == barra_idx, 1:NGER_CURTAILMENT)            
-            if g_idx !== nothing && c_idx !== nothing
+
+            posicao_barra = idx_map[g["ID_Barra"]]
+            posicao_var_gerador = findfirst(i -> BARPG_ORIGINAL[i] == posicao_barra, 1:NGER_ORIGINAL)
+            posicao_var_curtailment = findfirst(i -> BARPG_CURTAILMENT[i] == posicao_barra, 1:NGER_CURTAILMENT)            
+            
+            if posicao_var_gerador !== nothing && posicao_var_curtailment !== nothing
                 @constraint(model, 
-                    v_PG[g_idx] + v_PG[NGER_ORIGINAL + c_idx] == PGMAX_EFETIVO[g_idx]
+                    v_PG[posicao_var_gerador] + v_PG[NGER_ORIGINAL + posicao_var_curtailment] 
+                    == 
+                    PGMAX_EFETIVO[posicao_var_gerador]
                 )
             end
+
         end
     end
     
@@ -384,6 +462,9 @@ for iter in 1:NITER_MAX
         j = line_to[e]
 
         # Restrições de limite de fluxo (ambos os sentidos)
+        @constraint(model,  y_line[e] * (v_ANG[i] - v_ANG[j]) <=  FLIM[e])
+        @constraint(model,  y_line[e] * (v_ANG[i] - v_ANG[j]) >= -FLIM[e])
+
         c1 = @constraint(model,  y_line[e] * (v_ANG[i] - v_ANG[j]) <=  FLIM[e])
         c2 = @constraint(model,  y_line[e] * (v_ANG[i] - v_ANG[j]) >= -FLIM[e])
 
@@ -606,7 +687,7 @@ function print_geradores_detalhado()
     println("\n" * "="^100)
     println("DETALHAMENTO DOS GERADORES")
     println("="^100)
-    println("Gerador | Barra |   Tipo    | Pg (pu) | Pmin (pu) | Pmax (pu) | Custo (USD/MWh)")
+    println("GER_id | BAR | Tipo | Pg (pu) | Pmin (pu) | Pmax (pu) | Custo (USD/MWh)")
     println("-"^100)
     
     for g in 1:NGER
@@ -694,4 +775,273 @@ print_geradores_detalhado()
 print_lagrange() 
 print_fluxos_linhas()
 
-println("\n=== ANÁLISE CONCLUÍDA ===")
+# ==============================================================================
+# EXPORTAÇÃO PARA SQLite COM MULTIPLOS CENÁRIOS
+# ==============================================================================
+
+using SQLite
+using DataFrames
+using Dates
+using Random
+
+# Gerar ID único para o cenário
+function gerar_id_cenario()
+    timestamp = Dates.format(now(), "yyyy-mm-dd_HH-MM-SS")
+    random_id = randstring(6)  # 6 caracteres aleatórios
+    return "CEN_$(timestamp)_$(random_id)"
+end
+
+# Configuração do cenário atual 
+ID_CENARIO = gerar_id_cenario()
+NOME_SIMULACAO = "OPF_DC_Curtailment"
+DATA_SIMULACAO = now()
+
+function exportar_para_sqlite()
+    arquivo_db = "resultados_opf_series.db"
+    
+    # Calcular totais
+    total_pg = sum(Pg_total)
+    total_pl = sum(PLOAD)
+    total_perdas_val = sum(perdas)
+    total_pg_curtailment = sum(Pg_curtailment)
+    total_pg_deficit = sum(Pg_deficit)
+    
+    custo_original = sum(CPG_ORIGINAL .* final_PG[1:NGER_ORIGINAL])
+    custo_curtailment_calc = sum(CPG_CURTAILMENT .* final_PG[NGER_ORIGINAL+1:NGER_ORIGINAL+NGER_CURTAILMENT])
+    custo_deficit_calc = sum(CPG_DEFICIT .* final_PG[NGER_ORIGINAL+NGER_CURTAILMENT+1:end])
+    custo_total = custo_original + custo_curtailment_calc + custo_deficit_calc
+
+    db = SQLite.DB(arquivo_db)
+    
+    # ==========================================================================
+    # TABELA: CENARIOS (Metadados) - SEMPRE INSERE NOVO
+    # ==========================================================================
+    
+    SQLite.execute(db, """
+        CREATE TABLE IF NOT EXISTS cenarios (
+            id_cenario TEXT PRIMARY KEY,
+            nome_simulacao TEXT,
+            data_simulacao DATETIME,
+            n_barras INTEGER,
+            n_geradores INTEGER,
+            n_linhas INTEGER,
+            total_geracao_pu REAL,
+            total_carga_pu REAL,
+            total_perdas_pu REAL,
+            custo_total_usd_h REAL,
+            status TEXT,
+            timestamp_criacao DATETIME DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
+    # SEMPRE INSERIR NOVO (não replace)
+    SQLite.execute(db, """
+        INSERT INTO cenarios (
+            id_cenario, nome_simulacao, data_simulacao, n_barras, n_geradores, 
+            n_linhas, total_geracao_pu, total_carga_pu, total_perdas_pu, 
+            custo_total_usd_h, status
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, [ID_CENARIO, NOME_SIMULACAO, DATA_SIMULACAO, NBAR, NGER, NLIN, 
+          total_pg, total_pl, total_perdas_val, custo_total, 
+          total_pg_deficit > 0.01 ? "COM_DEFICIT" : "NORMAL"])
+    
+    # ==========================================================================
+    # TABELA: BARRAS - SEMPRE NOVOS REGISTROS
+    # ==========================================================================
+    
+    SQLite.execute(db, """
+        CREATE TABLE IF NOT EXISTS barras (
+            id_registro INTEGER PRIMARY KEY AUTOINCREMENT,
+            id_cenario TEXT,
+            id_barra TEXT,
+            tipo TEXT,
+            tensao_pu REAL,
+            angulo_graus REAL,
+            carga_pu REAL,
+            preco_nodal_usd_mwh REAL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (id_cenario) REFERENCES cenarios (id_cenario)
+        )
+    """)
+    
+    for i in 1:length(barras)
+        barra = barras[i]
+        SQLite.execute(db, """
+            INSERT INTO barras (id_cenario, id_barra, tipo, tensao_pu, angulo_graus, carga_pu, preco_nodal_usd_mwh)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, [ID_CENARIO, barra["ID_Barra"], barra["tipo"], 
+              round(V_final[i], digits=6), round(rad2deg(final_ANGLE[i]), digits=6),
+              round(PLOAD[i], digits=6), round(lambda_balance[i], digits=6)])
+    end
+    
+    # ==========================================================================
+    # TABELA: GERADORES - SEMPRE NOVOS REGISTROS
+    # ==========================================================================
+    
+    SQLite.execute(db, """
+        CREATE TABLE IF NOT EXISTS geradores (
+            id_registro INTEGER PRIMARY KEY AUTOINCREMENT,
+            id_cenario TEXT,
+            id_gerador TEXT,
+            id_barra TEXT,
+            tipo TEXT,
+            geracao_pu REAL,
+            pmin_pu REAL,
+            pmax_pu REAL,
+            custo_marginal_usd_mwh REAL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (id_cenario) REFERENCES cenarios (id_cenario)
+        )
+    """)
+    
+    for g in 1:length(final_PG)
+        barra_idx = BARPG[g]
+        id_barra = barras[barra_idx]["ID_Barra"]
+        
+        if g <= length(geradores_data)
+            gerador = geradores_data[g]
+            tipo = gerador["Tipo"]
+            id_gerador = gerador["ID_Gerador"]
+        elseif g <= length(geradores_data) + length(BAR_GWD)
+            tipo = "CUR"
+            id_gerador = "CUR_$id_barra"
+        else
+            tipo = "DEF"
+            id_gerador = "DEF_$id_barra"
+        end
+        
+        SQLite.execute(db, """
+            INSERT INTO geradores (id_cenario, id_gerador, id_barra, tipo, geracao_pu, pmin_pu, pmax_pu, custo_marginal_usd_mwh)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, [ID_CENARIO, id_gerador, id_barra, tipo,
+              round(final_PG[g], digits=6), round(PGMIN[g], digits=6),
+              round(PGMAX[g], digits=6), round(CPG[g], digits=6)])
+    end
+    
+    # ==========================================================================
+    # TABELA: LINHAS - SEMPRE NOVOS REGISTROS
+    # ==========================================================================
+    
+    SQLite.execute(db, """
+        CREATE TABLE IF NOT EXISTS linhas (
+            id_registro INTEGER PRIMARY KEY AUTOINCREMENT,
+            id_cenario TEXT,
+            id_linha TEXT,
+            id_barra_origem TEXT,
+            id_barra_destino TEXT,
+            fluxo_max_pu REAL,
+            limite_pu REAL,
+            fluxo_origem_destino_pu REAL,
+            fluxo_destino_origem_pu REAL,
+            perdas_pu REAL,
+            custo_congestionamento_usd_mwh REAL,
+            utilizacao_percentual REAL,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (id_cenario) REFERENCES cenarios (id_cenario)
+        )
+    """)
+    
+    for e in 1:length(linhas)
+        linha = linhas[e]
+        
+        idx_fwd = 2*e - 1
+        custo_congestionamento = idx_fwd <= length(lambda_flow) && abs(lambda_flow[idx_fwd]) > 1e-6 ? lambda_flow[idx_fwd] : 0.0
+        
+        fluxo_max = max(abs(fij[e]), abs(fji[e]))
+        utilizacao_percentual = FLIM[e] > 0 ? round(fluxo_max / FLIM[e] * 100, digits=2) : 0.0
+        
+        SQLite.execute(db, """
+            INSERT INTO linhas (id_cenario, id_linha, id_barra_origem, id_barra_destino, fluxo_max_pu, limite_pu, fluxo_origem_destino_pu, fluxo_destino_origem_pu, perdas_pu, custo_congestionamento_usd_mwh, utilizacao_percentual)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        """, [ID_CENARIO, linha["ID_linha"], linha["ID_Barra_Origem"], linha["ID_Barra_Destino"],
+              round(fluxo_max, digits=6), round(FLIM[e], digits=6),
+              round(fij[e], digits=6), round(fji[e], digits=6),
+              round(perdas[e], digits=6), round(custo_congestionamento, digits=6),
+              utilizacao_percentual])
+    end
+    
+    # ==========================================================================
+    # TABELA: INDICADORES - SEMPRE NOVOS REGISTROS
+    # ==========================================================================
+    
+    SQLite.execute(db, """
+        CREATE TABLE IF NOT EXISTS indicadores (
+            id_registro INTEGER PRIMARY KEY AUTOINCREMENT,
+            id_cenario TEXT,
+            indicador TEXT,
+            valor REAL,
+            unidade TEXT,
+            categoria TEXT,
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (id_cenario) REFERENCES cenarios (id_cenario)
+        )
+    """)
+    
+    indicadores = [
+        # Custos
+        ("custo_total", custo_total, "USD/h", "custo"),
+        ("custo_geracao", custo_original, "USD/h", "custo"),
+        ("custo_curtailment", custo_curtailment_calc, "USD/h", "custo"),
+        ("custo_deficit", custo_deficit_calc, "USD/h", "custo"),
+        
+        # Energia
+        ("total_geracao", total_pg, "pu", "energia"),
+        ("total_carga", total_pl, "pu", "energia"),
+        ("total_perdas", total_perdas_val, "pu", "energia"),
+        ("total_curtailment", total_pg_curtailment, "pu", "energia"),
+        ("total_deficit", total_pg_deficit, "pu", "energia"),
+        
+        # Eficiência
+        ("eficiencia_sistema", total_pl / max(total_pg, 0.001), "percentual", "eficiencia"),
+        ("fator_perdas", total_perdas_val / max(total_pg, 0.001), "percentual", "eficiencia"),
+        
+        # Congestionamento
+        ("linhas_congestionadas", count(e -> FLIM[e] > 0 && max(abs(fij[e]), abs(fji[e])) / FLIM[e] > 0.9, 1:NLIN), "unidades", "congestionamento"),
+        
+        # Diversidade
+        ("participacao_eolica", sum(final_PG[findall(g -> geradores_data[g]["Tipo"] == "GWD", 1:NGER_ORIGINAL)]) / max(total_pg, 0.001), "percentual", "mix_energetico")
+    ]
+    
+    for (nome, valor, unidade, categoria) in indicadores
+        SQLite.execute(db, """
+            INSERT INTO indicadores (id_cenario, indicador, valor, unidade, categoria)
+            VALUES (?, ?, ?, ?, ?)
+        """, [ID_CENARIO, nome, round(valor, digits=6), unidade, categoria])
+    end
+    
+    # ==========================================================================
+    # VERIFICAÇÃO E RELATÓRIO
+    # ==========================================================================
+    
+    # Contar cenários existentes
+    resultado = SQLite.DBInterface.execute(db, "SELECT COUNT(*) as total_cenarios FROM cenarios") |> DataFrame
+    total_cenarios = resultado[1, :total_cenarios]
+    
+    println("\n🎯 NOVO CENÁRIO CRIADO: $ID_CENARIO")
+    println("📊 Arquivo: $arquivo_db")
+    println("📈 Total de cenários no banco: $total_cenarios")
+    
+    # Estatísticas do cenário atual
+    println("\n📋 ESTATÍSTICAS DO CENÁRIO ATUAL:")
+    println("   • Barras: $NBAR")
+    println("   • Geradores: $NGER")
+    println("   • Linhas: $NLIN")
+    println("   • Custo Total: \$$(round(custo_total, digits=2))/h")
+    println("   • Geração Total: $(round(total_pg, digits=4)) pu")
+    println("   • Curtailment: $(round(total_pg_curtailment, digits=4)) pu")
+    println("   • Déficit: $(round(total_pg_deficit, digits=4)) pu")
+    println("   • Eficiência: $(round(total_pl/total_pg*100, digits=1))%")
+    
+    SQLite.close(db)
+    
+    return ID_CENARIO
+end
+
+# Executar exportação (SEMPRE CRIA NOVO REGISTRO)
+id_cenario_atual = exportar_para_sqlite()
+
+println("\n=== NOVO REGISTRO CRIADO COM SUCESSO ===")
+println("ID do Cenário: $id_cenario_atual")
+
+
+println("\n=== EXECUÇÃO CONCLUÍDA ===")
