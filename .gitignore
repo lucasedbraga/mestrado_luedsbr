@@ -8,3 +8,4 @@ DATA/output/input_alternativas.json
 DATA/output/MCDA/fluxpot/
 *relatorios/
 modelo_opf_dc_com_deficit.lp
+SRC/analista_cenario/__pycache__/
