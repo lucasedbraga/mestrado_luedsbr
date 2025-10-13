@@ -1,1 +1,44 @@
-[{"id_alternativa":1,"descricao":"w_c=0.0, w_e=1.0","Custo Operacao":38060.0,"Emissao ton CO2":1965.8},{"id_alternativa":2,"descricao":"w_c=0.5, w_e=0.5","Custo Operacao":34010.0,"Emissao ton CO2":2100.8},{"id_alternativa":3,"descricao":"w_c=0.6, w_e=0.4","Custo Operacao":32580.0,"Emissao ton CO2":2158.0},{"id_alternativa":4,"descricao":"w_c=0.9, w_e=0.1","Custo Operacao":29720.0,"Emissao ton CO2":2730.0}]
+{
+    "criterios": {
+        "Custo Operacao": "MIN",
+        "Emissao ton CO2": "MIN"
+    },
+    "alternativas": [
+        {
+            "id_alternativa": 1,
+            "descricao": "w_c=1.0, w_e=0.0",
+            "Custo Operacao": 11622.0,
+            "Emissao ton CO2": 2337.05
+        },
+        {
+            "id_alternativa": 2,
+            "descricao": "w_c=0.9, w_e=0.1",
+            "Custo Operacao": 11945.4,
+            "Emissao ton CO2": 2094.5
+        },
+        {
+            "id_alternativa": 3,
+            "descricao": "w_c=0.7, w_e=0.3",
+            "Custo Operacao": 16855.8,
+            "Emissao ton CO2": 1648.1
+        },
+        {
+            "id_alternativa": 4,
+            "descricao": "w_c=0.6, w_e=0.4",
+            "Custo Operacao": 26503.2,
+            "Emissao ton CO2": 1016.42
+        },
+        {
+            "id_alternativa": 5,
+            "descricao": "w_c=0.4, w_e=0.6",
+            "Custo Operacao": 35397.2,
+            "Emissao ton CO2": 716.37
+        },
+        {
+            "id_alternativa": 6,
+            "descricao": "w_c=0.3, w_e=0.7",
+            "Custo Operacao": 37309.2,
+            "Emissao ton CO2": 668.58
+        }
+    ]
+}
