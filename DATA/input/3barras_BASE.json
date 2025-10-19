@@ -6,9 +6,9 @@
   "Q_base": 100.0,
 
   "BARRAS": [
-    {"ID_Barra": "1", "tipo": "Slack"},
-    {"ID_Barra": "2", "tipo": "PV"},
-    {"ID_Barra": "3", "tipo": "PQ"}
+    {"ID_Barra": "1", "tipo": "Slack", "P_carga_MW": 0.0, "Q_carga_MVAr": 0.0},
+    {"ID_Barra": "2", "tipo": "PV", "P_carga_MW": 0.0, "Q_carga_MVAr": 0.0},
+    {"ID_Barra": "3", "tipo": "PQ", "P_carga_MW": 0.0, "Q_carga_MVAr": 0.0}
   ],
 
   "GERADORES": [
@@ -110,6 +110,34 @@
       "Bsh_Unidade": "pu",
       "LIM_Fluxo": 90.0,
       "LIM_Fluxo_Unidade": "MW"
+    }
+  ],
+
+  "CONTINGENCIAS": [
+    {
+      "ID_Contingencia": "CTG-1",
+      "Descricao": "Base - Sem contingência",
+      "Linhas_Removidas": []
+    },
+    {
+      "ID_Contingencia": "CTG-2", 
+      "Descricao": "Remoção da linha 1-2",
+      "Linhas_Removidas": ["1-2"]
+    },
+    {
+      "ID_Contingencia": "CTG-3",
+      "Descricao": "Remoção da linha 1-3", 
+      "Linhas_Removidas": ["1-3"]
+    },
+    {
+      "ID_Contingencia": "CTG-4",
+      "Descricao": "Remoção da linha 2-3",
+      "Linhas_Removidas": ["2-3"]
+    },
+    {
+      "ID_Contingencia": "CTG-5",
+      "Descricao": "Remoção das linhas 1-2 e 1-3",
+      "Linhas_Removidas": ["1-2", "1-3"]
     }
   ]
 }
