@@ -43,21 +43,21 @@
       "Unidade": "MW"
     },
     {
-      "ID_Gerador": "G3",
-      "ID_Barra": "3",
-      "Tipo": "GWD",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 50.0,
-      "Qmin_MVAr": -20.0,
-      "Qmax_MVAr": 50.0,
-      "ramp_up_MW_h": 100.0,
-      "ramp_down_MW_h": 100.0,
-      "startup_USD": 10.0,
-      "custo_var_USD_MWh": 3.0,
-      "custo_curtailment_USD_MWh": 100.0,
-      "emissao_tCO2_MWh": 0.01,
-      "Unidade": "MW"
-    }
+    "ID_Gerador": "G3",
+    "ID_Barra": "3",
+    "Tipo": "GWD",
+    "PGERmin_MW": 0.0,
+    "PGERmax_MW": 50.0,
+    "Qmin_MVAr": -20.0,
+    "Qmax_MVAr": 50.0,
+    "ramp_up_MW_h": 100.0,
+    "ramp_down_MW_h": 100.0,
+    "startup_USD": 10.0,
+    "custo_var_USD_MWh": 3.0,
+    "custo_curtailment_USD_MWh": 100.0,
+    "emissao_tCO2_MWh": 0.01,
+    "Unidade": "MW"
+  }
   ],
 
   "DEMANDAS": [
@@ -133,11 +133,6 @@
       "ID_Contingencia": "CTG-4",
       "Descricao": "Remoção da linha 2-3",
       "Linhas_Removidas": ["2-3"]
-    },
-    {
-      "ID_Contingencia": "CTG-5",
-      "Descricao": "Remoção das linhas 1-2 e 1-3",
-      "Linhas_Removidas": ["1-2", "1-3"]
     }
   ]
 }

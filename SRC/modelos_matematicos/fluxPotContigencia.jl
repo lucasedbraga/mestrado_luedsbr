@@ -17,10 +17,10 @@ using DBInterface
 # CONFIGURAÇÕES INICIAIS E PARÂMETROS
 # ==============================================================================
 
-NITER_MAX = 10  # Número máximo de iterações
-TOL = 1e-6   # Tolerância para convergência
+NITER_MAX = 10
+TOL = 1e-6
 
-println("=== OPF DC ITERATIVO COM PERDAS, CURTAILMENT E CONTINGÊNCIAS ===")
+println("=== OPF DC ITERATIVO REVISADO - CORRIGIDO ===")
 
 # ==============================================================================
 # FUNÇÃO PARA GERAR CENÁRIO ALEATÓRIO
@@ -29,7 +29,6 @@ println("=== OPF DC ITERATIVO COM PERDAS, CURTAILMENT E CONTINGÊNCIAS ===")
 function gerar_cenario_aleatorio!(geradores_data, demandas_data, SB)
     println("🎲 Gerando cenário aleatório...")
     
-    # 1. Variar geração eólica (GWD) - entre 20% e 100% da capacidade
     for g in geradores_data
         if g["Tipo"] == "GWD"
             capacidade_original = get(g, "PGERmax_MW_ORIGINAL", g["PGERmax_MW"])
@@ -39,7 +38,6 @@ function gerar_cenario_aleatorio!(geradores_data, demandas_data, SB)
         end
     end
     
-    # 2. Variar demanda - entre 80% e 120% da demanda base  
     for d in demandas_data
         if haskey(d, "PLOAD")
             demanda_original = get(d, "PLOAD_ORIGINAL", d["PLOAD"])
@@ -49,7 +47,6 @@ function gerar_cenario_aleatorio!(geradores_data, demandas_data, SB)
         end
     end
     
-    # 3. Salvar parâmetros do cenário para referência
     total_geracao_eolica = sum(g["PGERmax_MW"] for g in geradores_data if g["Tipo"] == "GWD")
     total_demanda = sum(d["PLOAD"] for d in demandas_data if haskey(d, "PLOAD"))
     
@@ -64,18 +61,18 @@ end
 
 function exportar_contingencia_para_sqlite(ctg_id, ctg_descricao, linhas_removidas,
                                           Pg_original, Pg_curtailment, Pg_deficit, Pg_total,
-                                          ANGLE, fij, fji, perdas, final_PG,
+                                          ANGLE, perdas, final_PG,
                                           ID_EXECUCAO, barras, NGER_ORIGINAL, geradores_data,
                                           BARPG, PGMIN, PGMAX, CPG, SB, BAR_GWD, NGER_CURTAILMENT,
                                           CPG_ORIGINAL, CPG_CURTAILMENT, CPG_DEFICIT, PLOAD,
-                                          linhas, FLIM, contingencias_data, MVu, MVd)
+                                          linhas, FLIM, contingencias_data, MVu, MVd, y_line)
     
     arquivo_db = "resultados_opf_contingencias.db"
     
     db = SQLite.DB(arquivo_db)
     
     # ==========================================================================
-    # TABELA: EXECUCOES (Metadados da execução completa)
+    # TABELA: EXECUCOES
     # ==========================================================================
     
     SQLite.execute(db, """
@@ -96,7 +93,6 @@ function exportar_contingencia_para_sqlite(ctg_id, ctg_descricao, linhas_removid
     NGER = length(BARPG)
     NLIN = length(linhas)
     
-    # Inserir/atualizar execução
     SQLite.execute(db, """
         INSERT OR REPLACE INTO execucoes 
         (id_execucao, data_execucao, n_barras, n_geradores, n_linhas, n_contingencias, sistema, descricao)
@@ -127,7 +123,6 @@ function exportar_contingencia_para_sqlite(ctg_id, ctg_descricao, linhas_removid
         )
     """)
     
-    # Calcular custos para esta contingência
     custo_original = sum(CPG_ORIGINAL[g] * final_PG[g] for g in 1:NGER_ORIGINAL)
     custo_curtailment_calc = sum(CPG_CURTAILMENT[g] * final_PG[NGER_ORIGINAL+g] for g in 1:NGER_CURTAILMENT)
     custo_deficit_calc = sum(CPG_DEFICIT[g] * final_PG[NGER_ORIGINAL+NGER_CURTAILMENT+g] for g in 1:length(CPG_DEFICIT) if NGER_ORIGINAL+NGER_CURTAILMENT+g <= length(final_PG))
@@ -180,9 +175,9 @@ function exportar_contingencia_para_sqlite(ctg_id, ctg_descricao, linhas_removid
              carga_pu, geracao_pu, curtailment_pu, deficit_pu, preco_nodal_usd_mwh)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, [ID_EXECUCAO, ctg_id, barra["ID_Barra"], barra["tipo"], 
-              1.0, round(rad2deg(ANGLE[i]), digits=6),  # DC OPF - tensão fixa em 1.0
+              1.0, round(rad2deg(ANGLE[i]), digits=6),
               PLOAD[i], Pg_original[i], Pg_curtailment[i], Pg_deficit[i],
-              0.0])  # Preço nodal não calculado no DC
+              0.0])
     end
     
     # ==========================================================================
@@ -256,8 +251,6 @@ function exportar_contingencia_para_sqlite(ctg_id, ctg_descricao, linhas_removid
             id_barra_destino TEXT,
             fluxo_max_pu REAL,
             limite_pu REAL,
-            fluxo_origem_destino_pu REAL,
-            fluxo_destino_origem_pu REAL,
             perdas_pu REAL,
             utilizacao_percentual REAL,
             status TEXT,
@@ -270,19 +263,25 @@ function exportar_contingencia_para_sqlite(ctg_id, ctg_descricao, linhas_removid
     for e in 1:NLIN
         linha = linhas[e]
         
-        fluxo_max = max(abs(fij[e]), abs(fji[e]))
+        # Calcular fluxo aproximado para DC OPF
+        i = findfirst(b -> b["ID_Barra"] == linha["ID_Barra_Origem"], barras)
+        j = findfirst(b -> b["ID_Barra"] == linha["ID_Barra_Destino"], barras)
+        fluxo_aproximado = 0.0
+        if i !== nothing && j !== nothing
+            fluxo_aproximado = y_line[e] * (ANGLE[i] - ANGLE[j])
+        end
+        
+        fluxo_max = abs(fluxo_aproximado)
         utilizacao_percentual = FLIM[e] > 0 ? round(fluxo_max / FLIM[e] * 100, digits=2) : 0.0
         status = utilizacao_percentual > 95 ? "CRITICO" : "NORMAL"
         
         SQLite.execute(db, """
             INSERT INTO linhas_contingencia 
             (id_execucao, id_contingencia, id_linha, id_barra_origem, id_barra_destino,
-             fluxo_max_pu, limite_pu, fluxo_origem_destino_pu, fluxo_destino_origem_pu,
-             perdas_pu, utilizacao_percentual, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             fluxo_max_pu, limite_pu, perdas_pu, utilizacao_percentual, status)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, [ID_EXECUCAO, ctg_id, linha["ID_linha"], linha["ID_Barra_Origem"], linha["ID_Barra_Destino"],
               round(fluxo_max, digits=6), round(FLIM[e], digits=6),
-              round(fij[e], digits=6), round(fji[e], digits=6),
               round(perdas[e], digits=6), utilizacao_percentual, status])
     end
     
@@ -325,26 +324,258 @@ function exportar_contingencia_para_sqlite(ctg_id, ctg_descricao, linhas_removid
 end
 
 # ==============================================================================
-# CARREGAMENTO E PROCESSAMENTO DOS DADOS DO SISTEMA
+# FUNÇÃO PRINCIPAL REVISADA DO OPF - CORRIGIDA
 # ==============================================================================
 
-# Carrega dados da rede elétrica do arquivo JSON
+function resolver_opf_dc_revisado(NBAR, NGER, BARPG, PGMIN, PGMAX, CPG, PLOAD, Bbus, slack_idx, 
+                                 line_fr, line_to, y_line, g_line, FLIM, NGER_ORIGINAL, geradores_data,
+                                 NGER_CURTAILMENT, NGER_DEFICIT, Pg_anterior, ctg_idx, SB,
+                                 idx_map, BARPG_ORIGINAL, BARPG_CURTAILMENT, PGMAX_EFETIVO)
+
+    # Inicializar variáveis locais
+    convergiu = false
+    final_PG = zeros(NGER)
+    final_ANGLE = zeros(NBAR)
+    PINJ = zeros(NBAR)
+    perdas = zeros(length(line_fr))
+    
+    # Variáveis para iteração
+    ANGLE = zeros(NBAR)
+    prev_total_perdas = 0.0
+    fij = zeros(length(line_fr))
+    fji = zeros(length(line_fr))
+    lambda_balance = zeros(NBAR)
+    lambda_flow = zeros(2 * length(line_fr))
+    
+    for iter in 1:NITER_MAX
+        println("\n--- Iteração $iter ---")
+        
+        # ==========================================================================
+        # FORMULAÇÃO DO PROBLEMA DE OTIMIZAÇÃO
+        # ==========================================================================
+        
+        model = Model(Clp.Optimizer)
+        set_silent(model)
+        
+        # Variáveis de decisão
+        @variable(model, v_PG[i=1:NGER] >= 0)
+        @variable(model, v_ANG[i=1:NBAR])
+        
+        # Aplicação dos limites físicos
+        for i in 1:NGER
+            set_upper_bound(v_PG[i], PGMAX[i])
+            set_lower_bound(v_PG[i], PGMIN[i])
+        end
+        
+        for i in 1:NBAR
+            set_lower_bound(v_ANG[i], -pi)
+            set_upper_bound(v_ANG[i], pi)
+        end
+        
+        # RESTRIÇÃO DA BARRA SLACK
+        @constraint(model, v_ANG[slack_idx] == 0.0)
+        
+        # ======================================================================
+        # RESTRIÇÕES DE RAMPA (APENAS PARA C+1)
+        # ======================================================================
+        
+        # if ctg_idx > 1
+        #     for g in 1:NGER_ORIGINAL
+        #         if g <= length(geradores_data)
+        #             tipo_ger = geradores_data[g]["Tipo"]
+        #             if tipo_ger in ["UTE"]
+        #                 ramp_up = get(geradores_data[g], "ramp_up_MW_h", 1000.0) / SB
+        #                 ramp_down = get(geradores_data[g], "ramp_down_MW_h", 1000.0) / SB
+                        
+        #                 @constraint(model, v_PG[g] - Pg_anterior[g] <= ramp_up)
+        #                 @constraint(model, Pg_anterior[g] - v_PG[g] <= min(ramp_down, Pg_anterior[g]))
+        #             end
+        #         end
+        #     end
+        # end
+        
+        # ======================================================================
+        # RESTRIÇÃO DE BALANÇO DE POTÊNCIA
+        # ======================================================================
+        
+        balance_constraints = @constraint(model, balance[i=1:NBAR],
+        
+            # GERAÇÃO CONVENCIONAL (UTE, UTH)
+            sum(v_PG[g] for g in 1:NGER_ORIGINAL if BARPG[g] == i && geradores_data[g]["Tipo"] != "GWD") 
+            
+            # GERAÇÃO EÓLICA LÍQUIDA (GWD - Curtailment)
+            + sum(v_PG[g] for g in 1:NGER_ORIGINAL if BARPG[g] == i && geradores_data[g]["Tipo"] == "GWD") 
+            - sum(v_PG[g] for g in NGER_ORIGINAL+1:NGER_ORIGINAL+NGER_CURTAILMENT if BARPG[g] == i) 
+            
+            # DÉFICIT
+            + sum(v_PG[g] for g in NGER_ORIGINAL+NGER_CURTAILMENT+1:NGER if BARPG[g] == i)
+            
+            # Fluxo que sai das linhas
+            - sum(Bbus[i,j] * v_ANG[j] for j in 1:NBAR) 
+            
+            ==
+            
+            # Cargas + Perdas
+            PLOAD[i] + PINJ[i]
+        )
+        
+        # ==========================================================================
+        # RESTRIÇÃO DE CURTAILMENT - CORRIGIDA
+        # ==========================================================================
+        
+        # Para cada gerador eólico: Geração Real + Curtailment = Geração Disponível
+        for g in geradores_data
+            if g["Tipo"] == "GWD"
+                posicao_barra = idx_map[g["ID_Barra"]]
+                posicao_var_gerador = findfirst(i -> BARPG_ORIGINAL[i] == posicao_barra, 1:NGER_ORIGINAL)
+                
+                # Encontrar a posição correspondente no curtailment
+                posicao_var_curtailment = nothing
+                for i in 1:NGER_CURTAILMENT
+                    if BARPG_CURTAILMENT[i] == posicao_barra
+                        posicao_var_curtailment = i
+                        break
+                    end
+                end
+                
+                if posicao_var_gerador !== nothing && posicao_var_curtailment !== nothing
+                    @constraint(model, 
+                        v_PG[posicao_var_gerador] + v_PG[NGER_ORIGINAL + posicao_var_curtailment] 
+                        == 
+                        PGMAX_EFETIVO[posicao_var_gerador]
+                    )
+                end
+            end
+        end
+        
+        # ==========================================================================
+        # RESTRIÇÕES DE LIMITES DE FLUXO NAS LINHAS
+        # ==========================================================================
+        
+        flow_constraints = []
+        for e in 1:length(line_fr)
+            i = line_fr[e]
+            j = line_to[e]
+
+            # Restrições de limite de fluxo (ambos os sentidos)
+            c1 = @constraint(model,  y_line[e] * (v_ANG[i] - v_ANG[j]) <=  FLIM[e])
+            c2 = @constraint(model,  y_line[e] * (v_ANG[i] - v_ANG[j]) >= -FLIM[e])
+
+            push!(flow_constraints, c1)
+            push!(flow_constraints, c2)
+        end
+        
+        # ==========================================================================
+        # FUNÇÃO OBJETIVO COM CUSTO DE CURTAILMENT
+        # ==========================================================================
+
+        @objective(model, Min, 
+            sum(CPG[g] * v_PG[g] for g in 1:NGER_ORIGINAL) +  # Custo geração convencional e eólica
+            sum(CPG[g] * v_PG[g] for g in NGER_ORIGINAL+1:NGER_ORIGINAL+NGER_CURTAILMENT) +  # Custo curtailment
+            sum(CPG[g] * v_PG[g] for g in NGER_ORIGINAL+NGER_CURTAILMENT+1:NGER)  # Custo déficit
+        )
+        
+        # ==========================================================================
+        # RESOLUÇÃO DO PROBLEMA
+        # ==========================================================================
+
+        optimize!(model)
+        status = termination_status(model)
+        println("Status da solução: $status")
+        
+        if status in [MOI.OPTIMAL, MOI.LOCALLY_SOLVED, MOI.ALMOST_OPTIMAL, MOI.ALMOST_LOCALLY_SOLVED]
+            PG_new = value.(v_PG)
+            ANGLE_NEW = value.(v_ANG)
+            DIFMAX = maximum(abs.(ANGLE_NEW - ANGLE))            
+          
+            # Atualizar perdas
+            total_perdas = 0.0
+            fill!(PINJ, 0.0)
+            
+            for i in 1:length(line_fr)
+                fr = line_fr[i]
+                to = line_to[i]
+                delta_theta = ANGLE_NEW[fr] - ANGLE_NEW[to]
+                g = g_line[i]
+                y = y_line[i]
+                
+                # Cálculo de perdas
+                perdas[i] = g * delta_theta^2
+                total_perdas += perdas[i]
+                
+                # Fluxos com perdas
+                fij[i] = y * delta_theta + (g * delta_theta^2) / 2
+                fji[i] = -y * delta_theta + (g * delta_theta^2) / 2
+                
+                # Distribuição de perdas (50% em cada extremidade)
+                PINJ[fr] += perdas[i] / 2
+                PINJ[to] += perdas[i] / 2
+            end
+
+            loss_diff = abs(total_perdas - prev_total_perdas)
+            
+            println("Iteração $iter:")
+            println("  delta_theta_max = $(round(DIFMAX, digits=6))")
+            println("  delta_Perdas = $(round(loss_diff, digits=6))") 
+            println("  Perdas = $(round(total_perdas, digits=6))")
+            
+            # Atualização para próxima iteração
+            ANGLE = copy(ANGLE_NEW)
+            prev_total_perdas = total_perdas
+            final_PG = copy(PG_new)
+            final_ANGLE = copy(ANGLE_NEW)
+            
+            # Extração dos multiplicadores de Lagrange
+            try
+                for i in 1:NBAR
+                    lambda_balance[i] = dual(balance_constraints[i])
+                end
+            catch e
+                println("Erro ao extrair multiplicadores de balanço: $e")
+            end
+
+            try
+                for i in 1:length(flow_constraints)
+                    lambda_flow[i] = dual(flow_constraints[i])
+                end
+            catch e
+                println("Erro ao extrair multiplicadores de fluxo: $e")
+            end
+            
+            # Critério de convergência
+            if DIFMAX < TOL && loss_diff < TOL
+                println("Convergência atingida na iteração $iter")
+                convergiu = true
+                break
+            end
+        else
+            println("Nenhuma solução disponível na iteração $iter")
+            println("Status: $status")
+            break
+        end
+        
+        if iter == NITER_MAX
+            println("Número máximo de iterações atingido")
+        end
+    end
+    
+    return convergiu, final_PG, final_ANGLE, perdas, PINJ
+end
+
+# ==============================================================================
+# CARREGAMENTO E PROCESSAMENTO DOS DADOS
+# ==============================================================================
+
 data = JSON.parsefile("../DATA/input/3barras_BASE.json")
-#data = JSON.parsefile("../DATA/input/B6L8_BASE.json")
-#data = JSON.parsefile("../DATA/input/ieee14_BASE.json")
-#data = JSON.parsefile("DATA/input/ieee118_BASE.json")
+#data = JSON.parsefile("DATA/input/3barras_BASE.json")
 
-# ==============================================================================
-# DADOS DE BASE DO SISTEMA
-# ==============================================================================
-# Extrai informações das listas separadas
 barras = data["BARRAS"]
-geradores_data = data["GERADORES"]
+geradores_data = data["GERADORES"] 
 demandas_data = data["DEMANDAS"]
 linhas = data["LINHAS"]
 contingencias_data = get(data, "CONTINGENCIAS", [])
 
-# Salvar valores originais para referência
+# Salvar valores originais
 for g in geradores_data
     if g["Tipo"] == "GWD"
         g["PGERmax_MW_ORIGINAL"] = g["PGERmax_MW"]
@@ -357,52 +588,36 @@ for d in demandas_data
     end
 end
 
-# Aplicar cenário aleatório ANTES das conversões para PU
+# Aplicar cenário aleatório
 gerar_cenario_aleatorio!(geradores_data, demandas_data, data["S_base"])
 
-# Verifica se há contingências definidas
 if isempty(contingencias_data)
-    println("⚠️  Nenhuma contingência definida no arquivo. Criando contingência base.")
+    println("⚠️  Nenhuma contingência definida. Criando contingência base.")
     contingencias_data = [
         Dict(
             "ID_Contingencia" => "CTG-BASE",
-            "Descricao" => "Caso Base - Sem contingência",
+            "Descricao" => "Caso Base - Sem contingência", 
             "Linhas_Removidas" => []
         )
     ]
 end
 
-println("Número de contingências a serem analisadas: $(length(contingencias_data))")
-
-# Potência base (MVA)
+# Configurações de base
 SB = data["S_base"]
 PB = data["P_base"]
-# Tensão base (kV)
 VB = data["V_base"]
-# Frequência base (Hz)
 FB = data["f_base"]
-# Impedância base (Ω)
 ZB = (VB^2) / PB
-# Admitância base (S)
 YB = 1 / ZB
-# Potência reativa base (MVAr)
-QB = data["Q_base"]
 
 println("===== BASES DO SISTEMA =====")
-println("Potência base (PB): ", PB, " MVA")
-println("Tensão base (VB): ", VB, " kV")
-println("Frequência base (FB): ", FB, " Hz")
+println("Potência base (SB): ", SB, " MVA")
+println("Tensão base (VB): ", VB, " kV") 
 println("Impedância base (ZB): ", round(ZB, digits=4), " Ω")
-println("Admitância base (YB): ", round(YB, digits=6), " S")
 println("============================")
 
-# ------------------------------------------------------------------------------
-# Conversão dos dados da rede para PU
-# ------------------------------------------------------------------------------
-
-# --- Conversão das barras (cargas e tensões)
+# Conversão para PU
 for b in barras
-    # Se os dados já estão em MW/MVAr, converter para pu
     if haskey(b, "P_carga_MW")
         b["P_carga_pu"] = b["P_carga_MW"] / SB
     else
@@ -416,76 +631,57 @@ for b in barras
     end
 end
 
-# --- Conversão dos geradores
 for g in geradores_data
     g["Pmax_pu"] = g["PGERmax_MW"] / SB
     g["Pmin_pu"] = g["PGERmin_MW"] / SB
     
-    # Para geradores que não têm Qmax/Qmin definidos, usar valores padrão
     if haskey(g, "Qmax_MVAr")
         g["Qmax_pu"] = g["Qmax_MVAr"] / SB
     else
-        g["Qmax_pu"] = 2.0  # 200 MVAr em pu
+        g["Qmax_pu"] = 2.0
     end
     
     if haskey(g, "Qmin_MVAr")
         g["Qmin_pu"] = g["Qmin_MVAr"] / SB
     else
-        g["Qmin_pu"] = -2.0  # -200 MVAr em pu
+        g["Qmin_pu"] = -2.0
     end
     
-    # Valores de referência (se existirem)
     if haskey(g, "Pg_ref_MW")
         g["Pg_ref_pu"] = g["Pg_ref_MW"] / SB
     else
         g["Pg_ref_pu"] = 0.0
     end
-    
-    if haskey(g, "Qg_ref_MVAr")
-        g["Qg_ref_pu"] = g["Qg_ref_MVAr"] / SB
-    else
-        g["Qg_ref_pu"] = 0.0
-    end
 end
 
-# --- Conversão das linhas (impedâncias e limites)
 for l in linhas
-    # Converter resistência e reatância de ohms para pu
     l["R_pu"] = l["R"] / ZB
     l["X_pu"] = l["X"] / ZB
     
-    # Se existir susceptância shunt, converter de siemens para pu
     if haskey(l, "Bsh")
         l["B_pu"] = l["Bsh"] * ZB
     else
         l["B_pu"] = 0.0
     end
     
-    # Converter limite de fluxo para pu
     l["Fmax_pu"] = l["LIM_Fluxo"] / SB
 end
 
-# Mapeamento de IDs das barras para índices numéricos
+# Mapeamento de barras
 bus_ids = [b["ID_Barra"] for b in barras]
-idx_map = Dict(id => i for (i,id) in enumerate(bus_ids))
+global idx_map = Dict(id => i for (i,id) in enumerate(bus_ids))
 NBAR = length(bus_ids)
 NLIN = length(linhas)
 
-# ==============================================================================
-# IDENTIFICAÇÃO DA BARRA SLACK
-# ==============================================================================
-
+# Identificar barra slack
 slack_list = filter(b->b["tipo"]=="Slack", barras)
 if length(slack_list) != 1
-    error("Deve haver exatamente 1 barra Slack no JSON")
+    error("Deve haver exatamente 1 barra Slack")
 end
 slack_id = slack_list[1]["ID_Barra"]
-slack_idx = idx_map[slack_id]
+global slack_idx = idx_map[slack_id]
 
-# ==============================================================================
-# PARÂMETROS DAS LINHAS DE TRANSMISSÃO
-# ==============================================================================
-
+# Parâmetros das linhas
 line_fr = Vector{Int}(undef, NLIN)
 line_to = Vector{Int}(undef, NLIN)  
 r_line = zeros(NLIN)
@@ -513,12 +709,8 @@ for (e, ln) in enumerate(linhas)
     FLIM[e] = ln["Fmax_pu"]
 end
 
-# ==============================================================================
-# MONTAGEM DA MATRIZ DE SUSCEPTÂNCIA B_bus 
-# ==============================================================================
-
+# Matriz Bbus
 Bbus = zeros(NBAR, NBAR)
-
 for e in 1:NLIN
     i = line_fr[e]
     j = line_to[e]
@@ -530,91 +722,67 @@ for e in 1:NLIN
     Bbus[j,i] -= y
 end
 
-# ==============================================================================
-# DADOS DOS GERADORES
-# ==============================================================================
-
-# Processa geradores da lista separada
+# Dados dos geradores originais
 NGER_ORIGINAL = length(geradores_data)
 BARPG_ORIGINAL = Vector{Int}(undef, NGER_ORIGINAL)
 BAR_GWD = Int[]
 PGMIN_ORIGINAL = zeros(NGER_ORIGINAL)
-PGMAX_ORIGINAL = zeros(NGER_ORIGINAL) 
+PGMAX_ORIGINAL = zeros(NGER_ORIGINAL)
 PGMIN_EFETIVO = zeros(NGER_ORIGINAL)
-PGMAX_EFETIVO = zeros(NGER_ORIGINAL)   
+PGMAX_EFETIVO = zeros(NGER_ORIGINAL)
 CPG_ORIGINAL = zeros(NGER_ORIGINAL)
 
-# Identificar geradores eólicos primeiro
+# Primeiro identificar geradores GWD
 for (i, g) in enumerate(geradores_data)
     id_barra = g["ID_Barra"]
     BARPG_ORIGINAL[i] = idx_map[id_barra]
     tipo_ger = g["Tipo"]
     
     if tipo_ger == "GWD"
-        println("Identificado gerador eólico GWD na barra $id_barra")
         push!(BAR_GWD, idx_map[id_barra])
     end
 end
 
-# Processar todos os geradores
+# Agora processar todos os geradores
 for (i, g) in enumerate(geradores_data)
     id_barra = g["ID_Barra"]
     BARPG_ORIGINAL[i] = idx_map[id_barra]
     tipo_ger = g["Tipo"]
     
-    # Usar valores já convertidos para pu
     PGMIN_ORIGINAL[i] = g["Pmin_pu"]
     PGMAX_ORIGINAL[i] = g["Pmax_pu"]
     
     if tipo_ger == "UTE"
-        CPG_ORIGINAL[i] = get(g, "custo_var_USD_MWh", 0.0) * SB  # Custo em USD/h para 1 pu
-
+        CPG_ORIGINAL[i] = get(g, "custo_var_USD_MWh", 50.0) * SB
     elseif tipo_ger == "UTH"
-        CPG_ORIGINAL[i] = get(g, "custo_var_USD_MWh", 0.0) * SB
-
+        CPG_ORIGINAL[i] = get(g, "custo_var_USD_MWh", 80.0) * SB
     elseif tipo_ger == "GWD"
-        CPG_ORIGINAL[i] = get(g, "custo_var_USD_MWh", 0.0) * SB
-
-        potencia_normalizada = rand(Normal(1,0.8))
-        potencia_instantanea = potencia_normalizada * PGMAX_ORIGINAL[i]
+        CPG_ORIGINAL[i] = get(g, "custo_var_USD_MWh", 5.0) * SB
         
-        PGMAX_EFETIVO[i] = min(max(potencia_instantanea, 0.1*PGMAX_ORIGINAL[i]), PGMAX_ORIGINAL[i])        
-        PGMIN_EFETIVO[i] = PGMAX_EFETIVO[i]
+        potencia_disponivel = rand(Uniform(0.2, 1.0)) * PGMAX_ORIGINAL[i]
+        PGMAX_EFETIVO[i] = potencia_disponivel
+        PGMIN_EFETIVO[i] = potencia_disponivel
     else
         CPG_ORIGINAL[i] = 0.0
     end
     
-    # Para geradores não-eólicos, usar limites originais
     if tipo_ger != "GWD"
         PGMAX_EFETIVO[i] = PGMAX_ORIGINAL[i]
         PGMIN_EFETIVO[i] = PGMIN_ORIGINAL[i]
     end
 end
 
-# ==============================================================================
-# DADOS DAS DEMANDAS
-# ==============================================================================
-
+# Demanda
 PLOAD = zeros(NBAR)
 for d in demandas_data
     id_barra = d["ID_Barra"]
     idx = idx_map[id_barra]
-    # Potência ativa
     potencia_demanda = get(d, "PLOAD", 0.0) / SB
-    # Adicionar incerteza (3% de desvio padrão)
-    σ = 0.03 * potencia_demanda  
-    dist = Normal(potencia_demanda, σ)
-    potencia_instantanea_incerta = max(0, rand(dist))
-    PLOAD[idx] += potencia_instantanea_incerta
+    PLOAD[idx] += max(0, potencia_demanda)
 end
 
-# ==============================================================================
-# IDENTIFICAÇÃO DAS BARRAS PQ E ADIÇÃO DE GERADORES DE DÉFICIT E CURTAILMENT
-# ==============================================================================
-
+# Geradores de curtailment e déficit
 barras_PQ = filter(b -> b["tipo"] == "PQ", barras)
-
-# Identifica barras que já têm geradores
 barras_com_gerador = Set(BARPG_ORIGINAL)
 barras_PQ_sem_gerador = [b for b in barras_PQ if idx_map[b["ID_Barra"]] ∉ barras_com_gerador]
 
@@ -622,17 +790,15 @@ NGER_CURTAILMENT = length(BAR_GWD)
 NGER_DEFICIT = length(barras_PQ)
 
 custo_maximo_existente = isempty(CPG_ORIGINAL) ? 1000.0 : maximum(CPG_ORIGINAL)
-
 CUSTO_CURTAILMENT = 10.0 * custo_maximo_existente
-CUSTO_DEFICIT = 100.0 * custo_maximo_existente
+CUSTO_DEFICIT = 1000.0 * custo_maximo_existente
 
-# Atribuição de Valor para Curtailment
+# Curtailment
 BARPG_CURTAILMENT = Vector{Int}(undef, NGER_CURTAILMENT)
 PGMIN_CURTAILMENT = zeros(NGER_CURTAILMENT)
 PGMAX_CURTAILMENT = zeros(NGER_CURTAILMENT)
 CPG_CURTAILMENT = zeros(NGER_CURTAILMENT)
 
-# Encontrar os geradores GWD correspondentes
 for (i, barra_idx) in enumerate(BAR_GWD)
     gwd_idx = findfirst(g -> idx_map[g["ID_Barra"]] == barra_idx && get(g, "Tipo", "") == "GWD", geradores_data)
     
@@ -640,11 +806,11 @@ for (i, barra_idx) in enumerate(BAR_GWD)
         BARPG_CURTAILMENT[i] = barra_idx
         PGMIN_CURTAILMENT[i] = 0.0
         PGMAX_CURTAILMENT[i] = PGMAX_EFETIVO[gwd_idx]
-        CPG_CURTAILMENT[i] = get(geradores_data[gwd_idx], "custo_curtailment_USD_MWh", CUSTO_CURTAILMENT) * PB
+        CPG_CURTAILMENT[i] = get(geradores_data[gwd_idx], "custo_curtailment_USD_MWh", CUSTO_CURTAILMENT) * SB
     end
 end
 
-# Atribuição de Valor para Déficit
+# Déficit
 BARPG_DEFICIT = Vector{Int}(undef, NGER_DEFICIT)
 PGMIN_DEFICIT = zeros(NGER_DEFICIT)
 PGMAX_DEFICIT = zeros(NGER_DEFICIT)
@@ -655,16 +821,13 @@ for (i, b) in enumerate(barras_PQ)
     idx = idx_map[id]
     BARPG_DEFICIT[i] = idx
     PGMIN_DEFICIT[i] = 0.0
-    PGMAX_DEFICIT[i] = PLOAD[idx] > 0 ? PLOAD[idx] * 100 : 1.0
+    PGMAX_DEFICIT[i] = PLOAD[idx] > 0 ? PLOAD[idx] * 2 : 1.0
     CPG_DEFICIT[i] = CUSTO_DEFICIT
 end
 
-# ==============================================================================
-# COMBINA GERADORES ORIGINAIS, CURTAILMENT E DÉFICIT
-# ==============================================================================
-
+# Combinar todos os geradores
 NGER = NGER_ORIGINAL + NGER_CURTAILMENT + NGER_DEFICIT
-println("Total de geradores: $NGER_ORIGINAL originais + $NGER_CURTAILMENT curtailment + $NGER_DEFICIT de déficit = $NGER")
+println("Total de geradores: $NGER_ORIGINAL originais + $NGER_CURTAILMENT curtailment + $NGER_DEFICIT déficit = $NGER")
 
 BARPG = vcat(BARPG_ORIGINAL, BARPG_CURTAILMENT, BARPG_DEFICIT)
 PGMIN = vcat(PGMIN_EFETIVO, PGMIN_CURTAILMENT, PGMIN_DEFICIT)
@@ -672,23 +835,22 @@ PGMAX = vcat(PGMAX_EFETIVO, PGMAX_CURTAILMENT, PGMAX_DEFICIT)
 CPG = vcat(CPG_ORIGINAL, CPG_CURTAILMENT, CPG_DEFICIT)
 
 # ==============================================================================
-# INICIALIZAÇÃO DAS VARIÁVEIS PARA ANÁLISE DE CONTINGÊNCIAS
+# LOOP PRINCIPAL DE CONTINGÊNCIAS REVISADO - CORRIGIDO
 # ==============================================================================
 
-# Variáveis para armazenar resultados de todas as contingências
 resultados_contingencias = Dict{String, Dict}()
 global Pg_anterior = zeros(NGER_ORIGINAL)
-
-# Matrizes para armazenar MVu e MVd
 MVu = zeros(length(contingencias_data), NGER_ORIGINAL)
 MVd = zeros(length(contingencias_data), NGER_ORIGINAL)
 
-# ID único para esta execução
 ID_EXECUCAO = Dates.format(now(), "yyyy-mm-dd_HH-MM-SS") * "_" * randstring(6)
 
-# ==============================================================================
-# LOOP PRINCIPAL DE CONTINGÊNCIAS
-# ==============================================================================
+# Salvar cópias dos parâmetros originais das linhas
+r_line_original = copy(r_line)
+x_line_original = copy(x_line)
+y_line_original = copy(y_line)
+g_line_original = copy(g_line)
+FLIM_original = copy(FLIM)
 
 for (ctg_idx, contingencia) in enumerate(contingencias_data)
     global Pg_anterior
@@ -703,43 +865,28 @@ for (ctg_idx, contingencia) in enumerate(contingencias_data)
     println("Linhas removidas: $(isempty(linhas_removidas) ? "Nenhuma" : join(linhas_removidas, ", "))")
     println("="^80)
     
-    # ==========================================================================
-    # PREPARAÇÃO DAS LINHAS PARA CONTINGÊNCIA - USANDO VARIÁVEIS AUXILIARES
-    # ==========================================================================
+    # Restaurar parâmetros originais antes de aplicar contingência
+    r_line = copy(r_line_original)
+    x_line = copy(x_line_original)
+    y_line = copy(y_line_original)
+    g_line = copy(g_line_original)
+    FLIM = copy(FLIM_original)
     
-    # Variáveis auxiliares para armazenar valores originais
-    r_line_aux = zeros(length(linhas_removidas))
-    x_line_aux = zeros(length(linhas_removidas))
-    y_line_aux = zeros(length(linhas_removidas))
-    g_line_aux = zeros(length(linhas_removidas))
-    FLIM_aux = zeros(length(linhas_removidas))
-    
-    # "Anular" as linhas da contingência
-    for (idx_rem, linha_id) in enumerate(linhas_removidas)
+    # Aplicar contingência (remover linhas)
+    for linha_id in linhas_removidas
         linha_idx = findfirst(ln -> ln["ID_linha"] == linha_id, linhas)
         if linha_idx !== nothing
-            # Armazenar valores originais
-            r_line_aux[idx_rem] = r_line[linha_idx]
-            x_line_aux[idx_rem] = x_line[linha_idx]
-            y_line_aux[idx_rem] = y_line[linha_idx]
-            g_line_aux[idx_rem] = g_line[linha_idx]
-            FLIM_aux[idx_rem] = FLIM[linha_idx]
-            
-            # Anular a linha (valores muito pequenos para evitar singularidade)
-            r_line[linha_idx] = 0.0
-            x_line[linha_idx] = 1e-5
-            y_line[linha_idx] = 1e5
+            # Remover linha definindo admitância para valor muito baixo
+            y_line[linha_idx] = 1e-10
             g_line[linha_idx] = 0.0
-            FLIM[linha_idx] = 1e-5
-            
-            println("  - Anulando linha: $linha_id")
+            FLIM[linha_idx] = 0.0
+            println("  - Removendo linha: $linha_id")
+        else
+            println("  ⚠️  Aviso: Linha $linha_id não encontrada")
         end
     end
     
-    # ==========================================================================
-    # RECALCULAR MATRIZ Bbus COM LINHAS ANULADAS
-    # ==========================================================================
-    
+    # Recalcular Bbus com as linhas removidas
     Bbus_ctg = zeros(NBAR, NBAR)
     for e in 1:NLIN
         i = line_fr[e]
@@ -752,196 +899,16 @@ for (ctg_idx, contingencia) in enumerate(contingencias_data)
         Bbus_ctg[j,i] -= y
     end
     
-    # ==========================================================================
-    # VARIÁVEIS DE ESTADO PARA ESTA CONTINGÊNCIA
-    # ==========================================================================
+    # Resolver OPF revisado
+    convergiu, final_PG, final_ANGLE, perdas, PINJ = resolver_opf_dc_revisado(
+        NBAR, NGER, BARPG, PGMIN, PGMAX, CPG, PLOAD, Bbus_ctg, slack_idx,
+        line_fr, line_to, y_line, g_line, FLIM, NGER_ORIGINAL, geradores_data,
+        NGER_CURTAILMENT, NGER_DEFICIT, Pg_anterior, ctg_idx, SB,
+        idx_map, BARPG_ORIGINAL, BARPG_CURTAILMENT, PGMAX_EFETIVO
+    )
     
-    ANGLE = zeros(NBAR)
-    PINJ = zeros(NBAR)
-    perdas = zeros(NLIN)
-    fij = zeros(NLIN)
-    fji = zeros(NLIN)
-    prev_total_perdas = 0.0
-    
-    # ==========================================================================
-    # LOOP ITERATIVO DO OPF PARA ESTA CONTINGÊNCIA
-    # ==========================================================================
-    
-    convergiu = false
-    final_PG = zeros(NGER)
-    final_ANGLE = zeros(NBAR)
-    
-    for iter in 1:NITER_MAX
-        println("\n--- Contingência $ctg_id - Iteração $iter ---")
-        
-        # ======================================================================
-        # FORMULAÇÃO DO PROBLEMA DE OTIMIZAÇÃO
-        # ======================================================================
-        
-        model = Model(Clp.Optimizer)
-        set_silent(model)
-        
-        # Variáveis de decisão
-        @variable(model, v_PG[i=1:NGER] >= 0)
-        @variable(model, v_ANG[i=1:NBAR])
-        
-        # Aplicação dos limites físicos
-        for i in 1:NGER
-            set_upper_bound(v_PG[i], PGMAX[i])
-            set_lower_bound(v_PG[i], PGMIN[i])
-        end
-        
-        for i in 1:NBAR
-            set_lower_bound(v_ANG[i], -pi)
-            set_upper_bound(v_ANG[i], pi)
-        end
-        
-        # RESTRIÇÃO DA BARRA SLACK
-        @constraint(model, v_ANG[slack_idx] == 0.0)
-        
-        # ======================================================================
-        # RESTRIÇÕES DE RAMPA (MVu/MVd) - APENAS PARA CENÁRIOS C+1
-        # ======================================================================
-        
-        if ctg_idx > 1
-            for g in 1:NGER_ORIGINAL
-                if g <= length(geradores_data)
-                    tipo_ger = geradores_data[g]["Tipo"]
-                    if tipo_ger in ["UTE", "UTH"]
-                        ramp_up = geradores_data[g]["ramp_up_MW_h"] / SB
-                        ramp_down = geradores_data[g]["ramp_down_MW_h"] / SB
-                        
-                        @constraint(model, v_PG[g] - Pg_anterior[g] <= ramp_up)
-                        @constraint(model, Pg_anterior[g] - v_PG[g] <= ramp_down)
-                    end
-                end
-            end
-            println("  Aplicadas restrições de rampa MVu/MVd")
-        end
-        
-        # ======================================================================
-        # RESTRIÇÕES DE BALANÇO DE POTÊNCIA 
-        # ======================================================================
-
-        balance_constraints = @constraint(model, balance[i=1:NBAR],
-            sum(v_PG[g] for g in 1:NGER_ORIGINAL if BARPG[g] == i && geradores_data[g]["Tipo"] != "GWD") +
-            sum(v_PG[g] for g in 1:NGER_ORIGINAL if BARPG[g] == i && geradores_data[g]["Tipo"] == "GWD") -
-            sum(v_PG[g] for g in NGER_ORIGINAL+1:NGER_ORIGINAL+NGER_CURTAILMENT if BARPG[g] == i) +
-            sum(v_PG[g] for g in NGER_ORIGINAL+NGER_CURTAILMENT+1:NGER if BARPG[g] == i) -
-            sum(Bbus_ctg[i,j] * v_ANG[j] for j in 1:NBAR) == PLOAD[i] + PINJ[i]
-        )
-        
-        # ======================================================================
-        # RESTRIÇÃO DE CURTAILMENT 
-        # ======================================================================
-        
-        for g in geradores_data
-            if g["Tipo"] == "GWD"
-                posicao_barra = idx_map[g["ID_Barra"]]
-                posicao_var_gerador = findfirst(i -> BARPG_ORIGINAL[i] == posicao_barra, 1:NGER_ORIGINAL)
-                posicao_var_curtailment = findfirst(i -> BARPG_CURTAILMENT[i] == posicao_barra, 1:NGER_CURTAILMENT)            
-                
-                if posicao_var_gerador !== nothing && posicao_var_curtailment !== nothing
-                    @constraint(model, 
-                        v_PG[posicao_var_gerador] + v_PG[NGER_ORIGINAL + posicao_var_curtailment] == PGMAX_EFETIVO[posicao_var_gerador]
-                    )
-                end
-            end
-        end
-        
-        # ======================================================================
-        # RESTRIÇÕES DE LIMITES DE FLUXO NAS LINHAS
-        # ======================================================================
-        
-        for e in 1:NLIN
-            i = line_fr[e]
-            j = line_to[e]
-
-            @constraint(model, y_line[e] * (v_ANG[i] - v_ANG[j]) <= FLIM[e])
-            @constraint(model, y_line[e] * (v_ANG[i] - v_ANG[j]) >= -FLIM[e])
-        end
-        
-        # ======================================================================
-        # FUNÇÃO OBJETIVO
-        # ======================================================================
-
-        @objective(model, Min, 
-            sum(CPG[g] * v_PG[g] for g in 1:NGER_ORIGINAL) +
-            sum(CPG[g] * v_PG[g] for g in NGER_ORIGINAL+1:NGER_ORIGINAL+NGER_CURTAILMENT) +
-            sum(CPG[g] * v_PG[g] for g in NGER_ORIGINAL+NGER_CURTAILMENT+1:NGER)
-        )
-        
-        # ======================================================================
-        # RESOLUÇÃO DO PROBLEMA
-        # ======================================================================
-
-        optimize!(model)
-        status = termination_status(model)
-        println("Status da solução: $status")
-        
-        # ======================================================================
-        # PROCESSAMENTO DA SOLUÇÃO
-        # ======================================================================
-        
-        if has_values(model)
-            PG_new = value.(v_PG)
-            ANGLE_NEW = value.(v_ANG)
-            
-            DIFMAX = maximum(abs.(ANGLE_NEW - ANGLE))
-            
-            # Atualização das perdas e fluxos
-            total_perdas = 0.0
-            fill!(PINJ, 0.0)
-            
-            for i in 1:NLIN
-                fr = line_fr[i]
-                to = line_to[i]
-                delta_theta = ANGLE_NEW[fr] - ANGLE_NEW[to]
-                g = g_line[i]
-                y = y_line[i]
-                
-                perdas[i] = g * delta_theta^2
-                total_perdas += perdas[i]
-                
-                fij[i] = y * delta_theta + (g * delta_theta^2) / 2
-                fji[i] = -y * delta_theta + (g * delta_theta^2) / 2
-                
-                PINJ[fr] += perdas[i] / 2
-                PINJ[to] += perdas[i] / 2
-            end
-            
-            loss_diff = abs(total_perdas - prev_total_perdas)
-            
-            println("Iteração $iter:")
-            println("  delta_theta_max = $(round(DIFMAX, digits=6))")
-            println("  delta_Perdas = $(round(loss_diff, digits=6))") 
-            println("  Perdas = $(round(total_perdas, digits=6))")
-            
-            ANGLE = copy(ANGLE_NEW)
-            prev_total_perdas = total_perdas
-            final_PG = copy(PG_new)
-            final_ANGLE = copy(ANGLE_NEW)
-            
-            if DIFMAX < TOL && loss_diff < TOL
-                println("Convergência atingida na iteração $iter")
-                convergiu = true
-                break
-            end
-        else
-            println("Nenhuma solução disponível na iteração $iter")
-            break
-        end
-    end
-    
-    if !convergiu && NITER_MAX > 1
-        println("⚠️  Convergência não atingida após $NITER_MAX iterações para contingência $ctg_id")
-    end
-    
-    # ==========================================================================
-    # CÁLCULO DE MVu E MVd - APENAS PARA CENÁRIOS C+1
-    # ==========================================================================
-    
-    if ctg_idx > 1
+    # Calcular MVu/MVd apenas se a solução convergiu
+    if convergiu && ctg_idx > 1
         for g in 1:NGER_ORIGINAL
             if g <= length(geradores_data)
                 diferenca = final_PG[g] - Pg_anterior[g]
@@ -961,25 +928,7 @@ for (ctg_idx, contingencia) in enumerate(contingencias_data)
         println("  MVu/MVd calculados para esta contingência")
     end
     
-    # ==========================================================================
-    # RESTAURAR VALORES ORIGINAIS DAS LINHAS ANULADAS
-    # ==========================================================================
-    
-    for (idx_rem, linha_id) in enumerate(linhas_removidas)
-        linha_idx = findfirst(ln -> ln["ID_linha"] == linha_id, linhas)
-        if linha_idx !== nothing
-            r_line[linha_idx] = r_line_aux[idx_rem]
-            x_line[linha_idx] = x_line_aux[idx_rem]
-            y_line[linha_idx] = y_line_aux[idx_rem]
-            g_line[linha_idx] = g_line_aux[idx_rem]
-            FLIM[linha_idx] = FLIM_aux[idx_rem]
-        end
-    end
-    
-    # ==========================================================================
-    # ARMAZENAMENTO DOS RESULTADOS E PREPARAÇÃO PARA PRÓXIMA CONTINGÊNCIA
-    # ==========================================================================
-    
+    # Processar resultados
     Pg_original = zeros(NBAR)
     Pg_curtailment = zeros(NBAR)
     Pg_deficit = zeros(NBAR)
@@ -997,18 +946,38 @@ for (ctg_idx, contingencia) in enumerate(contingencias_data)
         Pg_total[bar_idx] += final_PG[g]
     end
     
-    for bar_idx in BAR_GWD
-        Pg_total[bar_idx] = Pg_original[bar_idx] - Pg_curtailment[bar_idx] + Pg_deficit[bar_idx]
-    end
-    
     total_pg = sum(Pg_total)
     total_pl = sum(PLOAD)
     total_perdas_val = sum(perdas)
     total_pg_curtailment = sum(Pg_curtailment)
     total_pg_deficit = sum(Pg_deficit)
     
-    # Armazenar Pg atual para próxima contingência
-    Pg_anterior = copy(final_PG[1:NGER_ORIGINAL])
+    # VERIFICAR BALANÇO DE POTÊNCIA
+    balanco = total_pg - total_pl - total_perdas_val
+    println("\n✓ Contingência $ctg_id finalizada:")
+    println("  - Geração total: $(round(total_pg, digits=4)) pu")
+    println("  - Demanda total: $(round(total_pl, digits=4)) pu") 
+    println("  - Perdas totais: $(round(total_perdas_val, digits=4)) pu")
+    println("  - Curtailment: $(round(total_pg_curtailment, digits=4)) pu")
+    println("  - Déficit: $(round(total_pg_deficit, digits=4)) pu")
+    println("  - BALANÇO (Geração - Demanda - Perdas): $(round(balanco, digits=6)) pu")
+    println("  - Convergiu: $convergiu")
+    
+    if abs(balanco) > 1e-4
+        println("  ⚠️  ALERTA: Balanço de potência não fechado adequadamente!")
+    end
+    
+    # Verificar geração negativa
+    if any(x -> x < -1e-6, final_PG)
+        println("  ❌ ERRO CRÍTICO: Geração negativa detectada!")
+    else
+        println("  ✅ Geração não-negativa verificada")
+    end
+    
+    # Atualizar Pg_anterior apenas se convergiu
+    if convergiu
+        Pg_anterior = copy(final_PG[1:NGER_ORIGINAL])
+    end
     
     # Armazenar resultados
     resultados_contingencias[ctg_id] = Dict(
@@ -1022,108 +991,20 @@ for (ctg_idx, contingencia) in enumerate(contingencias_data)
         "total_curtailment" => total_pg_curtailment,
         "total_deficit" => total_pg_deficit,
         "ANGLE" => copy(final_ANGLE),
-        "FLUXOS_FIJ" => copy(fij),
-        "FLUXOS_FJI" => copy(fji),
         "PERDAS" => copy(perdas),
-        "PG_FINAL" => copy(final_PG)
+        "PG_FINAL" => copy(final_PG),
+        "BALANCO" => balanco,
+        "CONVERGIU" => convergiu
     )
     
-    println("\n✓ Contingência $ctg_id finalizada:")
-    println("  - Geração total: $(round(total_pg, digits=4)) pu")
-    println("  - Curtailment: $(round(total_pg_curtailment, digits=4)) pu")
-    println("  - Déficit: $(round(total_pg_deficit, digits=4)) pu")
-    
-    # Exportar para SQLite após cada contingência
+    # Exportar para SQLite
     exportar_contingencia_para_sqlite(ctg_id, ctg_descricao, linhas_removidas, 
                                      Pg_original, Pg_curtailment, Pg_deficit, Pg_total,
-                                     final_ANGLE, fij, fji, perdas, final_PG,
+                                     final_ANGLE, perdas, final_PG,
                                      ID_EXECUCAO, barras, NGER_ORIGINAL, geradores_data,
                                      BARPG, PGMIN, PGMAX, CPG, SB, BAR_GWD, NGER_CURTAILMENT,
                                      CPG_ORIGINAL, CPG_CURTAILMENT, CPG_DEFICIT, PLOAD,
-                                     linhas, FLIM, contingencias_data, MVu, MVd)
-end
-
-# ==============================================================================
-# ANÁLISE FINAL DOS RESULTADOS DAS CONTINGÊNCIAS
-# ==============================================================================
-
-println("\n" * "="^100)
-println("ANÁLISE FINAL DAS CONTINGÊNCIAS")
-println("="^100)
-
-# 1. BARRAS COM MAIOR CORTE DE CARGA MÉDIO
-println("\n1. BARRAS COM MAIOR CORTE DE CARGA MÉDIO:")
-corte_carga_medio = zeros(NBAR)
-for barra in 1:NBAR
-    cortes = []
-    for ctg_id in keys(resultados_contingencias)
-        resultado = resultados_contingencias[ctg_id]
-        push!(cortes, resultado["Pg_deficit"][barra])
-    end
-    corte_carga_medio[barra] = mean(cortes)
-end
-
-barras_ordenadas = sortperm(corte_carga_medio, rev=true)
-println("Barra | Corte de Carga Médio (pu)")
-println("-"^40)
-for i in 1:min(5, NBAR)
-    barra_idx = barras_ordenadas[i]
-    if corte_carga_medio[barra_idx] > 0
-        println("$(lpad(barra_idx, 5)) | $(round(corte_carga_medio[barra_idx], digits=6))")
-    end
-end
-
-# 2. CURTAILMENT MÉDIO POR CONTINGÊNCIA
-println("\n2. CURTAILMENT MÉDIO POR CONTINGÊNCIA:")
-println("Contingência | Curtailment Médio (pu)")
-println("-"^45)
-for ctg_id in keys(resultados_contingencias)
-    resultado = resultados_contingencias[ctg_id]
-    curt_medio = resultado["total_curtailment"]
-    println("$(lpad(ctg_id, 11)) | $(round(curt_medio, digits=6))")
-end
-
-# 3. MVu E MVd POR GERADOR
-println("\n3. MVu E MVd POR GERADOR:")
-println("Gerador | MVu Máximo (pu) | MVd Máximo (pu)")
-println("-"^45)
-for g in 1:NGER_ORIGINAL
-    if g <= length(geradores_data)
-        mv_u_max = maximum(MVu[:, g])
-        mv_d_max = maximum(MVd[:, g])
-        if mv_u_max > 0 || mv_d_max > 0
-            gerador_id = geradores_data[g]["ID_Gerador"]
-            println("$(lpad(gerador_id, 7)) | $(lpad(round(mv_u_max, digits=6), 14)) | $(lpad(round(mv_d_max, digits=6), 14))")
-        end
-    end
-end
-
-# 4. LINHA MAIS IMPACTANTE PARA CTG
-println("\n4. LINHA MAIS IMPACTANTE PARA CTG:")
-impacto_linhas = Dict{String, Float64}()
-for (ctg_idx, contingencia) in enumerate(contingencias_data)
-    if ctg_idx > 1
-        linhas_removidas = get(contingencia, "Linhas_Removidas", [])
-        for linha_id in linhas_removidas
-            impacto_total = sum(MVu[ctg_idx, :]) + sum(MVd[ctg_idx, :])
-            if haskey(impacto_linhas, linha_id)
-                impacto_linhas[linha_id] += impacto_total
-            else
-                impacto_linhas[linha_id] = impacto_total
-            end
-        end
-    end
-end
-
-if !isempty(impacto_linhas)
-    linhas_ordenadas = sort(collect(impacto_linhas), by=x->x[2], rev=true)
-    println("Linha | Impacto Total (MVu + MVd)")
-    println("-"^35)
-    for (linha_id, impacto) in linhas_ordenadas
-        println("$(lpad(linha_id, 5)) | $(round(impacto, digits=6))")
-    end
-else
-    println("Nenhuma linha removida nas contingências analisadas.")
+                                     linhas, FLIM, contingencias_data, MVu, MVd, y_line)
 end
 
 println("\n" * "="^100)
@@ -1132,58 +1013,12 @@ println("📊 Dados exportados para: resultados_opf_contingencias.db")
 println("📈 ID da execução: $ID_EXECUCAO")
 println("="^100)
 
-# ==============================================================================
-# FUNÇÃO PARA CONSULTA DOS DADOS (para gráficos posteriormente)
-# ==============================================================================
-
-function consultar_dados_para_graficos()
-    arquivo_db = "resultados_opf_contingencias.db"
-    db = SQLite.DB(arquivo_db)
-    
-    println("\n📈 DADOS DISPONÍVEIS PARA GRÁFICOS:")
-    
-    # Consultar contingências
-    contingencias_df = DBInterface.execute(db, """
-        SELECT id_contingencia, descricao, total_curtailment_pu, total_deficit_pu, custo_total_usd_h
-        FROM contingencias 
-        WHERE id_execucao = ?
-        ORDER BY id_contingencia
-    """, [ID_EXECUCAO]) |> DataFrame
-    
-    println("\nContingências disponíveis:")
-    show(contingencias_df)
-    println()
-    
-    # Consultar dados de barras para gráficos de corte de carga
-    barras_df = DBInterface.execute(db, """
-        SELECT id_contingencia, id_barra, deficit_pu
-        FROM barras_contingencia 
-        WHERE id_execucao = ? AND deficit_pu > 0
-        ORDER BY id_contingencia, deficit_pu DESC
-    """, [ID_EXECUCAO]) |> DataFrame
-    
-    println("\nCortes de carga por barra (para gráficos):")
-    show(barras_df)
-    println()
-    
-    # Consultar MVu/MVd para gráficos
-    mvu_mvd_df = DBInterface.execute(db, """
-        SELECT id_contingencia, id_gerador, mvu_pu, mvd_pu
-        FROM mvu_mvd_contingencia 
-        WHERE id_execucao = ?
-        ORDER BY id_contingencia, id_gerador
-    """, [ID_EXECUCAO]) |> DataFrame
-    
-    println("\nMVu/MVd por gerador (para gráficos):")
-    show(mvu_mvd_df)
-    println()
-    
-    SQLite.close(db)
-    
-    return contingencias_df, barras_df, mvu_mvd_df
+# Resumo dos resultados
+println("\n=== RESUMO DAS CONTINGÊNCIAS ===")
+for (ctg_id, resultado) in resultados_contingencias
+    status = resultado["CONVERGIU"] ? "CONVERGIU" : "NÃO CONVERGIU"
+    deficit = resultado["total_deficit"] > 0.01 ? "COM DÉFICIT" : "SEM DÉFICIT"
+    println("$ctg_id: $status | $deficit | Balanço: $(round(resultado["BALANCO"], digits=6))")
 end
-
-# Executar consulta para verificar dados disponíveis
-consultar_dados_para_graficos()
 
 println("\n=== EXECUÇÃO CONCLUÍDA ===")

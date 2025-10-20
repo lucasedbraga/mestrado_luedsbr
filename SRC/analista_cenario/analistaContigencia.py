@@ -23,16 +23,16 @@ import plotly.express as px
 import plotly.graph_objects as go
 from pathlib import Path
 
-# Configuração de logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(levelname)s - %(message)s',
-    handlers=[
-        logging.FileHandler('orquestracao_opf.log'),
-        logging.StreamHandler(sys.stdout)
-    ]
-)
-logger = logging.getLogger(__name__)
+# # Configuração de logging
+# logging.basicConfig(
+#     level=logging.INFO,
+#     format='%(asctime)s - %(levelname)s - %(message)s',
+#     handlers=[
+#         logging.FileHandler('orquestracao_opf.log'),
+#         logging.StreamHandler(sys.stdout)
+#     ]
+# )
+# logger = logging.getLogger(__name__)
 
 class OPFOrchestrator:
     def __init__(self, config_file="config_orquestracao.json"):
@@ -286,7 +286,7 @@ class OPFOrchestrator:
         for i in range(self.config["num_execucoes"]):
             execucao_id = f"exec_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{i}"
             
-            logger.info(f"🎯 Execução {i+1}/{self.config['num_execucoes']} - ID: {execucao_id}")
+            logger.info(f"Execução {i+1}/{self.config['num_execucoes']} - ID: {execucao_id}")
             
             # Selecionar sistema (alternar entre sistemas configurados)
             sistema_idx = i % len(self.config["sistemas"])
