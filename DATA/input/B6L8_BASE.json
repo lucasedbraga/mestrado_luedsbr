@@ -202,5 +202,52 @@
       "LIM_Fluxo": 90.0, 
       "LIM_Fluxo_Unidade": "MW"
     }
+  ],
+  "CONTINGENCIAS": [
+    {
+      "ID_Contingencia": "CTG-BASE",
+      "Descricao": "Caso Base - Sem contingência",
+      "Linhas_Removidas": []
+    },
+    {
+      "ID_Contingencia": "CTG-1",
+      "Descricao": "Remoção da linha 1-2",
+      "Linhas_Removidas": ["1-2"]
+    },
+    {
+      "ID_Contingencia": "CTG-2",
+      "Descricao": "Remoção da linha 2-3", 
+      "Linhas_Removidas": ["2-3"]
+    },
+    {
+      "ID_Contingencia": "CTG-3",
+      "Descricao": "Remoção da linha 3-4",
+      "Linhas_Removidas": ["3-4"]
+    },
+    {
+      "ID_Contingencia": "CTG-4",
+      "Descricao": "Remoção da linha 4-5",
+      "Linhas_Removidas": ["4-5"]
+    },
+    {
+      "ID_Contingencia": "CTG-5",
+      "Descricao": "Remoção da linha 5-6",
+      "Linhas_Removidas": ["5-6"]
+    },
+    {
+      "ID_Contingencia": "CTG-6",
+      "Descricao": "Remoção da linha 3-6",
+      "Linhas_Removidas": ["3-6"]
+    },
+    {
+      "ID_Contingencia": "CTG-7",
+      "Descricao": "Remoção da linha 1-5",
+      "Linhas_Removidas": ["1-5"]
+    },
+    {
+      "ID_Contingencia": "CTG-8",
+      "Descricao": "Remoção da linha 4-2",
+      "Linhas_Removidas": ["4-2"]
+    }
   ]
 }

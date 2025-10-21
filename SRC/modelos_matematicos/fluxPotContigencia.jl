@@ -56,7 +56,7 @@ function gerar_cenario_aleatorio!(geradores_data, demandas_data, SB)
 end
 
 # ==============================================================================
-# FUNÇÃO PARA EXPORTAR CONTINGÊNCIA PARA SQLite
+# FUNÇÃO PARA EXPORTAR CONTINGÊNCIA PARA SQLite - MODIFICADA
 # ==============================================================================
 
 function exportar_contingencia_para_sqlite(ctg_id, ctg_descricao, linhas_removidas,
@@ -65,7 +65,8 @@ function exportar_contingencia_para_sqlite(ctg_id, ctg_descricao, linhas_removid
                                           ID_EXECUCAO, barras, NGER_ORIGINAL, geradores_data,
                                           BARPG, PGMIN, PGMAX, CPG, SB, BAR_GWD, NGER_CURTAILMENT,
                                           CPG_ORIGINAL, CPG_CURTAILMENT, CPG_DEFICIT, PLOAD,
-                                          linhas, FLIM, contingencias_data, MVu, MVd, y_line)
+                                          linhas, FLIM, contingencias_data, MVu, MVd, y_line,
+                                          lambda_balance, lambda_flow)  # NOVOS PARÂMETROS
     
     arquivo_db = "resultados_opf_contingencias.db"
     
@@ -144,7 +145,7 @@ function exportar_contingencia_para_sqlite(ctg_id, ctg_descricao, linhas_removid
           custo_total, total_pg_deficit > 0.01 ? "COM_DEFICIT" : "NORMAL"])
     
     # ==========================================================================
-    # TABELA: BARRAS_POR_CONTINGENCIA
+    # TABELA: BARRAS_POR_CONTINGENCIA - ATUALIZADA COM lambda_balance
     # ==========================================================================
     
     SQLite.execute(db, """
@@ -161,6 +162,7 @@ function exportar_contingencia_para_sqlite(ctg_id, ctg_descricao, linhas_removid
             curtailment_pu REAL,
             deficit_pu REAL,
             preco_nodal_usd_mwh REAL,
+            lambda_balance REAL,  -- NOVA COLUNA: variável dual do balanço
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (id_execucao) REFERENCES execucoes (id_execucao),
             FOREIGN KEY (id_contingencia) REFERENCES contingencias (id_contingencia)
@@ -172,12 +174,12 @@ function exportar_contingencia_para_sqlite(ctg_id, ctg_descricao, linhas_removid
         SQLite.execute(db, """
             INSERT INTO barras_contingencia 
             (id_execucao, id_contingencia, id_barra, tipo, tensao_pu, angulo_graus, 
-             carga_pu, geracao_pu, curtailment_pu, deficit_pu, preco_nodal_usd_mwh)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             carga_pu, geracao_pu, curtailment_pu, deficit_pu, preco_nodal_usd_mwh, lambda_balance)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, [ID_EXECUCAO, ctg_id, barra["ID_Barra"], barra["tipo"], 
               1.0, round(rad2deg(ANGLE[i]), digits=6),
               PLOAD[i], Pg_original[i], Pg_curtailment[i], Pg_deficit[i],
-              0.0])
+              0.0, round(lambda_balance[i], digits=6)])  # NOVO VALOR
     end
     
     # ==========================================================================
@@ -238,7 +240,7 @@ function exportar_contingencia_para_sqlite(ctg_id, ctg_descricao, linhas_removid
     end
     
     # ==========================================================================
-    # TABELA: LINHAS_POR_CONTINGENCIA
+    # TABELA: LINHAS_POR_CONTINGENCIA - ATUALIZADA COM lambda_flow
     # ==========================================================================
     
     SQLite.execute(db, """
@@ -254,13 +256,15 @@ function exportar_contingencia_para_sqlite(ctg_id, ctg_descricao, linhas_removid
             perdas_pu REAL,
             utilizacao_percentual REAL,
             status TEXT,
+            lambda_flow_pos REAL,  -- NOVA COLUNA: lambda para restrição de fluxo positivo
+            lambda_flow_neg REAL,  -- NOVA COLUNA: lambda para restrição de fluxo negativo
             timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (id_execucao) REFERENCES execucoes (id_execucao),
             FOREIGN KEY (id_contingencia) REFERENCES contingencias (id_contingencia)
         )
     """)
     
-    for e in 1:NLIN
+    for e in 1:length(linhas)
         linha = linhas[e]
         
         # Calcular fluxo aproximado para DC OPF
@@ -275,14 +279,21 @@ function exportar_contingencia_para_sqlite(ctg_id, ctg_descricao, linhas_removid
         utilizacao_percentual = FLIM[e] > 0 ? round(fluxo_max / FLIM[e] * 100, digits=2) : 0.0
         status = utilizacao_percentual > 95 ? "CRITICO" : "NORMAL"
         
+        # Índices para lambda_flow (2 restrições por linha)
+        idx_pos = 2*(e-1) + 1  # Restrição de limite superior
+        idx_neg = 2*(e-1) + 2  # Restrição de limite inferior
+        
         SQLite.execute(db, """
             INSERT INTO linhas_contingencia 
             (id_execucao, id_contingencia, id_linha, id_barra_origem, id_barra_destino,
-             fluxo_max_pu, limite_pu, perdas_pu, utilizacao_percentual, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             fluxo_max_pu, limite_pu, perdas_pu, utilizacao_percentual, status,
+             lambda_flow_pos, lambda_flow_neg)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         """, [ID_EXECUCAO, ctg_id, linha["ID_linha"], linha["ID_Barra_Origem"], linha["ID_Barra_Destino"],
               round(fluxo_max, digits=6), round(FLIM[e], digits=6),
-              round(perdas[e], digits=6), utilizacao_percentual, status])
+              round(perdas[e], digits=6), utilizacao_percentual, status,
+              round(lambda_flow[idx_pos], digits=6),  # NOVO VALOR
+              round(lambda_flow[idx_neg], digits=6)]) # NOVO VALOR
     end
     
     # ==========================================================================
@@ -324,10 +335,10 @@ function exportar_contingencia_para_sqlite(ctg_id, ctg_descricao, linhas_removid
 end
 
 # ==============================================================================
-# FUNÇÃO PRINCIPAL REVISADA DO OPF - CORRIGIDA
+# FUNÇÃO PRINCIPAL REVISADA DO OPF - CORRIGIDA E MODIFICADA
 # ==============================================================================
 
-function resolver_opf_dc_revisado(NBAR, NGER, BARPG, PGMIN, PGMAX, CPG, PLOAD, Bbus, slack_idx, 
+function solve_FPO_DC(NBAR, NGER, BARPG, PGMIN, PGMAX, CPG, PLOAD, Bbus, slack_idx, 
                                  line_fr, line_to, y_line, g_line, FLIM, NGER_ORIGINAL, geradores_data,
                                  NGER_CURTAILMENT, NGER_DEFICIT, Pg_anterior, ctg_idx, SB,
                                  idx_map, BARPG_ORIGINAL, BARPG_CURTAILMENT, PGMAX_EFETIVO)
@@ -376,23 +387,23 @@ function resolver_opf_dc_revisado(NBAR, NGER, BARPG, PGMIN, PGMAX, CPG, PLOAD, B
         @constraint(model, v_ANG[slack_idx] == 0.0)
         
         # ======================================================================
-        # RESTRIÇÕES DE RAMPA (APENAS PARA C+1)
+        # RESTRIÇÕES DE RAMPA
         # ======================================================================
         
-        # if ctg_idx > 1
-        #     for g in 1:NGER_ORIGINAL
-        #         if g <= length(geradores_data)
-        #             tipo_ger = geradores_data[g]["Tipo"]
-        #             if tipo_ger in ["UTE"]
-        #                 ramp_up = get(geradores_data[g], "ramp_up_MW_h", 1000.0) / SB
-        #                 ramp_down = get(geradores_data[g], "ramp_down_MW_h", 1000.0) / SB
+        if ctg_idx > 1
+            for g in 1:NGER_ORIGINAL
+                if g <= length(geradores_data)
+                    tipo_ger = geradores_data[g]["Tipo"]
+                    if tipo_ger in ["UTE"]
+                        ramp_up = get(geradores_data[g], "ramp_up_MW_h", 1000.0) / SB
+                        ramp_down = get(geradores_data[g], "ramp_down_MW_h", 1000.0) / SB
                         
-        #                 @constraint(model, v_PG[g] - Pg_anterior[g] <= ramp_up)
-        #                 @constraint(model, Pg_anterior[g] - v_PG[g] <= min(ramp_down, Pg_anterior[g]))
-        #             end
-        #         end
-        #     end
-        # end
+                        @constraint(model, v_PG[g] - Pg_anterior[g] <= ramp_up)
+                        @constraint(model, Pg_anterior[g] - v_PG[g] <= min(ramp_down, Pg_anterior[g]))
+                    end
+                end
+            end
+        end
         
         # ======================================================================
         # RESTRIÇÃO DE BALANÇO DE POTÊNCIA
@@ -483,7 +494,7 @@ function resolver_opf_dc_revisado(NBAR, NGER, BARPG, PGMIN, PGMAX, CPG, PLOAD, B
         status = termination_status(model)
         println("Status da solução: $status")
         
-        if status in [MOI.OPTIMAL, MOI.LOCALLY_SOLVED, MOI.ALMOST_OPTIMAL, MOI.ALMOST_LOCALLY_SOLVED]
+        if status == MOI.OPTIMAL
             PG_new = value.(v_PG)
             ANGLE_NEW = value.(v_ANG)
             DIFMAX = maximum(abs.(ANGLE_NEW - ANGLE))            
@@ -519,28 +530,27 @@ function resolver_opf_dc_revisado(NBAR, NGER, BARPG, PGMIN, PGMAX, CPG, PLOAD, B
             println("  delta_Perdas = $(round(loss_diff, digits=6))") 
             println("  Perdas = $(round(total_perdas, digits=6))")
             
+            # EXTRAIR MULTIPLICADORES DE LAGRANGE - CORRIGIDO
+            try
+                # Multiplicadores das restrições de balanço
+                for i in 1:NBAR
+                    lambda_balance[i] = dual(balance_constraints[i])
+                end
+                
+                # Multiplicadores das restrições de fluxo
+                for i in 1:length(flow_constraints)
+                    lambda_flow[i] = dual(flow_constraints[i])
+                end
+            catch e
+                println("⚠️  Aviso: Erro ao extrair multiplicadores de Lagrange: $e")
+                # Manter valores zeros em caso de erro
+            end
+            
             # Atualização para próxima iteração
             ANGLE = copy(ANGLE_NEW)
             prev_total_perdas = total_perdas
             final_PG = copy(PG_new)
             final_ANGLE = copy(ANGLE_NEW)
-            
-            # Extração dos multiplicadores de Lagrange
-            try
-                for i in 1:NBAR
-                    lambda_balance[i] = dual(balance_constraints[i])
-                end
-            catch e
-                println("Erro ao extrair multiplicadores de balanço: $e")
-            end
-
-            try
-                for i in 1:length(flow_constraints)
-                    lambda_flow[i] = dual(flow_constraints[i])
-                end
-            catch e
-                println("Erro ao extrair multiplicadores de fluxo: $e")
-            end
             
             # Critério de convergência
             if DIFMAX < TOL && loss_diff < TOL
@@ -559,15 +569,17 @@ function resolver_opf_dc_revisado(NBAR, NGER, BARPG, PGMIN, PGMAX, CPG, PLOAD, B
         end
     end
     
-    return convergiu, final_PG, final_ANGLE, perdas, PINJ
+    # Retornar também as variáveis duais
+    return convergiu, final_PG, final_ANGLE, perdas, PINJ, lambda_balance, lambda_flow
 end
 
 # ==============================================================================
 # CARREGAMENTO E PROCESSAMENTO DOS DADOS
 # ==============================================================================
 
+#data = JSON.parsefile("../DATA/input/ieee118_BASE.json")
+#data = JSON.parsefile("../DATA/input/B6L8_BASE.json")
 data = JSON.parsefile("../DATA/input/3barras_BASE.json")
-#data = JSON.parsefile("DATA/input/3barras_BASE.json")
 
 barras = data["BARRAS"]
 geradores_data = data["GERADORES"] 
@@ -787,7 +799,7 @@ barras_com_gerador = Set(BARPG_ORIGINAL)
 barras_PQ_sem_gerador = [b for b in barras_PQ if idx_map[b["ID_Barra"]] ∉ barras_com_gerador]
 
 NGER_CURTAILMENT = length(BAR_GWD)
-NGER_DEFICIT = length(barras_PQ)
+NGER_DEFICIT = NBAR
 
 custo_maximo_existente = isempty(CPG_ORIGINAL) ? 1000.0 : maximum(CPG_ORIGINAL)
 CUSTO_CURTAILMENT = 10.0 * custo_maximo_existente
@@ -816,12 +828,12 @@ PGMIN_DEFICIT = zeros(NGER_DEFICIT)
 PGMAX_DEFICIT = zeros(NGER_DEFICIT)
 CPG_DEFICIT = zeros(NGER_DEFICIT)
 
-for (i, b) in enumerate(barras_PQ)
+for (i, b) in enumerate(barras)
     id = b["ID_Barra"]
     idx = idx_map[id]
     BARPG_DEFICIT[i] = idx
     PGMIN_DEFICIT[i] = 0.0
-    PGMAX_DEFICIT[i] = PLOAD[idx] > 0 ? PLOAD[idx] * 2 : 1.0
+    PGMAX_DEFICIT[i] = PLOAD[idx] > 0 ? PLOAD[idx] * 100 : 1.0
     CPG_DEFICIT[i] = CUSTO_DEFICIT
 end
 
@@ -835,7 +847,7 @@ PGMAX = vcat(PGMAX_EFETIVO, PGMAX_CURTAILMENT, PGMAX_DEFICIT)
 CPG = vcat(CPG_ORIGINAL, CPG_CURTAILMENT, CPG_DEFICIT)
 
 # ==============================================================================
-# LOOP PRINCIPAL DE CONTINGÊNCIAS REVISADO - CORRIGIDO
+# LOOP PRINCIPAL DE CONTINGÊNCIAS REVISADO - CORRIGIDO E MODIFICADO
 # ==============================================================================
 
 resultados_contingencias = Dict{String, Dict}()
@@ -899,8 +911,8 @@ for (ctg_idx, contingencia) in enumerate(contingencias_data)
         Bbus_ctg[j,i] -= y
     end
     
-    # Resolver OPF revisado
-    convergiu, final_PG, final_ANGLE, perdas, PINJ = resolver_opf_dc_revisado(
+    # Resolver OPF revisado - AGORA COM RETORNO DAS VARIÁVEIS DUAIS
+    convergiu, final_PG, final_ANGLE, perdas, PINJ, lambda_balance, lambda_flow = solve_FPO_DC(
         NBAR, NGER, BARPG, PGMIN, PGMAX, CPG, PLOAD, Bbus_ctg, slack_idx,
         line_fr, line_to, y_line, g_line, FLIM, NGER_ORIGINAL, geradores_data,
         NGER_CURTAILMENT, NGER_DEFICIT, Pg_anterior, ctg_idx, SB,
@@ -976,35 +988,38 @@ for (ctg_idx, contingencia) in enumerate(contingencias_data)
     
     # Atualizar Pg_anterior apenas se convergiu
     if convergiu
-        Pg_anterior = copy(final_PG[1:NGER_ORIGINAL])
+        Pg_anterior = copy(final_PG[1:NGER_ORIGINAL])    
+
+        # Armazenar resultados
+        resultados_contingencias[ctg_id] = Dict(
+            "Pg_original" => copy(Pg_original),
+            "Pg_curtailment" => copy(Pg_curtailment),
+            "Pg_deficit" => copy(Pg_deficit),
+            "Pg_total" => copy(Pg_total),
+            "total_pg" => total_pg,
+            "total_pl" => total_pl,
+            "total_perdas" => total_perdas_val,
+            "total_curtailment" => total_pg_curtailment,
+            "total_deficit" => total_pg_deficit,
+            "ANGLE" => copy(final_ANGLE),
+            "PERDAS" => copy(perdas),
+            "PG_FINAL" => copy(final_PG),
+            "BALANCO" => balanco,
+            "CONVERGIU" => convergiu,
+            "lambda_balance" => copy(lambda_balance),
+            "lambda_flow" => copy(lambda_flow)
+        )
+        
+        # Exportar para SQLite - AGORA COM AS VARIÁVEIS DUAIS
+        exportar_contingencia_para_sqlite(ctg_id, ctg_descricao, linhas_removidas, 
+                                        Pg_original, Pg_curtailment, Pg_deficit, Pg_total,
+                                        final_ANGLE, perdas, final_PG,
+                                        ID_EXECUCAO, barras, NGER_ORIGINAL, geradores_data,
+                                        BARPG, PGMIN, PGMAX, CPG, SB, BAR_GWD, NGER_CURTAILMENT,
+                                        CPG_ORIGINAL, CPG_CURTAILMENT, CPG_DEFICIT, PLOAD,
+                                        linhas, FLIM, contingencias_data, MVu, MVd, y_line,
+                                        lambda_balance, lambda_flow)  # NOVOS PARÂMETROS
     end
-    
-    # Armazenar resultados
-    resultados_contingencias[ctg_id] = Dict(
-        "Pg_original" => copy(Pg_original),
-        "Pg_curtailment" => copy(Pg_curtailment),
-        "Pg_deficit" => copy(Pg_deficit),
-        "Pg_total" => copy(Pg_total),
-        "total_pg" => total_pg,
-        "total_pl" => total_pl,
-        "total_perdas" => total_perdas_val,
-        "total_curtailment" => total_pg_curtailment,
-        "total_deficit" => total_pg_deficit,
-        "ANGLE" => copy(final_ANGLE),
-        "PERDAS" => copy(perdas),
-        "PG_FINAL" => copy(final_PG),
-        "BALANCO" => balanco,
-        "CONVERGIU" => convergiu
-    )
-    
-    # Exportar para SQLite
-    exportar_contingencia_para_sqlite(ctg_id, ctg_descricao, linhas_removidas, 
-                                     Pg_original, Pg_curtailment, Pg_deficit, Pg_total,
-                                     final_ANGLE, perdas, final_PG,
-                                     ID_EXECUCAO, barras, NGER_ORIGINAL, geradores_data,
-                                     BARPG, PGMIN, PGMAX, CPG, SB, BAR_GWD, NGER_CURTAILMENT,
-                                     CPG_ORIGINAL, CPG_CURTAILMENT, CPG_DEFICIT, PLOAD,
-                                     linhas, FLIM, contingencias_data, MVu, MVd, y_line)
 end
 
 println("\n" * "="^100)
