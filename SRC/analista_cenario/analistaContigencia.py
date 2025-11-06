@@ -1,503 +1,651 @@
 #!/usr/bin/env python3
 """
-Sistema de Orquestração Completo para Análise de Contingências em Redes Elétricas
-Autor: Sistema de Análise de Contingências
-Data: 2024
+ANALISADOR SIMPLIFICADO DE CONTINGÊNCIAS
+Classe otimizada para análise e visualização de resultados
 """
 
-import os
-import sys
-import json
 import sqlite3
-import subprocess
 import pandas as pd
 import numpy as np
-import matplotlib.pyplot as plt
-import seaborn as sns
-from datetime import datetime
-import logging
-import argparse
-import glob
-import time
 import plotly.express as px
 import plotly.graph_objects as go
-from pathlib import Path
+import os
 
-# # Configuração de logging
-# logging.basicConfig(
-#     level=logging.INFO,
-#     format='%(asctime)s - %(levelname)s - %(message)s',
-#     handlers=[
-#         logging.FileHandler('orquestracao_opf.log'),
-#         logging.StreamHandler(sys.stdout)
-#     ]
-# )
-# logger = logging.getLogger(__name__)
-
-class OPFOrchestrator:
-    def __init__(self, config_file="config_orquestracao.json"):
-        self.config_file = config_file
-        self.config = self._load_config()
-        self.julia_script = "fluxPotContigencia.jl"
-        self.results_db = "resultados_opf_contingencias.db"
-        self.series_db = "resultados_opf_series.db"
-        
-    def _load_config(self):
-        """Carregar configuração do arquivo JSON"""
-        default_config = {
-            "num_execucoes": 10,
-            "sistemas": ["3barras_BASE.json"],
-            "julia_path": "julia",
-            "output_dir": "resultados_series",
-            "analise_automática": True,
-            "gerar_relatorios": True
-        }
-        
-        try:
-            with open(self.config_file, 'r') as f:
-                user_config = json.load(f)
-                default_config.update(user_config)
-            logger.info(f"Configuração carregada de {self.config_file}")
-        except FileNotFoundError:
-            logger.warning(f"Arquivo de configuração {self.config_file} não encontrado. Usando configuração padrão.")
-            with open(self.config_file, 'w') as f:
-                json.dump(default_config, f, indent=4)
-            logger.info(f"Arquivo de configuração padrão criado: {self.config_file}")
-        
-        return default_config
-    
-    def executar_analise_contingencias(self, sistema, execucao_id):
-        """Executar análise de contingências para um sistema específico"""
-        logger.info(f"Executando análise para sistema: {sistema}")
-        
-        # Preparar comando Julia
-        cmd = [
-            self.config["julia_path"],
-            self.julia_script
-        ]
-        
-        # Criar diretório de trabalho temporário se necessário
-        work_dir = os.path.dirname(os.path.abspath(__file__))
-        
-        try:
-            # Executar comando Julia
-            process = subprocess.Popen(
-                cmd,
-                cwd=work_dir,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
-            )
-            
-            stdout, stderr = process.communicate(timeout=300)  # 5 minutos timeout
-            
-            if process.returncode == 0:
-                logger.info(f"Análise concluída para {sistema}")
-                logger.info(f"Execução ID: {execucao_id}")
-                
-                # Capturar informações da execução
-                if "ANÁLISE DE CONTINGÊNCIAS CONCLUÍDA" in stdout:
-                    logger.info("✅ Processo Julia finalizado com sucesso")
-                else:
-                    logger.warning("Processo Julia finalizado mas sem mensagem de conclusão esperada")
-                    
-            else:
-                logger.error(f"Erro na execução Julia: {stderr}")
-                return False
-                
-        except subprocess.TimeoutExpired:
-            logger.error(f"Timeout na execução do Julia para {sistema}")
-            return False
-        except Exception as e:
-            logger.error(f"Erro inesperado: {e}")
-            return False
-            
-        return True
-    
-    def consolidar_resultados_series(self):
-        """Consolidar resultados de múltiplas execuções em banco único"""
-        logger.info("Consolidando resultados das séries temporais...")
-        
-        # Conectar ao banco de séries
-        conn_series = sqlite3.connect(self.series_db)
-        
-        # Listar todos os bancos de resultados
-        result_files = glob.glob("resultados_opf_contingencias*.db")
-        
-        for db_file in result_files:
-            try:
-                conn_result = sqlite3.connect(db_file)
-                
-                # Extrair dados de execuções
-                execucoes_df = pd.read_sql("SELECT * FROM execucoes", conn_result)
-                
-                for _, execucao in execucoes_df.iterrows():
-                    id_execucao = execucao['id_execucao']
-                    
-                    # Verificar se execução já existe
-                    existing = pd.read_sql(
-                        f"SELECT 1 FROM execucoes WHERE id_execucao = '{id_execucao}'", 
-                        conn_series
-                    )
-                    
-                    if len(existing) == 0:
-                        # Inserir execução
-                        execucao.to_sql('execucoes', conn_series, if_exists='append', index=False)
-                        
-                        # Extrair e inserir dados relacionados
-                        tabelas = ['contingencias', 'barras_contingencia', 'geradores_contingencia', 
-                                  'linhas_contingencia', 'mvu_mvd_contingencia']
-                        
-                        for tabela in tabelas:
-                            try:
-                                df_tabela = pd.read_sql(
-                                    f"SELECT * FROM {tabela} WHERE id_execucao = '{id_execucao}'", 
-                                    conn_result
-                                )
-                                if len(df_tabela) > 0:
-                                    df_tabela.to_sql(tabela, conn_series, if_exists='append', index=False)
-                            except:
-                                logger.warning(f"Tabela {tabela} não encontrada em {db_file}")
-                
-                conn_result.close()
-                logger.info(f"Dados de {db_file} consolidados")
-                
-            except Exception as e:
-                logger.error(f"Erro ao processar {db_file}: {e}")
-        
-        conn_series.close()
-        logger.info("Consolidação de resultados concluída")
-    
-    def analisar_series_temporais(self):
-        """Analisar séries temporais dos resultados consolidados"""
-        logger.info("Iniciando análise de séries temporais...")
-        
-        analyzer = OPFAnalyzer(self.series_db)
-        analyzer.connect()
-        analyzer.load_all_data()
-        
-        # Gerar análises
-        analises = {}
-        
-        # 1. Análise de cenários
-        analises['cenarios'] = analyzer.get_scenario_summary()
-        
-        # 2. Análise de rampas
-        analises['rampas'], analises['dados_evolucao'] = analisar_rampas_simples(analyzer)
-        
-        # 3. Análise de custos
-        analises['custos'] = plot_custos_simples(analyzer)
-        
-        analyzer.close()
-        
-        return analises
-    
-    def gerar_relatorio_execucao(self, execucao_id, sistema):
-        """Gerar relatório detalhado para uma execução específica"""
-        logger.info(f"Gerando relatório para execução {execucao_id}")
-        
-        relatorio = {
-            "id_execucao": execucao_id,
-            "sistema": sistema,
-            "data_execucao": datetime.now().isoformat(),
-            "metricas_principais": {},
-            "contingencias_analisadas": [],
-            "alertas": []
-        }
-        
-        # Conectar ao banco de resultados
-        conn = sqlite3.connect(self.results_db)
-        
-        try:
-            # Obter estatísticas da execução
-            stats_query = """
-            SELECT 
-                COUNT(DISTINCT id_contingencia) as num_contingencias,
-                AVG(total_curtailment_pu) as curtailment_medio,
-                AVG(total_deficit_pu) as deficit_medio,
-                AVG(custo_total_usd_h) as custo_medio
-            FROM contingencias 
-            WHERE id_execucao = ?
-            """
-            stats = pd.read_sql(stats_query, conn, params=[execucao_id]).iloc[0]
-            
-            relatorio["metricas_principais"] = {
-                "numero_contingencias": int(stats['num_contingencias']),
-                "curtailment_medio_pu": float(stats['curtailment_medio']),
-                "deficit_medio_pu": float(stats['deficit_medio']),
-                "custo_medio_usd_h": float(stats['custo_medio'])
-            }
-            
-            # Identificar contingências críticas
-            criticas_query = """
-            SELECT id_contingencia, total_deficit_pu, total_curtailment_pu
-            FROM contingencias 
-            WHERE id_execucao = ? AND total_deficit_pu > 0.01
-            ORDER BY total_deficit_pu DESC
-            """
-            criticas = pd.read_sql(criticas_query, conn, params=[execucao_id])
-            
-            for _, ctg in criticas.iterrows():
-                relatorio["contingencias_analisadas"].append({
-                    "id": ctg['id_contingencia'],
-                    "deficit_pu": float(ctg['total_deficit_pu']),
-                    "curtailment_pu": float(ctg['total_curtailment_pu']),
-                    "status": "CRITICA"
-                })
-            
-            # Gerar alertas
-            if len(criticas) > 0:
-                relatorio["alertas"].append(
-                    f"⚠️ {len(criticas)} contingências com déficit de carga significativo"
-                )
-            
-        except Exception as e:
-            logger.error(f"Erro ao gerar relatório: {e}")
-            relatorio["erro"] = str(e)
-        
-        finally:
-            conn.close()
-        
-        # Salvar relatório
-        output_dir = self.config["output_dir"]
-        os.makedirs(output_dir, exist_ok=True)
-        
-        relatorio_file = os.path.join(output_dir, f"relatorio_{execucao_id}.json")
-        with open(relatorio_file, 'w') as f:
-            json.dump(relatorio, f, indent=4)
-        
-        logger.info(f"Relatório salvo: {relatorio_file}")
-        return relatorio
-    
-    def executar_fluxo_completo(self):
-        """Executar fluxo completo de orquestração"""
-        logger.info("Iniciando fluxo completo de orquestração")
-        
-        # Criar diretório de saída
-        os.makedirs(self.config["output_dir"], exist_ok=True)
-        
-        resultados_gerais = {
-            "data_inicio": datetime.now().isoformat(),
-            "execucoes_realizadas": [],
-            "estatisticas_gerais": {}
-        }
-        
-        # Executar múltiplas análises
-        for i in range(self.config["num_execucoes"]):
-            execucao_id = f"exec_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{i}"
-            
-            logger.info(f"Execução {i+1}/{self.config['num_execucoes']} - ID: {execucao_id}")
-            
-            # Selecionar sistema (alternar entre sistemas configurados)
-            sistema_idx = i % len(self.config["sistemas"])
-            sistema = self.config["sistemas"][sistema_idx]
-            
-            # Executar análise
-            sucesso = self.executar_analise_contingencias(sistema, execucao_id)
-            
-            if sucesso:
-                # Gerar relatório individual
-                relatorio = self.gerar_relatorio_execucao(execucao_id, sistema)
-                resultados_gerais["execucoes_realizadas"].append(relatorio)
-                
-                # Aguardar entre execuções
-                time.sleep(2)
-            else:
-                logger.error(f"Falha na execução {execucao_id}")
-        
-        # Consolidar resultados
-        if self.config["num_execucoes"] > 1:
-            self.consolidar_resultados_series()
-            
-            # Análise de séries temporais
-            if self.config["analise_automática"]:
-                analises = self.analisar_series_temporais()
-                resultados_gerais["analise_series"] = {
-                    "numero_cenarios": len(analises.get('dados_evolucao', [])),
-                    "rampas_analisadas": len(analises.get('rampas', []))
-                }
-        
-        resultados_gerais["data_fim"] = datetime.now().isoformat()
-        resultados_gerais["estatisticas_gerais"] = {
-            "total_execucoes": len(resultados_gerais["execucoes_realizadas"]),
-            "execucoes_sucesso": len([e for e in resultados_gerais["execucoes_realizadas"] if "erro" not in e])
-        }
-        
-        # Salvar resultados gerais
-        resultados_file = os.path.join(self.config["output_dir"], "resultados_gerais.json")
-        with open(resultados_file, 'w') as f:
-            json.dump(resultados_gerais, f, indent=4)
-        
-        logger.info(f"Fluxo completo concluído. Resultados em: {resultados_file}")
-        return resultados_gerais
-
-class OPFAnalyzer:
-    def __init__(self, db_path="resultados_opf_series.db"):
+class AnalisadorContingencias:
+    def __init__(self, db_path="resultados_opf_contingencias.db"):
+        """Inicializa o analisador com o caminho do banco de dados"""
         self.db_path = db_path
         self.conn = None
-        self.dfs = {}
+        self.dados = {}
         
-    def connect(self):
-        """Conectar ao banco de dados"""
-        self.conn = sqlite3.connect(self.db_path)
-        
-    def load_all_data(self):
-        """Carregar todos os dados em DataFrames"""
-        if self.conn is None:
-            self.connect()
-            
-        tables = ['execucoes', 'contingencias', 'barras_contingencia', 
-                 'geradores_contingencia', 'linhas_contingencia', 'mvu_mvd_contingencia']
-        
-        for table in tables:
-            try:
-                query = f"SELECT * FROM {table}"
-                self.dfs[table] = pd.read_sql_query(query, self.conn)
-                logger.info(f"Tabela {table} carregada: {len(self.dfs[table])} registros")
-            except Exception as e:
-                logger.warning(f"Tabela {table} não encontrada: {e}")
-                self.dfs[table] = pd.DataFrame()
-        
-        return self.dfs
+        print(f"📂 Analisador inicializado com banco: {self.db_path}")
     
-    def get_scenario_summary(self):
-        """Resumo geral dos cenários"""
-        if 'contingencias' not in self.dfs:
-            self.load_all_data()
-            
-        df = self.dfs['contingencias']
-        print(f"Total de contingências analisadas: {len(df)}")
+    def conectar(self):
+        """Conecta ao banco de dados"""
+        if not os.path.exists(self.db_path):
+            raise FileNotFoundError(f"Arquivo não encontrado: {self.db_path}")
         
-        if len(df) > 0:
-            stats = df[['total_geracao_pu', 'total_carga_pu', 'custo_total_usd_h']].describe()
-            print(stats.round(4))
-            
+        self.conn = sqlite3.connect(self.db_path)
+        print("✅ Conectado ao banco de dados")
+    
+    def carregar_dados(self):
+        """Carrega todos os dados do banco de forma simplificada"""
+        if self.conn is None:
+            self.conectar()
+        
+        print("\n📥 CARREGANDO DADOS...")
+        
+        # Tabelas principais
+        tabelas = {
+            'remocao': 'remocao_linha_contingencias',
+            'duplicacao': 'duplicacao_linha_contingencias',
+            'remocao_geradores': 'remocao_linha_geradores', 
+            'duplicacao_geradores': 'duplicacao_linha_geradores',
+            'remocao_linhas': 'remocao_linha_linhas',
+            'duplicacao_linhas': 'duplicacao_linha_linhas'
+        }
+        
+        for nome, tabela in tabelas.items():
+            try:
+                self.dados[nome] = pd.read_sql_query(f"SELECT * FROM {tabela}", self.conn)
+                print(f"✅ {tabela}: {len(self.dados[nome])} registros")
+            except Exception as e:
+                print(f"❌ {tabela}: {e}")
+                self.dados[nome] = pd.DataFrame()
+    
+    def resumo_dados(self):
+        """Mostra resumo simples dos dados carregados"""
+        print("\n📊 RESUMO DOS DADOS:")
+        print("=" * 40)
+        
+        if 'remocao' in self.dados and not self.dados['remocao'].empty:
+            linhas = self.dados['remocao']['linha_removida'].unique()
+            print(f"🔴 REMOÇÃO: {len(linhas)} contingências")
+            print(f"   Linhas: {list(linhas)}")
+        
+        if 'duplicacao' in self.dados and not self.dados['duplicacao'].empty:
+            linhas = self.dados['duplicacao']['linha_original'].unique()
+            print(f"🔵 DUPLICAÇÃO: {len(linhas)} contingências") 
+            print(f"   Linhas: {list(linhas)}")
+        
+        print("=" * 40)
+    
+    def _corrigir_custos_negativos(self, df):
+        """Corrige custos negativos nos dados"""
+        if 'custo_total_usd_h' in df.columns:
+            custos_negativos = df[df['custo_total_usd_h'] < 0]
+            if not custos_negativos.empty:
+                print(f"⚠️  Corrigindo {len(custos_negativos)} custos negativos")
+                df['custo_total_usd_h'] = df['custo_total_usd_h'].clip(lower=0)
         return df
     
-    def close(self):
-        """Fechar conexão"""
+    def plotar_custos(self):
+        """Gráfico simples de custos para remoção e duplicação"""
+        print("\n💰 GERANDO GRÁFICO DE CUSTOS")
+        
+        fig = go.Figure()
+        
+        # Dados de remoção
+        if 'remocao' in self.dados and not self.dados['remocao'].empty:
+            df_remocao = self._corrigir_custos_negativos(self.dados['remocao'])
+            df_remocao = df_remocao[df_remocao['linha_removida'] != 'CASO_BASE']
+            
+            if not df_remocao.empty:
+                fig.add_trace(go.Bar(
+                    name='Remoção',
+                    x=df_remocao['linha_removida'],
+                    y=df_remocao['custo_total_usd_h'],
+                    marker_color='red',
+                    text=df_remocao['custo_total_usd_h'].round(0),
+                    textposition='auto'
+                ))
+        
+        # Dados de duplicação
+        if 'duplicacao' in self.dados and not self.dados['duplicacao'].empty:
+            df_duplicacao = self._corrigir_custos_negativos(self.dados['duplicacao'])
+            
+            if not df_duplicacao.empty:
+                fig.add_trace(go.Bar(
+                    name='Duplicação',
+                    x=df_duplicacao['linha_original'],
+                    y=df_duplicacao['custo_total_usd_h'],
+                    marker_color='blue', 
+                    text=df_duplicacao['custo_total_usd_h'].round(0),
+                    textposition='auto'
+                ))
+        
+        fig.update_layout(
+            title='Custo das Contingências',
+            xaxis_title='Linha',
+            yaxis_title='Custo (USD/h)',
+            barmode='group',
+            height=500
+        )
+        
+        fig.show()
+        
+        # Estatísticas
+        self._mostrar_estatisticas_custos()
+    
+    def _mostrar_estatisticas_custos(self):
+        """Mostra estatísticas simples de custos"""
+        print("\n📊 ESTATÍSTICAS DE CUSTOS:")
+        
+        if 'remocao' in self.dados and not self.dados['remocao'].empty:
+            df_remocao = self._corrigir_custos_negativos(self.dados['remocao'])
+            df_remocao = df_remocao[df_remocao['linha_removida'] != 'CASO_BASE']
+            
+            if not df_remocao.empty:
+                custo_medio = df_remocao['custo_total_usd_h'].mean()
+                custo_max = df_remocao['custo_total_usd_h'].max()
+                print(f"🔴 REMOÇÃO: Média = {custo_medio:.0f} USD/h, Máximo = {custo_max:.0f} USD/h")
+        
+        if 'duplicacao' in self.dados and not self.dados['duplicacao'].empty:
+            df_duplicacao = self._corrigir_custos_negativos(self.dados['duplicacao'])
+            
+            if not df_duplicacao.empty:
+                custo_medio = df_duplicacao['custo_total_usd_h'].mean()
+                custo_max = df_duplicacao['custo_total_usd_h'].max()
+                print(f"🔵 DUPLICAÇÃO: Média = {custo_medio:.0f} USD/h, Máximo = {custo_max:.0f} USD/h")
+    
+    def plotar_geracao_por_tipo(self):
+        """Gráfico de geração por tipo de gerador (incluindo DEF)"""
+        print("\n⚡ GERANDO GRÁFICO DE GERAÇÃO POR TIPO")
+        
+        if 'remocao_geradores' not in self.dados or self.dados['remocao_geradores'].empty:
+            print("❌ Dados de geradores não disponíveis")
+            return
+        
+        df_geradores = self.dados['remocao_geradores']
+        
+        # Agrupar por contingência e tipo
+        geracao_agrupada = df_geradores.groupby(['id_contingencia', 'tipo'])['geracao_pu'].sum().reset_index()
+        
+        # Juntar com dados principais para obter nome da linha
+        if 'remocao' in self.dados and not self.dados['remocao'].empty:
+            df_remocao = self.dados['remocao'][['id_contingencia', 'linha_removida']]
+            geracao_agrupada = geracao_agrupada.merge(df_remocao, on='id_contingencia', how='left')
+        
+        # Pivot para ter colunas por tipo
+        geracao_pivot = geracao_agrupada.pivot_table(
+            index='linha_removida',
+            columns='tipo',
+            values='geracao_pu',
+            fill_value=0
+        ).reset_index()
+        
+        # Ordenar excluindo caso base
+        geracao_pivot = geracao_pivot[geracao_pivot['linha_removida'] != 'CASO_BASE']
+        
+        fig = go.Figure()
+        
+        # Cores para cada tipo de gerador (incluindo DEF)
+        cores = {'UTH': 'blue', 'UTE': 'red', 'GWD': 'green', 'DEF': 'black'}
+        
+        # Ordem de empilhamento: DEF primeiro (negativo), depois os outros
+        tipos_ordenados = ['DEF'] + [t for t in geracao_pivot.columns if t != 'linha_removida' and t != 'DEF']
+        
+        for tipo in tipos_ordenados:
+            if tipo in geracao_pivot.columns and tipo in cores:
+                fig.add_trace(go.Bar(
+                    name=tipo,
+                    x=geracao_pivot['linha_removida'],
+                    y=geracao_pivot[tipo],
+                    marker_color=cores[tipo],
+                    text=geracao_pivot[tipo].round(3),
+                    textposition='auto'
+                ))
+        
+        fig.update_layout(
+            title='Geração por Tipo de Gerador - Contingências de Remoção',
+            xaxis_title='Linha Removida',
+            yaxis_title='Geração (pu)',
+            barmode='stack',
+            height=500
+        )
+        
+        fig.show()
+        
+        # Estatísticas
+        print(f"\n📊 DISTRIBUIÇÃO DE GERAÇÃO POR TIPO:")
+        for tipo in geracao_pivot.columns:
+            if tipo != 'linha_removida':
+                media = geracao_pivot[tipo].mean()
+                if abs(media) > 0.001:  # Considerar apenas valores significativos
+                    print(f"   {tipo}: {media:.3f} pu (média)")
+    
+    def plotar_fluxos_linhas(self):
+        """Gráfico de fluxos nas linhas"""
+        print("\n📈 GERANDO GRÁFICO DE FLUXOS")
+        
+        if 'remocao_linhas' not in self.dados or self.dados['remocao_linhas'].empty:
+            print("❌ Dados de linhas não disponíveis")
+            return
+        
+        df_linhas = self.dados['remocao_linhas']
+        
+        # Agrupar por linha e calcular estatísticas
+        fluxos_por_linha = df_linhas.groupby('id_linha').agg({
+            'fluxo_pu': ['mean', 'max', 'min'],
+            'utilizacao_percentual': 'mean',
+            'id_barra_origem': 'first',
+            'id_barra_destino': 'first'
+        }).round(3)
+        
+        fluxos_por_linha.columns = ['fluxo_medio', 'fluxo_max', 'fluxo_min', 'utilizacao_media', 'origem', 'destino']
+        fluxos_por_linha = fluxos_por_linha.reset_index()
+        
+        fig = go.Figure()
+        
+        fig.add_trace(go.Bar(
+            name='Fluxo Médio',
+            x=fluxos_por_linha['id_linha'],
+            y=fluxos_por_linha['fluxo_medio'],
+            marker_color='green',
+            text=fluxos_por_linha['fluxo_medio'].round(3),
+            textposition='auto'
+        ))
+        
+        fig.update_layout(
+            title='Fluxo Médio nas Linhas',
+            xaxis_title='Linha',
+            yaxis_title='Fluxo (pu)',
+            height=500
+        )
+        
+        fig.show()
+        
+        # Mostrar linhas mais carregadas
+        linhas_carregadas = fluxos_por_linha.nlargest(5, 'utilizacao_media')
+        print(f"\n📊 LINHAS MAIS CARREGADAS:")
+        for _, linha in linhas_carregadas.iterrows():
+            print(f"   {linha['id_linha']}: {linha['utilizacao_media']:.1f}%")
+    
+    def plotar_comparacao_geradores(self):
+        """Comparação simples entre geração de diferentes tipos (incluindo DEF)"""
+        print("\n🔧 GERANDO GRÁFICO DE DISTRIBUIÇÃO DE GERAÇÃO")
+        
+        if 'remocao_geradores' not in self.dados or self.dados['remocao_geradores'].empty:
+            print("❌ Dados de geradores não disponíveis")
+            return
+        
+        df_geradores = self.dados['remocao_geradores']
+        
+        # Agrupar por tipo de gerador (valor absoluto para DEF)
+        geracao_por_tipo = df_geradores.groupby('tipo')['geracao_pu'].sum().reset_index()
+        
+        # Para DEF, usar valor absoluto para visualização
+        geracao_por_tipo['geracao_abs'] = geracao_por_tipo['geracao_pu'].abs()
+        
+        fig = px.pie(
+            geracao_por_tipo, 
+            values='geracao_abs', 
+            names='tipo',
+            title='Distribuição de Geração por Tipo de Gerador',
+            color='tipo',
+            color_discrete_map={'UTH': 'blue', 'UTE': 'red', 'GWD': 'green', 'DEF': 'black'}
+        )
+        
+        fig.show()
+        
+        print(f"\n📊 DISTRIBUIÇÃO DE GERAÇÃO:")
+        for _, tipo in geracao_por_tipo.iterrows():
+            sinal = "" if tipo['geracao_pu'] >= 0 else "-"
+            print(f"   {tipo['tipo']}: {sinal}{abs(tipo['geracao_pu']):.3f} pu")
+    
+    def plotar_deficit(self):
+        """Gráfico de déficit de potência"""
+        print("\n⚠️  GERANDO GRÁFICO DE DÉFICIT")
+        
+        fig = go.Figure()
+        
+        # Dados de remoção
+        if 'remocao' in self.dados and not self.dados['remocao'].empty:
+            df_remocao = self.dados['remocao']
+            df_remocao = df_remocao[df_remocao['linha_removida'] != 'CASO_BASE']
+            
+            if not df_remocao.empty:
+                fig.add_trace(go.Bar(
+                    name='Déficit Remoção',
+                    x=df_remocao['linha_removida'],
+                    y=df_remocao['total_deficit_pu'],
+                    marker_color='darkred',
+                    text=df_remocao['total_deficit_pu'].round(4),
+                    textposition='auto'
+                ))
+        
+        fig.update_layout(
+            title='Déficit de Potência nas Contingências',
+            xaxis_title='Linha Removida',
+            yaxis_title='Déficit (pu)',
+            height=500
+        )
+        
+        fig.show()
+        
+        # Identificar contingências com déficit
+        if 'remocao' in self.dados and not self.dados['remocao'].empty:
+            df_com_deficit = self.dados['remocao'][self.dados['remocao']['total_deficit_pu'] > 0.001]
+            if not df_com_deficit.empty:
+                print(f"\n🚨 CONTINGÊNCIAS COM DÉFICIT:")
+                for _, row in df_com_deficit.iterrows():
+                    print(f"   {row['linha_removida']}: {row['total_deficit_pu']:.4f} pu")
+    
+    def plotar_analise_custos_detalhada(self):
+        """Gráfico detalhado de análise de custos incluindo custo de operação e custo marginal de fluxo"""
+        print("\n💰 GERANDO ANÁLISE DETALHADA DE CUSTOS")
+        
+        if 'remocao' not in self.dados or self.dados['remocao'].empty:
+            print("❌ Dados de contingências não disponíveis")
+            return
+        
+        if 'remocao_linhas' not in self.dados or self.dados['remocao_linhas'].empty:
+            print("❌ Dados de linhas não disponíveis")
+            return
+        
+        # Obter dados de contingências
+        df_remocao = self._corrigir_custos_negativos(self.dados['remocao'])
+        df_remocao = df_remocao[df_remocao['linha_removida'] != 'CASO_BASE']
+        
+        if df_remocao.empty:
+            print("❌ Nenhuma contingência de remoção disponível")
+            return
+        
+        # Calcular custo marginal de fluxo para cada contingência
+        custos_marginais_fluxo = []
+        
+        for _, contingencia in df_remocao.iterrows():
+            id_contingencia = contingencia['id_contingencia']
+            linha_removida = contingencia['linha_removida']
+            
+            # Filtrar linhas para esta contingência
+            df_linhas_contingencia = self.dados['remocao_linhas'][
+                self.dados['remocao_linhas']['id_contingencia'] == id_contingencia
+            ]
+            
+            # Calcular custo marginal total de fluxo (soma dos duais positivos e negativos)
+            custo_marginal_fluxo = df_linhas_contingencia['dual_fluxo_pos'].sum() + df_linhas_contingencia['dual_fluxo_neg'].sum()
+            
+            custos_marginais_fluxo.append({
+                'linha_removida': linha_removida,
+                'custo_marginal_fluxo': custo_marginal_fluxo,
+                'custo_operacao': contingencia['custo_total_usd_h'],  # Usando custo total como proxy
+                'total_geracao': contingencia['total_geracao_pu'],
+                'total_deficit': contingencia['total_deficit_pu']
+            })
+        
+        df_custos = pd.DataFrame(custos_marginais_fluxo)
+        
+        # Criar gráfico de barras agrupadas
+        fig = go.Figure()
+        
+        # Custo de Operação
+        fig.add_trace(go.Bar(
+            name='Custo de Operação',
+            x=df_custos['linha_removida'],
+            y=df_custos['custo_operacao'],
+            marker_color='blue',
+            text=df_custos['custo_operacao'].round(0),
+            textposition='auto'
+        ))
+        
+        # Custo Marginal de Fluxo (escala diferente)
+        fig.add_trace(go.Bar(
+            name='Custo Marginal de Fluxo',
+            x=df_custos['linha_removida'],
+            y=df_custos['custo_marginal_fluxo'],
+            marker_color='red',
+            text=df_custos['custo_marginal_fluxo'].round(2),
+            textposition='auto'
+        ))
+        
+        fig.update_layout(
+            title='Análise Detalhada de Custos - Operação vs Fluxo Marginal',
+            xaxis_title='Linha Removida',
+            yaxis_title='Custo (USD/h)',
+            barmode='group',
+            height=600,
+            showlegend=True
+        )
+        
+        fig.show()
+        
+        # Gráfico de pizza mostrando proporção dos custos
+        custo_total_operacao = df_custos['custo_operacao'].sum()
+        custo_total_fluxo = df_custos['custo_marginal_fluxo'].sum()
+        
+        fig_pizza = go.Figure(data=[go.Pie(
+            labels=['Custo de Operação', 'Custo Marginal de Fluxo'],
+            values=[custo_total_operacao, custo_total_fluxo],
+            hole=0.4,
+            marker_colors=['blue', 'red']
+        )])
+        
+        fig_pizza.update_layout(
+            title='Proporção dos Custos Totais'
+        )
+        
+        fig_pizza.show()
+        
+        # Análise estatística detalhada
+        self._mostrar_analise_custos_detalhada(df_custos)
+    
+    def _mostrar_analise_custos_detalhada(self, df_custos):
+        """Mostra análise detalhada dos custos"""
+        print("\n📊 ANÁLISE DETALHADA DE CUSTOS:")
+        print("=" * 50)
+        
+        # Estatísticas básicas
+        custo_medio_operacao = df_custos['custo_operacao'].mean()
+        custo_medio_fluxo = df_custos['custo_marginal_fluxo'].mean()
+        
+        print(f"💰 CUSTO MÉDIO POR CONTINGÊNCIA:")
+        print(f"   Operação: {custo_medio_operacao:.2f} USD/h")
+        print(f"   Fluxo Marginal: {custo_medio_fluxo:.2f} USD/h")
+        print(f"   Total: {custo_medio_operacao + custo_medio_fluxo:.2f} USD/h")
+        
+        # Contingência mais cara
+        idx_mais_cara = df_custos['custo_operacao'].idxmax()
+        mais_cara = df_custos.loc[idx_mais_cara]
+        
+        print(f"\n🚨 CONTINGÊNCIA MAIS CRÍTICA:")
+        print(f"   Linha: {mais_cara['linha_removida']}")
+        print(f"   Custo Operação: {mais_cara['custo_operacao']:.2f} USD/h")
+        print(f"   Custo Fluxo: {mais_cara['custo_marginal_fluxo']:.2f} USD/h")
+        print(f"   Déficit: {mais_cara['total_deficit']:.4f} pu")
+        
+        # Correlação entre custos
+        correlacao = df_custos['custo_operacao'].corr(df_custos['custo_marginal_fluxo'])
+        print(f"\n📈 CORRELAÇÃO ENTRE CUSTOS:")
+        print(f"   Operação vs Fluxo: {correlacao:.3f}")
+        
+        if correlacao > 0.7:
+            print("   💡 Alta correlação: custos tendem a aumentar juntos")
+        elif correlacao < -0.7:
+            print("   💡 Alta correlação negativa: quando um custo aumenta, o outro diminui")
+        else:
+            print("   💡 Baixa correlação: custos variam independentemente")
+    
+    def plotar_custos_vs_deficit(self):
+        """Gráfico de dispersão: Custo vs Déficit"""
+        print("\n📈 GERANDO ANÁLISE: CUSTO vs DÉFICIT")
+        
+        if 'remocao' not in self.dados or self.dados['remocao'].empty:
+            print("❌ Dados de contingências não disponíveis")
+            return
+        
+        df_remocao = self._corrigir_custos_negativos(self.dados['remocao'])
+        df_remocao = df_remocao[df_remocao['linha_removida'] != 'CASO_BASE']
+        
+        if df_remocao.empty:
+            return
+        
+        fig = px.scatter(
+            df_remocao,
+            x='total_deficit_pu',
+            y='custo_total_usd_h',
+            size='total_geracao_pu',
+            color='linha_removida',
+            title='Relação: Custo vs Déficit vs Geração',
+            labels={
+                'total_deficit_pu': 'Déficit (pu)',
+                'custo_total_usd_h': 'Custo Total (USD/h)',
+                'total_geracao_pu': 'Geração Total (pu)',
+                'linha_removida': 'Linha Removida'
+            },
+            size_max=20
+        )
+        
+        fig.update_layout(height=600)
+        fig.show()
+        
+        # Análise da relação
+        correlacao = df_remocao['total_deficit_pu'].corr(df_remocao['custo_total_usd_h'])
+        print(f"\n📊 CORRELAÇÃO DÉFICIT-CUSTO: {correlacao:.3f}")
+        
+        if correlacao > 0.5:
+            print("💡 Forte relação positiva: déficit aumenta o custo significativamente")
+        elif correlacao < -0.5:
+            print("💡 Forte relação negativa: déficit reduz custos (improvável)")
+        else:
+            print("💡 Relação fraca: outros fatores influenciam mais os custos")
+    
+    def plotar_evolucao_custos_marginais(self):
+        """Gráfico de evolução dos custos marginais por linha"""
+        print("\n📊 GERANDO EVOLUÇÃO DOS CUSTOS MARGINAIS")
+        
+        if 'remocao_linhas' not in self.dados or self.dados['remocao_linhas'].empty:
+            print("❌ Dados de linhas não disponíveis")
+            return
+        
+        df_linhas = self.dados['remocao_linhas']
+        
+        # Agrupar por linha e calcular custos marginais médios
+        custos_por_linha = df_linhas.groupby('id_linha').agg({
+            'dual_fluxo_pos': 'mean',
+            'dual_fluxo_neg': 'mean',
+            'fluxo_pu': 'mean',
+            'utilizacao_percentual': 'mean'
+        }).reset_index()
+        
+        # Calcular custo marginal total
+        custos_por_linha['custo_marginal_total'] = (
+            custos_por_linha['dual_fluxo_pos'] + custos_por_linha['dual_fluxo_neg']
+        )
+        
+        # Ordenar por custo marginal
+        custos_por_linha = custos_por_linha.sort_values('custo_marginal_total', ascending=False)
+        
+        fig = go.Figure()
+        
+        fig.add_trace(go.Bar(
+            name='Custo Marginal Total',
+            x=custos_por_linha['id_linha'],
+            y=custos_por_linha['custo_marginal_total'],
+            marker_color='purple',
+            text=custos_por_linha['custo_marginal_total'].round(3),
+            textposition='auto'
+        ))
+        
+        fig.update_layout(
+            title='Custo Marginal de Fluxo por Linha',
+            xaxis_title='Linha',
+            yaxis_title='Custo Marginal (USD/h)',
+            height=500
+        )
+        
+        fig.show()
+        
+        # Mostrar linhas com maior custo marginal
+        print(f"\n🚨 LINHAS COM MAIOR CUSTO MARGINAL:")
+        top_linhas = custos_por_linha.head(3)
+        for _, linha in top_linhas.iterrows():
+            print(f"   {linha['id_linha']}: {linha['custo_marginal_total']:.3f} USD/h "
+                  f"(Utilização: {linha['utilizacao_percentual']:.1f}%)")
+
+    
+    def analise_completa_custos(self):
+        """Executa análise completa de custos"""
+        print("💰 INICIANDO ANÁLISE COMPLETA DE CUSTOS")
+        print("=" * 60)
+        
+        # Carregar dados se necessário
+        if not self.dados:
+            self.carregar_dados()
+        
+        # Executar todas as análises de custo
+        self.plotar_analise_custos_detalhada()
+        self.plotar_custos_vs_deficit()
+        self.plotar_evolucao_custos_marginais()
+        
+        print("\n✅ ANÁLISE DE CUSTOS CONCLUÍDA!")
+
+    def analise_rapida(self):
+        """Executa uma análise rápida e completa"""
+        print("🚀 INICIANDO ANÁLISE RÁPIDA")
+        print("=" * 50)
+        
+        # Carregar dados
+        self.carregar_dados()
+        self.resumo_dados()
+        
+        # Gerar gráficos principais
+        self.plotar_custos()
+        self.plotar_geracao_por_tipo()
+        self.plotar_fluxos_linhas()
+        self.plotar_comparacao_geradores()
+        self.plotar_deficit()
+        
+        # NOVA ANÁLISE DE CUSTOS DETALHADA
+        self.analise_completa_custos()
+        
+        print("\n✅ ANÁLISE CONCLUÍDA!")
+
+    def analise_rapida(self):
+        """Executa uma análise rápida e completa"""
+        print("🚀 INICIANDO ANÁLISE RÁPIDA")
+        print("=" * 50)
+        
+        # Carregar dados
+        self.carregar_dados()
+        self.resumo_dados()
+        
+        # Gerar gráficos principais
+        self.plotar_custos()
+        self.plotar_geracao_por_tipo()
+        self.plotar_fluxos_linhas()
+        self.plotar_comparacao_geradores()
+        self.plotar_deficit()
+        
+        print("\n✅ ANÁLISE CONCLUÍDA!")
+    
+    def fechar(self):
+        """Fecha a conexão com o banco"""
         if self.conn:
             self.conn.close()
+            print("🔒 Conexão fechada")
+    
+    def __enter__(self):
+        """Suporte para context manager"""
+        self.conectar()
+        return self
+    
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Suporte para context manager"""
+        self.fechar()
 
-def analisar_rampas_simples(analyzer):
-    """Análise simplificada das rampas"""
-    contingencias_df = analyzer.dfs.get('contingencias', pd.DataFrame())
-    geradores_df = analyzer.dfs.get('geradores_contingencia', pd.DataFrame())
-    
-    if len(contingencias_df) < 2:
-        print("Mínimo 2 contingências necessárias")
-        return pd.DataFrame(), pd.DataFrame()
-    
-    # Coletar dados por contingência
-    dados = []
-    for _, ctg in contingencias_df.iterrows():
-        ctg_id = ctg['id_contingencia']
-        exec_id = ctg['id_execucao']
-        
-        geradores_ctg = geradores_df[
-            (geradores_df['id_contingencia'] == ctg_id) & 
-            (geradores_df['id_execucao'] == exec_id)
-        ]
-        
-        geracao_gwd = geradores_ctg[geradores_ctg['tipo'] == 'GWD']['geracao_pu'].sum()
-        curtailment = geradores_ctg[geradores_ctg['tipo'] == 'CUR']['geracao_pu'].sum()
-        demanda = ctg.get('total_carga_pu', 0)
-        
-        dados.append({
-            'contingencia': ctg_id,
-            'execucao': exec_id,
-            'geracao_gwd': geracao_gwd,
-            'curtailment': curtailment,
-            'demanda': demanda,
-            'geracao_liquida': geracao_gwd - curtailment
-        })
-    
-    df_dados = pd.DataFrame(dados)
-    
-    # Calcular rampas entre execuções consecutivas
-    rampas = []
-    execucoes_unicas = df_dados['execucao'].unique()
-    
-    for i in range(1, len(execucoes_unicas)):
-        exec_anterior = execucoes_unicas[i-1]
-        exec_atual = execucoes_unicas[i]
-        
-        dados_anterior = df_dados[df_dados['execucao'] == exec_anterior].iloc[0]
-        dados_atual = df_dados[df_dados['execucao'] == exec_atual].iloc[0]
-        
-        delta_geracao = dados_atual['geracao_gwd'] - dados_anterior['geracao_gwd']
-        delta_curtailment = dados_atual['curtailment'] - dados_anterior['curtailment']
-        delta_demanda = dados_atual['demanda'] - dados_anterior['demanda']
-        
-        rampas.append({
-            'transicao': f"{i}→{i+1}",
-            'rampa_geracao': abs(delta_geracao),
-            'rampa_curtailment': abs(delta_curtailment),
-            'rampa_demanda': abs(delta_demanda),
-            'variacao_geracao': delta_geracao,
-            'variacao_curtailment': delta_curtailment,
-            'variacao_demanda': delta_demanda,
-            'execucao_anterior': exec_anterior,
-            'execucao_atual': exec_atual
-        })
-    
-    df_rampas = pd.DataFrame(rampas)
-    
-    # Exportar para Excel
-    if len(df_rampas) > 0:
-        df_rampas.to_excel('analise_rampas_detalhada.xlsx', index=False)
-        logger.info("Análise de rampas exportada para analise_rampas_detalhada.xlsx")
-    
-    print("Rampas da Geração Eólica, Curtailment e Demanda:")
-    print(df_rampas.round(4))
-    
-    return df_rampas, df_dados
-
-def plot_custos_simples(analyzer):
-    """Gráfico simples de evolução de custos"""
-    contingencias_df = analyzer.dfs.get('contingencias', pd.DataFrame())
-    
-    if len(contingencias_df) == 0:
-        return pd.DataFrame()
-    
-    # Agrupar por execução
-    custos_por_execucao = contingencias_df.groupby('id_execucao')['custo_total_usd_h'].mean().reset_index()
-    
-    fig = px.line(custos_por_execucao, x='id_execucao', y='custo_total_usd_h',
-                 title='Evolução do Custo Total por Execução',
-                 markers=True)
-    fig.show()
-    
-    return custos_por_execucao
+# =============================================================================
+# EXECUÇÃO PRINCIPAL
+# =============================================================================
 
 def main():
-    """Função principal"""
-    parser = argparse.ArgumentParser(description='Sistema de Orquestração para Análise de Contingências')
-    parser.add_argument('--config', default='config_orquestracao.json', help='Arquivo de configuração')
-    parser.add_argument('--execucoes', type=int, help='Número de execuções')
-    parser.add_argument('--sistema', help='Sistema específico para análise')
-    parser.add_argument('--apenas-analise', action='store_true', help='Apenas analisar resultados existentes')
-    
-    args = parser.parse_args()
-    
-    # Inicializar orquestrador
-    orchestrator = OPFOrchestrator(args.config)
-    
-    # Sobrescrever configurações se fornecidas via argumentos
-    if args.execucoes:
-        orchestrator.config["num_execucoes"] = args.execucoes
-    if args.sistema:
-        orchestrator.config["sistemas"] = [args.sistema]
-    
-    if args.apenas_analise:
-        # Apenas análise de resultados existentes
-        logger.info("Executando apenas análise de resultados existentes")
-        analises = orchestrator.analisar_series_temporais()
-        logger.info("Análise concluída")
-    else:
-        # Executar fluxo completo
-        resultados = orchestrator.executar_fluxo_completo()
-        logger.info(f"Orquestração concluída: {resultados['estatisticas_gerais']}")
+    """Função principal simplificada"""
+    try:
+        analisador = AnalisadorContingencias()
+        analisador.analise_rapida()
+        
+    except Exception as e:
+        print(f"❌ Erro: {e}")
 
 if __name__ == "__main__":
     main()

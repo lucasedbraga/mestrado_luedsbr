@@ -2,1023 +2,668 @@ using Pkg
 Pkg.activate(".")
 Pkg.instantiate()
 
-using JuMP
-using Clp
-using LinearAlgebra
-using JSON
-using Distributions
-using SQLite
-using DataFrames
-using Dates
-using Random
-using DBInterface
+using JuMP, Clp, JSON, SQLite, Dates, Random, LinearAlgebra
 
 # ==============================================================================
-# CONFIGURAÇÕES INICIAIS E PARÂMETROS
+# MÓDULO PRINCIPAL - VERSÃO CORRIGIDA
 # ==============================================================================
 
-NITER_MAX = 10
-TOL = 1e-6
+module AnaliseContingencias
 
-println("=== OPF DC ITERATIVO REVISADO - CORRIGIDO ===")
+using JuMP, Clp, JSON, SQLite, Dates, Random, LinearAlgebra
+
+export main
 
 # ==============================================================================
-# FUNÇÃO PARA GERAR CENÁRIO ALEATÓRIO
+# ESTRUTURAS DE DADOS
 # ==============================================================================
 
-function gerar_cenario_aleatorio!(geradores_data, demandas_data, SB)
-    println("🎲 Gerando cenário aleatório...")
+struct SistemaEletrico
+    barras::Vector{Dict}
+    geradores::Vector{Dict}
+    demandas::Vector{Dict}
+    linhas::Vector{Dict}
+    contingencias::Vector{Dict}
     
-    for g in geradores_data
-        if g["Tipo"] == "GWD"
-            capacidade_original = get(g, "PGERmax_MW_ORIGINAL", g["PGERmax_MW"])
-            fator_geracao = rand(Uniform(0.2, 1.0))
-            g["PGERmax_MW"] = capacidade_original * fator_geracao
-            println("🌬️  Geração eólica ajustada: $(round(g["PGERmax_MW"], digits=2)) MW ($(round(fator_geracao*100, digits=1))% da capacidade)")
-        end
-    end
+    idx_map::Dict{String, Int}
+    NBAR::Int
+    NLIN::Int
+    NGER::Int
+    slack_idx::Int
     
-    for d in demandas_data
-        if haskey(d, "PLOAD")
-            demanda_original = get(d, "PLOAD_ORIGINAL", d["PLOAD"])
-            fator_demanda = rand(Uniform(0.8, 1.2))
-            d["PLOAD"] = demanda_original * fator_demanda
-            println("💡 Demanda ajustada: $(round(d["PLOAD"], digits=2)) MW ($(round(fator_demanda*100, digits=1))% da base)")
-        end
-    end
+    line_fr::Vector{Int}
+    line_to::Vector{Int}
+    y_line::Vector{Float64}
+    FLIM::Vector{Float64}
     
-    total_geracao_eolica = sum(g["PGERmax_MW"] for g in geradores_data if g["Tipo"] == "GWD")
-    total_demanda = sum(d["PLOAD"] for d in demandas_data if haskey(d, "PLOAD"))
+    BARPG::Vector{Int}
+    PGMIN::Vector{Float64}
+    PGMAX::Vector{Float64}
+    CPG::Vector{Float64}
     
-    println("📊 Resumo do cenário aleatório:")
-    println("   - Geração eólica total: $(round(total_geracao_eolica, digits=2)) MW")
-    println("   - Demanda total: $(round(total_demanda, digits=2)) MW")
+    PLOAD::Vector{Float64}
+    SB::Float64
+    ID_EXECUCAO::String
+    Bbus_base::Matrix{Float64}
+end
+
+struct ResultadoOPF
+    convergiu::Bool
+    PG::Vector{Float64}
+    ANG::Vector{Float64}
+    lambda::Vector{Float64}
+    custo::Float64
+    fluxos::Vector{Float64}
 end
 
 # ==============================================================================
-# FUNÇÃO PARA EXPORTAR CONTINGÊNCIA PARA SQLite
+# BANCO DE DADOS - TABELAS COMPATÍVEIS COM SEU SCRIPT PYTHON
 # ==============================================================================
 
-function exportar_contingencia_para_sqlite(ctg_id, ctg_descricao, linhas_removidas,
-                                          Pg_original, Pg_curtailment, Pg_deficit, Pg_total,
-                                          ANGLE, perdas, final_PG,
-                                          ID_EXECUCAO, barras, NGER_ORIGINAL, geradores_data,
-                                          BARPG, PGMIN, PGMAX, CPG, SB, BAR_GWD, NGER_CURTAILMENT,
-                                          CPG_ORIGINAL, CPG_CURTAILMENT, CPG_DEFICIT, PLOAD,
-                                          linhas, FLIM, contingencias_data, MVu, MVd, y_line)
-    
-    arquivo_db = "resultados_opf_contingencias.db"
-    
-    db = SQLite.DB(arquivo_db)
-    
-    # ==========================================================================
-    # TABELA: EXECUCOES
-    # ==========================================================================
+function criar_tabelas()
+    db = SQLite.DB("resultados_opf_contingencias.db")
     
     SQLite.execute(db, """
         CREATE TABLE IF NOT EXISTS execucoes (
             id_execucao TEXT PRIMARY KEY,
-            data_execucao DATETIME,
-            n_barras INTEGER,
-            n_geradores INTEGER,
-            n_linhas INTEGER,
-            n_contingencias INTEGER,
             sistema TEXT,
-            descricao TEXT,
-            timestamp_criacao DATETIME DEFAULT CURRENT_TIMESTAMP
+            data_execucao DATETIME,
+            status TEXT
         )
     """)
     
-    NBAR = length(barras)
-    NGER = length(BARPG)
-    NLIN = length(linhas)
-    
-    SQLite.execute(db, """
-        INSERT OR REPLACE INTO execucoes 
-        (id_execucao, data_execucao, n_barras, n_geradores, n_linhas, n_contingencias, sistema, descricao)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    """, [ID_EXECUCAO, Dates.now(), NBAR, NGER, NLIN, length(contingencias_data), 
-          "Sistema $(NBAR) barras", "Análise de contingências"])
-    
     # ==========================================================================
-    # TABELA: CONTINGENCIAS
+    # TABELAS PARA REMOÇÃO DE LINHA (COMPATÍVEIS COM SEU SCRIPT)
     # ==========================================================================
     
     SQLite.execute(db, """
-        CREATE TABLE IF NOT EXISTS contingencias (
-            id_registro INTEGER PRIMARY KEY AUTOINCREMENT,
+        CREATE TABLE IF NOT EXISTS remocao_linha_contingencias (
             id_execucao TEXT,
             id_contingencia TEXT,
-            descricao TEXT,
-            linhas_removidas TEXT,
+            linha_removida TEXT,
             total_geracao_pu REAL,
             total_carga_pu REAL,
-            total_perdas_pu REAL,
             total_curtailment_pu REAL,
             total_deficit_pu REAL,
             custo_total_usd_h REAL,
-            status TEXT,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (id_execucao) REFERENCES execucoes (id_execucao)
+            lambda_slack REAL,
+            convergiu BOOLEAN,
+            descricao TEXT
         )
     """)
     
-    custo_original = sum(CPG_ORIGINAL[g] * final_PG[g] for g in 1:NGER_ORIGINAL)
-    custo_curtailment_calc = sum(CPG_CURTAILMENT[g] * final_PG[NGER_ORIGINAL+g] for g in 1:NGER_CURTAILMENT)
-    custo_deficit_calc = sum(CPG_DEFICIT[g] * final_PG[NGER_ORIGINAL+NGER_CURTAILMENT+g] for g in 1:length(CPG_DEFICIT) if NGER_ORIGINAL+NGER_CURTAILMENT+g <= length(final_PG))
-    custo_total = custo_original + custo_curtailment_calc + custo_deficit_calc
-    
-    total_pg = sum(Pg_total)
-    total_pl = sum(PLOAD)
-    total_perdas_val = sum(perdas)
-    total_pg_curtailment = sum(Pg_curtailment)
-    total_pg_deficit = sum(Pg_deficit)
-    
     SQLite.execute(db, """
-        INSERT INTO contingencias 
-        (id_execucao, id_contingencia, descricao, linhas_removidas, total_geracao_pu, total_carga_pu, 
-         total_perdas_pu, total_curtailment_pu, total_deficit_pu, custo_total_usd_h, status)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    """, [ID_EXECUCAO, ctg_id, ctg_descricao, join(linhas_removidas, ","),
-          total_pg, total_pl, total_perdas_val, total_pg_curtailment, total_pg_deficit,
-          custo_total, total_pg_deficit > 0.01 ? "COM_DEFICIT" : "NORMAL"])
-    
-    # ==========================================================================
-    # TABELA: BARRAS_POR_CONTINGENCIA
-    # ==========================================================================
-    
-    SQLite.execute(db, """
-        CREATE TABLE IF NOT EXISTS barras_contingencia (
-            id_registro INTEGER PRIMARY KEY AUTOINCREMENT,
-            id_execucao TEXT,
-            id_contingencia TEXT,
-            id_barra TEXT,
-            tipo TEXT,
-            tensao_pu REAL,
-            angulo_graus REAL,
-            carga_pu REAL,
-            geracao_pu REAL,
-            curtailment_pu REAL,
-            deficit_pu REAL,
-            preco_nodal_usd_mwh REAL,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (id_execucao) REFERENCES execucoes (id_execucao),
-            FOREIGN KEY (id_contingencia) REFERENCES contingencias (id_contingencia)
-        )
-    """)
-    
-    for i in 1:NBAR
-        barra = barras[i]
-        SQLite.execute(db, """
-            INSERT INTO barras_contingencia 
-            (id_execucao, id_contingencia, id_barra, tipo, tensao_pu, angulo_graus, 
-             carga_pu, geracao_pu, curtailment_pu, deficit_pu, preco_nodal_usd_mwh)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, [ID_EXECUCAO, ctg_id, barra["ID_Barra"], barra["tipo"], 
-              1.0, round(rad2deg(ANGLE[i]), digits=6),
-              PLOAD[i], Pg_original[i], Pg_curtailment[i], Pg_deficit[i],
-              0.0])
-    end
-    
-    # ==========================================================================
-    # TABELA: GERADORES_POR_CONTINGENCIA
-    # ==========================================================================
-    
-    SQLite.execute(db, """
-        CREATE TABLE IF NOT EXISTS geradores_contingencia (
-            id_registro INTEGER PRIMARY KEY AUTOINCREMENT,
+        CREATE TABLE IF NOT EXISTS remocao_linha_geradores (
             id_execucao TEXT,
             id_contingencia TEXT,
             id_gerador TEXT,
-            id_barra TEXT,
             tipo TEXT,
             geracao_pu REAL,
-            pmin_pu REAL,
-            pmax_pu REAL,
             custo_marginal_usd_mwh REAL,
-            ramp_up_pu REAL,
-            ramp_down_pu REAL,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (id_execucao) REFERENCES execucoes (id_execucao),
-            FOREIGN KEY (id_contingencia) REFERENCES contingencias (id_contingencia)
+            barra INTEGER
         )
     """)
     
-    for g in 1:NGER
-        barra_idx = BARPG[g]
-        id_barra = barras[barra_idx]["ID_Barra"]
-        
-        if g <= length(geradores_data)
-            gerador = geradores_data[g]
-            tipo = gerador["Tipo"]
-            id_gerador = gerador["ID_Gerador"]
-            ramp_up = get(gerador, "ramp_up_MW_h", 0.0) / SB
-            ramp_down = get(gerador, "ramp_down_MW_h", 0.0) / SB
-        elseif g <= length(geradores_data) + length(BAR_GWD)
-            tipo = "CUR"
-            id_gerador = "CUR_$id_barra"
-            ramp_up = 0.0
-            ramp_down = 0.0
-        else
-            tipo = "DEF"
-            id_gerador = "DEF_$id_barra"
-            ramp_up = 0.0
-            ramp_down = 0.0
-        end
-        
-        SQLite.execute(db, """
-            INSERT INTO geradores_contingencia 
-            (id_execucao, id_contingencia, id_gerador, id_barra, tipo, geracao_pu, 
-             pmin_pu, pmax_pu, custo_marginal_usd_mwh, ramp_up_pu, ramp_down_pu)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, [ID_EXECUCAO, ctg_id, id_gerador, id_barra, tipo,
-              round(final_PG[g], digits=6), round(PGMIN[g], digits=6),
-              round(PGMAX[g], digits=6), round(CPG[g], digits=6),
-              ramp_up, ramp_down])
-    end
-    
-    # ==========================================================================
-    # TABELA: LINHAS_POR_CONTINGENCIA
-    # ==========================================================================
+    SQLite.execute(db, """
+        CREATE TABLE IF NOT EXISTS remocao_linha_barras (
+            id_execucao TEXT,
+            id_contingencia TEXT,
+            id_barra INTEGER,
+            tipo TEXT,
+            deficit_pu REAL,
+            lambda_nodal REAL
+        )
+    """)
     
     SQLite.execute(db, """
-        CREATE TABLE IF NOT EXISTS linhas_contingencia (
-            id_registro INTEGER PRIMARY KEY AUTOINCREMENT,
+        CREATE TABLE IF NOT EXISTS remocao_linha_linhas (
             id_execucao TEXT,
             id_contingencia TEXT,
             id_linha TEXT,
-            id_barra_origem TEXT,
-            id_barra_destino TEXT,
-            fluxo_max_pu REAL,
+            fluxo_pu REAL,
             limite_pu REAL,
-            perdas_pu REAL,
             utilizacao_percentual REAL,
-            status TEXT,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (id_execucao) REFERENCES execucoes (id_execucao),
-            FOREIGN KEY (id_contingencia) REFERENCES contingencias (id_contingencia)
+            id_barra_origem INTEGER,
+            id_barra_destino INTEGER
         )
     """)
     
-    for e in 1:NLIN
-        linha = linhas[e]
-        
-        # Calcular fluxo aproximado para DC OPF
-        i = findfirst(b -> b["ID_Barra"] == linha["ID_Barra_Origem"], barras)
-        j = findfirst(b -> b["ID_Barra"] == linha["ID_Barra_Destino"], barras)
-        fluxo_aproximado = 0.0
-        if i !== nothing && j !== nothing
-            fluxo_aproximado = y_line[e] * (ANGLE[i] - ANGLE[j])
-        end
-        
-        fluxo_max = abs(fluxo_aproximado)
-        utilizacao_percentual = FLIM[e] > 0 ? round(fluxo_max / FLIM[e] * 100, digits=2) : 0.0
-        status = utilizacao_percentual > 95 ? "CRITICO" : "NORMAL"
-        
-        SQLite.execute(db, """
-            INSERT INTO linhas_contingencia 
-            (id_execucao, id_contingencia, id_linha, id_barra_origem, id_barra_destino,
-             fluxo_max_pu, limite_pu, perdas_pu, utilizacao_percentual, status)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        """, [ID_EXECUCAO, ctg_id, linha["ID_linha"], linha["ID_Barra_Origem"], linha["ID_Barra_Destino"],
-              round(fluxo_max, digits=6), round(FLIM[e], digits=6),
-              round(perdas[e], digits=6), utilizacao_percentual, status])
-    end
-    
     # ==========================================================================
-    # TABELA: MVU_MVD_POR_CONTINGENCIA
+    # TABELAS PARA DUPLICAÇÃO DE LINHA (COMPATÍVEIS COM SEU SCRIPT)
     # ==========================================================================
     
     SQLite.execute(db, """
-        CREATE TABLE IF NOT EXISTS mvu_mvd_contingencia (
-            id_registro INTEGER PRIMARY KEY AUTOINCREMENT,
+        CREATE TABLE IF NOT EXISTS duplicacao_linha_contingencias (
             id_execucao TEXT,
             id_contingencia TEXT,
-            id_gerador TEXT,
-            mvu_pu REAL,
-            mvd_pu REAL,
-            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
-            FOREIGN KEY (id_execucao) REFERENCES execucoes (id_execucao),
-            FOREIGN KEY (id_contingencia) REFERENCES contingencias (id_contingencia)
+            linha_original TEXT,
+            total_geracao_pu REAL,
+            total_carga_pu REAL,
+            total_curtailment_pu REAL,
+            total_deficit_pu REAL,
+            custo_total_usd_h REAL,
+            lambda_slack REAL,
+            convergiu BOOLEAN,
+            descricao TEXT
         )
     """)
     
-    ctg_idx = findfirst(ctg -> ctg["ID_Contingencia"] == ctg_id, contingencias_data)
-    if ctg_idx !== nothing && ctg_idx > 1
-        for g in 1:NGER_ORIGINAL
-            if g <= length(geradores_data)
-                gerador = geradores_data[g]
-                SQLite.execute(db, """
-                    INSERT INTO mvu_mvd_contingencia 
-                    (id_execucao, id_contingencia, id_gerador, mvu_pu, mvd_pu)
-                    VALUES (?, ?, ?, ?, ?)
-                """, [ID_EXECUCAO, ctg_id, gerador["ID_Gerador"],
-                      round(MVu[ctg_idx, g], digits=6), round(MVd[ctg_idx, g], digits=6)])
-            end
-        end
-    end
+    SQLite.execute(db, """
+        CREATE TABLE IF NOT EXISTS duplicacao_linha_geradores (
+            id_execucao TEXT,
+            id_contingencia TEXT,
+            id_gerador TEXT,
+            tipo TEXT,
+            geracao_pu REAL,
+            custo_marginal_usd_mwh REAL,
+            barra INTEGER
+        )
+    """)
+    
+    SQLite.execute(db, """
+        CREATE TABLE IF NOT EXISTS duplicacao_linha_barras (
+            id_execucao TEXT,
+            id_contingencia TEXT,
+            id_barra INTEGER,
+            tipo TEXT,
+            deficit_pu REAL,
+            lambda_nodal REAL
+        )
+    """)
+    
+    SQLite.execute(db, """
+        CREATE TABLE IF NOT EXISTS duplicacao_linha_linhas (
+            id_execucao TEXT,
+            id_contingencia TEXT,
+            id_linha TEXT,
+            fluxo_pu REAL,
+            limite_pu REAL,
+            utilizacao_percentual REAL,
+            id_barra_origem INTEGER,
+            id_barra_destino INTEGER
+        )
+    """)
     
     SQLite.close(db)
-    
-    println("  📊 Dados da contingência $ctg_id exportados para SQLite")
+    println("✅ Tabelas do banco de dados criadas com sucesso!")
 end
 
 # ==============================================================================
-# FUNÇÃO PRINCIPAL REVISADA DO OPF - CORRIGIDA
+# FUNÇÃO EXPORTAR_RESULTADOS MODIFICADA - COMPATÍVEL COM SEU SCRIPT PYTHON
 # ==============================================================================
 
-function resolver_opf_dc_revisado(NBAR, NGER, BARPG, PGMIN, PGMAX, CPG, PLOAD, Bbus, slack_idx, 
-                                 line_fr, line_to, y_line, g_line, FLIM, NGER_ORIGINAL, geradores_data,
-                                 NGER_CURTAILMENT, NGER_DEFICIT, Pg_anterior, ctg_idx, SB,
-                                 idx_map, BARPG_ORIGINAL, BARPG_CURTAILMENT, PGMAX_EFETIVO)
+function exportar_resultados(db, sistema, cenario, linha_afetada, tipo_operacao, 
+                            resultado::ResultadoOPF, descricao)
+    
+    total_pg = sum(resultado.PG)
+    total_pl = sum(sistema.PLOAD)
+    
+    # Determinar qual tabela usar baseado no tipo de operação
+    if tipo_operacao == "REMOCAO" || cenario == "REMOCAO_ARTIFICIAL" || cenario == "CONTINGENCIA_PROGRAMADA"
+        # USAR TABELAS DE REMOÇÃO
+        tabela_principal = "remocao_linha_contingencias"
+        tabela_geradores = "remocao_linha_geradores"
+        tabela_barras = "remocao_linha_barras"
+        tabela_linhas = "remocao_linha_linhas"
+        coluna_linha = "linha_removida"
+        ctg_id = "REM-$linha_afetada"
+    elseif tipo_operacao == "DUPLICACAO" || cenario == "DUPLICACAO_LINHA"
+        # USAR TABELAS DE DUPLICAÇÃO
+        tabela_principal = "duplicacao_linha_contingencias"
+        tabela_geradores = "duplicacao_linha_geradores"
+        tabela_barras = "duplicacao_linha_barras"
+        tabela_linhas = "duplicacao_linha_linhas"
+        coluna_linha = "linha_original"
+        ctg_id = "DUP-$linha_afetada"
+    else
+        # CASO BASE - usar tabelas de remoção
+        tabela_principal = "remocao_linha_contingencias"
+        tabela_geradores = "remocao_linha_geradores"
+        tabela_barras = "remocao_linha_barras"
+        tabela_linhas = "remocao_linha_linhas"
+        coluna_linha = "linha_removida"
+        ctg_id = "BASE"
+    end
+    
+    # Calcular valores para curtailment e déficit (simplificado)
+    total_curtailment = 0.0
+    total_deficit = max(0, total_pl - total_pg)
+    
+    # Inserir na tabela principal
+    SQLite.execute(db, """
+        INSERT INTO $tabela_principal 
+        (id_execucao, id_contingencia, $coluna_linha, total_geracao_pu, total_carga_pu, 
+         total_curtailment_pu, total_deficit_pu, custo_total_usd_h, lambda_slack, 
+         convergiu, descricao)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    """, [sistema.ID_EXECUCAO, ctg_id, linha_afetada, total_pg, total_pl,
+          total_curtailment, total_deficit, resultado.custo, resultado.lambda[sistema.slack_idx],
+          resultado.convergiu, descricao])
+    
+    # Inserir detalhes de geração
+    for g in 1:sistema.NGER
+        barra_idx = sistema.BARPG[g]
+        # Determinar tipo do gerador (simplificado - você pode ajustar conforme seus dados)
+        tipo_ger = "GWD"  # Ajuste conforme necessário
+        
+        SQLite.execute(db, """
+            INSERT INTO $tabela_geradores 
+            (id_execucao, id_contingencia, id_gerador, tipo, 
+             geracao_pu, custo_marginal_usd_mwh, barra)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, [sistema.ID_EXECUCAO, ctg_id, "G$(g)", tipo_ger,
+              resultado.PG[g], sistema.CPG[g], barra_idx])
+    end
+    
+    # Inserir dados das barras
+    for i in 1:sistema.NBAR
+        barra = sistema.barras[i]
+        deficit = 0.0
+        
+        # Calcular déficit na barra
+        if barra["tipo"] == "PQ"
+            geracao_barra = sum(resultado.PG[g] for g in 1:sistema.NGER if sistema.BARPG[g] == i)
+            demanda_barra = sistema.PLOAD[i]
+            deficit = max(0, demanda_barra - geracao_barra)
+        end
+        
+        SQLite.execute(db, """
+            INSERT INTO $tabela_barras 
+            (id_execucao, id_contingencia, id_barra, tipo, deficit_pu, lambda_nodal)
+            VALUES (?, ?, ?, ?, ?, ?)
+        """, [sistema.ID_EXECUCAO, ctg_id, i, barra["tipo"], deficit, resultado.lambda[i]])
+    end
+    
+    # Inserir fluxos nas linhas
+    for e in 1:sistema.NLIN
+        linha = sistema.linhas[e]
+        i = sistema.line_fr[e]
+        j = sistema.line_to[e]
+        delta_theta = resultado.ANG[i] - resultado.ANG[j]
+        fluxo = sistema.y_line[e] * delta_theta
+        utilizacao = sistema.FLIM[e] > 0 ? abs(fluxo) / sistema.FLIM[e] * 100 : 0.0
+        
+        SQLite.execute(db, """
+            INSERT INTO $tabela_linhas 
+            (id_execucao, id_contingencia, id_linha, fluxo_pu, 
+             limite_pu, utilizacao_percentual, id_barra_origem, id_barra_destino)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        """, [sistema.ID_EXECUCAO, ctg_id, linha["ID_linha"], fluxo, 
+              sistema.FLIM[e], utilizacao, sistema.line_fr[e], sistema.line_to[e]])
+    end
+    
+    # Registrar execução (mantido igual)
+    SQLite.execute(db, """
+        INSERT OR REPLACE INTO execucoes 
+        (id_execucao, sistema, data_execucao, status)
+        VALUES (?, ?, datetime('now'), ?)
+    """, [sistema.ID_EXECUCAO, "3barras_BASE.json", "CONCLUIDO"])
+    
+    println("📊 Dados exportados para: $linha_afetada ($tipo_operacao)")
+end
 
-    # Inicializar variáveis locais
-    convergiu = false
-    final_PG = zeros(NGER)
-    final_ANGLE = zeros(NBAR)
-    PINJ = zeros(NBAR)
-    perdas = zeros(length(line_fr))
-    
-    # Variáveis para iteração
-    ANGLE = zeros(NBAR)
-    prev_total_perdas = 0.0
-    fij = zeros(length(line_fr))
-    fji = zeros(length(line_fr))
-    lambda_balance = zeros(NBAR)
-    lambda_flow = zeros(2 * length(line_fr))
-    
-    for iter in 1:NITER_MAX
-        println("\n--- Iteração $iter ---")
-        
-        # ==========================================================================
-        # FORMULAÇÃO DO PROBLEMA DE OTIMIZAÇÃO
-        # ==========================================================================
-        
-        model = Model(Clp.Optimizer)
-        set_silent(model)
-        
-        # Variáveis de decisão
-        @variable(model, v_PG[i=1:NGER] >= 0)
-        @variable(model, v_ANG[i=1:NBAR])
-        
-        # Aplicação dos limites físicos
-        for i in 1:NGER
-            set_upper_bound(v_PG[i], PGMAX[i])
-            set_lower_bound(v_PG[i], PGMIN[i])
+# ==============================================================================
+# CÁLCULOS DE BBUS - VERSÃO CORRIGIDA
+# ==============================================================================
+
+function calcular_Bbus_base(sistema::SistemaEletrico)
+    Bbus = zeros(sistema.NBAR, sistema.NBAR)
+    for e in 1:sistema.NLIN
+        i, j = sistema.line_fr[e], sistema.line_to[e]
+        y = sistema.y_line[e]
+        Bbus[i,i] += y
+        Bbus[j,j] += y
+        Bbus[i,j] -= y
+        Bbus[j,i] -= y
+    end
+    return Bbus
+end
+
+# CORREÇÃO: Aceitar tanto Vector{Bool} quanto BitVector
+function calcular_Bbus_linhas_ativas(sistema::SistemaEletrico, linhas_ativas)
+    Bbus = zeros(sistema.NBAR, sistema.NBAR)
+    for e in 1:sistema.NLIN
+        if linhas_ativas[e]
+            i, j = sistema.line_fr[e], sistema.line_to[e]
+            y = sistema.y_line[e]
+            Bbus[i,i] += y
+            Bbus[j,j] += y
+            Bbus[i,j] -= y
+            Bbus[j,i] -= y
         end
+    end
+    return Bbus
+end
+
+function calcular_Bbus_duplicar_linha(sistema::SistemaEletrico, linha_id::String)
+    Bbus = copy(sistema.Bbus_base)
+    
+    linha_idx = findfirst(ln -> ln["ID_linha"] == linha_id, sistema.linhas)
+    linha_idx === nothing && error("Linha '$linha_id' não encontrada!")
+    
+    i, j = sistema.line_fr[linha_idx], sistema.line_to[linha_idx]
+    y_original = sistema.y_line[linha_idx]
+    
+    # Duplicar = adicionar mesma susceptância
+    Bbus[i,i] += y_original
+    Bbus[j,j] += y_original
+    Bbus[i,j] -= y_original
+    Bbus[j,i] -= y_original
+    
+    return Bbus
+end
+
+# ==============================================================================
+# OPF PRINCIPAL
+# ==============================================================================
+
+function resolver_opf(sistema::SistemaEletrico, Bbus::Matrix{Float64})::ResultadoOPF
+    model = Model(Clp.Optimizer)
+    set_silent(model)
+    
+    @variable(model, PG[1:sistema.NGER] >= 0)
+    @variable(model, ANG[1:sistema.NBAR])
+    
+    # Limites
+    for g in 1:sistema.NGER
+        set_upper_bound(PG[g], sistema.PGMAX[g])
+        set_lower_bound(PG[g], sistema.PGMIN[g])
+    end
+    
+    # Slack
+    @constraint(model, ANG[sistema.slack_idx] == 0.0)
+    
+    # Balanço de potência
+    balance_constraints = @constraint(model, [i=1:sistema.NBAR],
+        sum(PG[g] for g in 1:sistema.NGER if sistema.BARPG[g] == i) - 
+        sum(Bbus[i,j] * ANG[j] for j in 1:sistema.NBAR) == sistema.PLOAD[i]
+    )
+    
+    # Limites de fluxo
+    for e in 1:sistema.NLIN
+        i, j = sistema.line_fr[e], sistema.line_to[e]
+        fluxo = sistema.y_line[e] * (ANG[i] - ANG[j])
+        @constraint(model, fluxo <= sistema.FLIM[e])
+        @constraint(model, fluxo >= -sistema.FLIM[e])
+    end
+    
+    # Objetivo
+    @objective(model, Min, sum(sistema.CPG[g] * PG[g] for g in 1:sistema.NGER))
+    
+    # Resolver
+    optimize!(model)
+    
+    if termination_status(model) in [MOI.OPTIMAL, MOI.LOCALLY_SOLVED]
+        PG_val = value.(PG)
+        ANG_val = value.(ANG)
         
-        for i in 1:NBAR
-            set_lower_bound(v_ANG[i], -pi)
-            set_upper_bound(v_ANG[i], pi)
+        # Multiplicadores
+        lambda = [dual(balance_constraints[i]) for i in 1:sistema.NBAR]
+        
+        # Fluxos
+        fluxos = [sistema.y_line[e] * (ANG_val[sistema.line_fr[e]] - ANG_val[sistema.line_to[e]]) 
+                 for e in 1:sistema.NLIN]
+        
+        custo = objective_value(model)
+        
+        return ResultadoOPF(true, PG_val, ANG_val, lambda, custo, fluxos)
+    else
+        return ResultadoOPF(false, zeros(sistema.NGER), zeros(sistema.NBAR), 
+                          zeros(sistema.NBAR), 0.0, zeros(sistema.NLIN))
+    end
+end
+
+# ==============================================================================
+# CENÁRIOS - VERSÃO CORRIGIDA
+# ==============================================================================
+
+function executar_caso_base(sistema::SistemaEletrico, db)
+    println("\n" * "="^60)
+    println("CASO BASE")
+    println("="^60)
+    
+    resultado = resolver_opf(sistema, sistema.Bbus_base)
+    
+    if resultado.convergiu
+        println("✅ Custo: $(round(resultado.custo, digits=2)) USD/h")
+        exportar_resultados(db, sistema, "CASO_BASE", "CASO_BASE", "BASE", 
+                           resultado, "Caso base com topologia original")
+    else
+        println("❌ Caso base não convergiu")
+    end
+    
+    return resultado
+end
+
+function executar_contingencia_programada(sistema::SistemaEletrico, db, ctg)
+    println("\n" * "="^60)
+    println("CONTINGÊNCIA: $(ctg["ID_Contingencia"])")
+    println("DESCRIÇÃO: $(ctg["Descricao"])")
+    println("="^60)
+    
+    # CORREÇÃO: Usar Vector{Bool} explicitamente
+    linhas_ativas = fill(true, sistema.NLIN)  # Em vez de trues()
+    
+    for linha_id in ctg["Linhas_Removidas"]
+        idx = findfirst(ln -> ln["ID_linha"] == linha_id, sistema.linhas)
+        if idx !== nothing
+            linhas_ativas[idx] = false
+            println("   - Removendo linha: $linha_id")
         end
+    end
+    
+    Bbus_ctg = calcular_Bbus_linhas_ativas(sistema, linhas_ativas)
+    resultado = resolver_opf(sistema, Bbus_ctg)
+    
+    if resultado.convergiu
+        linhas_str = join(ctg["Linhas_Removidas"], ", ")
+        exportar_resultados(db, sistema, "CONTINGENCIA_PROGRAMADA", linhas_str, "REMOCAO", 
+                           resultado, "Contingência: $(ctg["Descricao"])")
+        println("✅ Custo contingência: $(round(resultado.custo, digits=2)) USD/h")
+    else
+        println("❌ Contingência não convergiu")
+    end
+    
+    return resultado
+end
+
+function executar_remocao_artificial(sistema::SistemaEletrico, db, linha_id::String)
+    println("\n── REMOÇÃO ARTIFICIAL: $linha_id")
+    
+    # CORREÇÃO: Usar Vector{Bool} explicitamente
+    linhas_ativas = fill(true, sistema.NLIN)
+    
+    idx = findfirst(ln -> ln["ID_linha"] == linha_id, sistema.linhas)
+    if idx === nothing
+        println("❌ Linha '$linha_id' não encontrada")
+        return ResultadoOPF(false, zeros(sistema.NGER), zeros(sistema.NBAR), 
+                          zeros(sistema.NBAR), 0.0, zeros(sistema.NLIN))
+    end
+    
+    linhas_ativas[idx] = false
+    Bbus_remocao = calcular_Bbus_linhas_ativas(sistema, linhas_ativas)
+    resultado = resolver_opf(sistema, Bbus_remocao)
+    
+    if resultado.convergiu
+        exportar_resultados(db, sistema, "REMOCAO_ARTIFICIAL", linha_id, "REMOCAO", 
+                           resultado, "Remoção artificial da linha $linha_id")
+        println("✅ Custo: $(round(resultado.custo, digits=2)) USD/h")
+    else
+        println("❌ Remoção não convergiu")
+    end
+    
+    return resultado
+end
+
+function executar_duplicacao_linha(sistema::SistemaEletrico, db, linha_id::String)
+    println("\n── DUPLICAÇÃO: $linha_id")
+    
+    Bbus_dup = calcular_Bbus_duplicar_linha(sistema, linha_id)
+    resultado = resolver_opf(sistema, Bbus_dup)
+    
+    if resultado.convergiu
+        exportar_resultados(db, sistema, "DUPLICACAO_LINHA", linha_id, "DUPLICACAO", 
+                           resultado, "Duplicação da linha $linha_id")
+        println("✅ Custo: $(round(resultado.custo, digits=2)) USD/h")
+    else
+        println("❌ Duplicação não convergiu")
+    end
+    
+    return resultado
+end
+
+# ==============================================================================
+# CONSTRUÇÃO DO SISTEMA
+# ==============================================================================
+
+function criar_sistema(data::Dict)::SistemaEletrico
+    # Configurações
+    SB = data["S_base"]
+    VB = data["V_base"]
+    ZB = (VB^2) / SB
+    
+    # Dados
+    barras = data["BARRAS"]
+    geradores = data["GERADORES"]
+    demandas = data["DEMANDAS"]
+    linhas = data["LINHAS"]
+    contingencias = get(data, "CONTINGENCIAS", [])
+    
+    # Mapeamento
+    idx_map = Dict(b["ID_Barra"] => i for (i,b) in enumerate(barras))
+    NBAR = length(barras)
+    NLIN = length(linhas)
+    NGER = length(geradores)
+    
+    # Slack
+    slack_idx = findfirst(b -> b["tipo"] == "Slack", barras)
+    slack_idx === nothing && error("Barra slack não encontrada")
+    
+    # Conversão para PU das linhas
+    for l in linhas
+        l["X_pu"] = get(l, "X_pu", l["X"] / ZB)
+        l["Fmax_pu"] = get(l, "Fmax_pu", l["LIM_Fluxo"] / SB)
+    end
+    
+    # Parâmetros das linhas
+    line_fr = [idx_map[l["ID_Barra_Origem"]] for l in linhas]
+    line_to = [idx_map[l["ID_Barra_Destino"]] for l in linhas]
+    y_line = [1.0/l["X_pu"] for l in linhas]
+    FLIM = [l["Fmax_pu"] for l in linhas]
+    
+    # Conversão geradores
+    for g in geradores
+        g["Pmax_pu"] = get(g, "Pmax_pu", g["PGERmax_MW"] / SB)
+        g["Pmin_pu"] = get(g, "Pmin_pu", g["PGERmin_MW"] / SB)
+    end
+    
+    # Parâmetros geradores
+    BARPG = [idx_map[g["ID_Barra"]] for g in geradores]
+    PGMIN = [g["Pmin_pu"] for g in geradores]
+    PGMAX = [g["Pmax_pu"] for g in geradores]
+    CPG = [get(g, "custo_var_USD_MWh", 50.0) * SB for g in geradores]
+    
+    # Demanda
+    PLOAD = zeros(NBAR)
+    for d in demandas
+        idx = idx_map[d["ID_Barra"]]
+        PLOAD[idx] = get(d, "PLOAD_pu", d["PLOAD"] / SB)
+    end
+    
+    # Bbus base
+    Bbus_base = calcular_Bbus_base(SistemaEletrico(
+        barras, geradores, demandas, linhas, contingencias,
+        idx_map, NBAR, NLIN, NGER, slack_idx,
+        line_fr, line_to, y_line, FLIM,
+        BARPG, PGMIN, PGMAX, CPG,
+        PLOAD, SB, "", zeros(NBAR, NBAR)  # ID e Bbus temporários
+    ))
+    
+    # ID execução
+    ID_EXECUCAO = Dates.format(now(), "yyyy-mm-dd_HH-MM-SS") * "_" * randstring(6)
+    
+    println("✅ Sistema criado: $NBAR barras, $NLIN linhas, $NGER geradores")
+    println("📊 Demanda total: $(round(sum(PLOAD), digits=4)) pu")
+    
+    return SistemaEletrico(
+        barras, geradores, demandas, linhas, contingencias,
+        idx_map, NBAR, NLIN, NGER, slack_idx,
+        line_fr, line_to, y_line, FLIM,
+        BARPG, PGMIN, PGMAX, CPG,
+        PLOAD, SB, ID_EXECUCAO, Bbus_base
+    )
+end
+
+# ==============================================================================
+# FUNÇÃO PRINCIPAL
+# ==============================================================================
+
+function main()
+    println("🚀 ANÁLISE DE CONTINGÊNCIAS - VERSÃO CORRIGIDA")
+    
+    try
+        criar_tabelas()
+        db = SQLite.DB("resultados_opf_contingencias.db")
         
-        # RESTRIÇÃO DA BARRA SLACK
-        @constraint(model, v_ANG[slack_idx] == 0.0)
+        data = JSON.parsefile("DATA/input/3barras_BASE.json")
+        sistema = criar_sistema(data)
         
-        # ======================================================================
-        # RESTRIÇÕES DE RAMPA (APENAS PARA C+1)
-        # ======================================================================
+        # 1. Caso base
+        println("\n🎯 ETAPA 1: CASO BASE")
+        base_result = executar_caso_base(sistema, db)
         
-        # if ctg_idx > 1
-        #     for g in 1:NGER_ORIGINAL
-        #         if g <= length(geradores_data)
-        #             tipo_ger = geradores_data[g]["Tipo"]
-        #             if tipo_ger in ["UTE"]
-        #                 ramp_up = get(geradores_data[g], "ramp_up_MW_h", 1000.0) / SB
-        #                 ramp_down = get(geradores_data[g], "ramp_down_MW_h", 1000.0) / SB
-                        
-        #                 @constraint(model, v_PG[g] - Pg_anterior[g] <= ramp_up)
-        #                 @constraint(model, Pg_anterior[g] - v_PG[g] <= min(ramp_down, Pg_anterior[g]))
-        #             end
-        #         end
+        # # 2. Contingências programadas
+        # println("\n🎯 ETAPA 2: CONTINGÊNCIAS PROGRAMADAS")
+        # for ctg in sistema.contingencias
+        #     ctg_result = executar_contingencia_programada(sistema, db, ctg)
+            
+        #     # Comparação com caso base
+        #     if base_result.convergiu && ctg_result.convergiu
+        #         diferenca = ctg_result.custo - base_result.custo
+        #         percentual = (diferenca / base_result.custo) * 100
+        #         println("   📊 Variação vs base: $(round(diferenca, digits=2)) USD/h ($(round(percentual, digits=1))%)")
         #     end
         # end
         
-        # ======================================================================
-        # RESTRIÇÃO DE BALANÇO DE POTÊNCIA
-        # ======================================================================
-        
-        balance_constraints = @constraint(model, balance[i=1:NBAR],
-        
-            # GERAÇÃO CONVENCIONAL (UTE, UTH)
-            sum(v_PG[g] for g in 1:NGER_ORIGINAL if BARPG[g] == i && geradores_data[g]["Tipo"] != "GWD") 
+        # 3. Remoções individuais
+        println("\n🎯 ETAPA 3: REMOÇÕES INDIVIDUAIS")
+        for linha in sistema.linhas
+            rem_result = executar_remocao_artificial(sistema, db, linha["ID_linha"])
             
-            # GERAÇÃO EÓLICA LÍQUIDA (GWD - Curtailment)
-            + sum(v_PG[g] for g in 1:NGER_ORIGINAL if BARPG[g] == i && geradores_data[g]["Tipo"] == "GWD") 
-            - sum(v_PG[g] for g in NGER_ORIGINAL+1:NGER_ORIGINAL+NGER_CURTAILMENT if BARPG[g] == i) 
-            
-            # DÉFICIT
-            + sum(v_PG[g] for g in NGER_ORIGINAL+NGER_CURTAILMENT+1:NGER if BARPG[g] == i)
-            
-            # Fluxo que sai das linhas
-            - sum(Bbus[i,j] * v_ANG[j] for j in 1:NBAR) 
-            
-            ==
-            
-            # Cargas + Perdas
-            PLOAD[i] + PINJ[i]
-        )
-        
-        # ==========================================================================
-        # RESTRIÇÃO DE CURTAILMENT - CORRIGIDA
-        # ==========================================================================
-        
-        # Para cada gerador eólico: Geração Real + Curtailment = Geração Disponível
-        for g in geradores_data
-            if g["Tipo"] == "GWD"
-                posicao_barra = idx_map[g["ID_Barra"]]
-                posicao_var_gerador = findfirst(i -> BARPG_ORIGINAL[i] == posicao_barra, 1:NGER_ORIGINAL)
-                
-                # Encontrar a posição correspondente no curtailment
-                posicao_var_curtailment = nothing
-                for i in 1:NGER_CURTAILMENT
-                    if BARPG_CURTAILMENT[i] == posicao_barra
-                        posicao_var_curtailment = i
-                        break
-                    end
-                end
-                
-                if posicao_var_gerador !== nothing && posicao_var_curtailment !== nothing
-                    @constraint(model, 
-                        v_PG[posicao_var_gerador] + v_PG[NGER_ORIGINAL + posicao_var_curtailment] 
-                        == 
-                        PGMAX_EFETIVO[posicao_var_gerador]
-                    )
-                end
+            # Comparação
+            if base_result.convergiu && rem_result.convergiu
+                diferenca = rem_result.custo - base_result.custo
+                percentual = (diferenca / base_result.custo) * 100
+                println("   📊 Variação vs base: $(round(diferenca, digits=2)) USD/h ($(round(percentual, digits=1))%)")
             end
         end
         
-        # ==========================================================================
-        # RESTRIÇÕES DE LIMITES DE FLUXO NAS LINHAS
-        # ==========================================================================
-        
-        flow_constraints = []
-        for e in 1:length(line_fr)
-            i = line_fr[e]
-            j = line_to[e]
-
-            # Restrições de limite de fluxo (ambos os sentidos)
-            c1 = @constraint(model,  y_line[e] * (v_ANG[i] - v_ANG[j]) <=  FLIM[e])
-            c2 = @constraint(model,  y_line[e] * (v_ANG[i] - v_ANG[j]) >= -FLIM[e])
-
-            push!(flow_constraints, c1)
-            push!(flow_constraints, c2)
-        end
-        
-        # ==========================================================================
-        # FUNÇÃO OBJETIVO COM CUSTO DE CURTAILMENT
-        # ==========================================================================
-
-        @objective(model, Min, 
-            sum(CPG[g] * v_PG[g] for g in 1:NGER_ORIGINAL) +  # Custo geração convencional e eólica
-            sum(CPG[g] * v_PG[g] for g in NGER_ORIGINAL+1:NGER_ORIGINAL+NGER_CURTAILMENT) +  # Custo curtailment
-            sum(CPG[g] * v_PG[g] for g in NGER_ORIGINAL+NGER_CURTAILMENT+1:NGER)  # Custo déficit
-        )
-        
-        # ==========================================================================
-        # RESOLUÇÃO DO PROBLEMA
-        # ==========================================================================
-
-        optimize!(model)
-        status = termination_status(model)
-        println("Status da solução: $status")
-        
-        if status in [MOI.OPTIMAL, MOI.LOCALLY_SOLVED, MOI.ALMOST_OPTIMAL, MOI.ALMOST_LOCALLY_SOLVED]
-            PG_new = value.(v_PG)
-            ANGLE_NEW = value.(v_ANG)
-            DIFMAX = maximum(abs.(ANGLE_NEW - ANGLE))            
-          
-            # Atualizar perdas
-            total_perdas = 0.0
-            fill!(PINJ, 0.0)
+        # 4. Duplicações
+        println("\n🎯 ETAPA 4: DUPLICAÇÕES")
+        for linha in sistema.linhas
+            dup_result = executar_duplicacao_linha(sistema, db, linha["ID_linha"])
             
-            for i in 1:length(line_fr)
-                fr = line_fr[i]
-                to = line_to[i]
-                delta_theta = ANGLE_NEW[fr] - ANGLE_NEW[to]
-                g = g_line[i]
-                y = y_line[i]
-                
-                # Cálculo de perdas
-                perdas[i] = g * delta_theta^2
-                total_perdas += perdas[i]
-                
-                # Fluxos com perdas
-                fij[i] = y * delta_theta + (g * delta_theta^2) / 2
-                fji[i] = -y * delta_theta + (g * delta_theta^2) / 2
-                
-                # Distribuição de perdas (50% em cada extremidade)
-                PINJ[fr] += perdas[i] / 2
-                PINJ[to] += perdas[i] / 2
-            end
-
-            loss_diff = abs(total_perdas - prev_total_perdas)
-            
-            println("Iteração $iter:")
-            println("  delta_theta_max = $(round(DIFMAX, digits=6))")
-            println("  delta_Perdas = $(round(loss_diff, digits=6))") 
-            println("  Perdas = $(round(total_perdas, digits=6))")
-            
-            # Atualização para próxima iteração
-            ANGLE = copy(ANGLE_NEW)
-            prev_total_perdas = total_perdas
-            final_PG = copy(PG_new)
-            final_ANGLE = copy(ANGLE_NEW)
-            
-            # Extração dos multiplicadores de Lagrange
-            try
-                for i in 1:NBAR
-                    lambda_balance[i] = dual(balance_constraints[i])
-                end
-            catch e
-                println("Erro ao extrair multiplicadores de balanço: $e")
-            end
-
-            try
-                for i in 1:length(flow_constraints)
-                    lambda_flow[i] = dual(flow_constraints[i])
-                end
-            catch e
-                println("Erro ao extrair multiplicadores de fluxo: $e")
-            end
-            
-            # Critério de convergência
-            if DIFMAX < TOL && loss_diff < TOL
-                println("Convergência atingida na iteração $iter")
-                convergiu = true
-                break
-            end
-        else
-            println("Nenhuma solução disponível na iteração $iter")
-            println("Status: $status")
-            break
-        end
-        
-        if iter == NITER_MAX
-            println("Número máximo de iterações atingido")
-        end
-    end
-    
-    return convergiu, final_PG, final_ANGLE, perdas, PINJ
-end
-
-# ==============================================================================
-# CARREGAMENTO E PROCESSAMENTO DOS DADOS
-# ==============================================================================
-
-data = JSON.parsefile("../DATA/input/3barras_BASE.json")
-#data = JSON.parsefile("DATA/input/3barras_BASE.json")
-
-barras = data["BARRAS"]
-geradores_data = data["GERADORES"] 
-demandas_data = data["DEMANDAS"]
-linhas = data["LINHAS"]
-contingencias_data = get(data, "CONTINGENCIAS", [])
-
-# Salvar valores originais
-for g in geradores_data
-    if g["Tipo"] == "GWD"
-        g["PGERmax_MW_ORIGINAL"] = g["PGERmax_MW"]
-    end
-end
-
-for d in demandas_data
-    if haskey(d, "PLOAD")
-        d["PLOAD_ORIGINAL"] = d["PLOAD"]
-    end
-end
-
-# Aplicar cenário aleatório
-gerar_cenario_aleatorio!(geradores_data, demandas_data, data["S_base"])
-
-if isempty(contingencias_data)
-    println("⚠️  Nenhuma contingência definida. Criando contingência base.")
-    contingencias_data = [
-        Dict(
-            "ID_Contingencia" => "CTG-BASE",
-            "Descricao" => "Caso Base - Sem contingência", 
-            "Linhas_Removidas" => []
-        )
-    ]
-end
-
-# Configurações de base
-SB = data["S_base"]
-PB = data["P_base"]
-VB = data["V_base"]
-FB = data["f_base"]
-ZB = (VB^2) / PB
-YB = 1 / ZB
-
-println("===== BASES DO SISTEMA =====")
-println("Potência base (SB): ", SB, " MVA")
-println("Tensão base (VB): ", VB, " kV") 
-println("Impedância base (ZB): ", round(ZB, digits=4), " Ω")
-println("============================")
-
-# Conversão para PU
-for b in barras
-    if haskey(b, "P_carga_MW")
-        b["P_carga_pu"] = b["P_carga_MW"] / SB
-    else
-        b["P_carga_pu"] = 0.0
-    end
-    
-    if haskey(b, "Q_carga_MVAr")
-        b["Q_carga_pu"] = b["Q_carga_MVAr"] / SB
-    else
-        b["Q_carga_pu"] = 0.0
-    end
-end
-
-for g in geradores_data
-    g["Pmax_pu"] = g["PGERmax_MW"] / SB
-    g["Pmin_pu"] = g["PGERmin_MW"] / SB
-    
-    if haskey(g, "Qmax_MVAr")
-        g["Qmax_pu"] = g["Qmax_MVAr"] / SB
-    else
-        g["Qmax_pu"] = 2.0
-    end
-    
-    if haskey(g, "Qmin_MVAr")
-        g["Qmin_pu"] = g["Qmin_MVAr"] / SB
-    else
-        g["Qmin_pu"] = -2.0
-    end
-    
-    if haskey(g, "Pg_ref_MW")
-        g["Pg_ref_pu"] = g["Pg_ref_MW"] / SB
-    else
-        g["Pg_ref_pu"] = 0.0
-    end
-end
-
-for l in linhas
-    l["R_pu"] = l["R"] / ZB
-    l["X_pu"] = l["X"] / ZB
-    
-    if haskey(l, "Bsh")
-        l["B_pu"] = l["Bsh"] * ZB
-    else
-        l["B_pu"] = 0.0
-    end
-    
-    l["Fmax_pu"] = l["LIM_Fluxo"] / SB
-end
-
-# Mapeamento de barras
-bus_ids = [b["ID_Barra"] for b in barras]
-global idx_map = Dict(id => i for (i,id) in enumerate(bus_ids))
-NBAR = length(bus_ids)
-NLIN = length(linhas)
-
-# Identificar barra slack
-slack_list = filter(b->b["tipo"]=="Slack", barras)
-if length(slack_list) != 1
-    error("Deve haver exatamente 1 barra Slack")
-end
-slack_id = slack_list[1]["ID_Barra"]
-global slack_idx = idx_map[slack_id]
-
-# Parâmetros das linhas
-line_fr = Vector{Int}(undef, NLIN)
-line_to = Vector{Int}(undef, NLIN)  
-r_line = zeros(NLIN)
-x_line = zeros(NLIN)
-y_line = zeros(NLIN)
-g_line = zeros(NLIN)
-FLIM = zeros(NLIN)
-
-for (e, ln) in enumerate(linhas)
-    fr = ln["ID_Barra_Origem"]
-    to = ln["ID_Barra_Destino"]
-    line_fr[e] = idx_map[fr]
-    line_to[e] = idx_map[to]
-    
-    r = ln["R_pu"]
-    x = ln["X_pu"]
-    
-    r_line[e] = r
-    x_line[e] = x
-    
-    denom = r^2 + x^2
-    g_line[e] = denom > 0 ? r/denom : 0.0
-    y_line[e] = abs(x) > 0 ? 1.0/x : 0.0
-    
-    FLIM[e] = ln["Fmax_pu"]
-end
-
-# Matriz Bbus
-Bbus = zeros(NBAR, NBAR)
-for e in 1:NLIN
-    i = line_fr[e]
-    j = line_to[e]
-    y = y_line[e]
-    
-    Bbus[i,i] += y
-    Bbus[j,j] += y
-    Bbus[i,j] -= y
-    Bbus[j,i] -= y
-end
-
-# Dados dos geradores originais
-NGER_ORIGINAL = length(geradores_data)
-BARPG_ORIGINAL = Vector{Int}(undef, NGER_ORIGINAL)
-BAR_GWD = Int[]
-PGMIN_ORIGINAL = zeros(NGER_ORIGINAL)
-PGMAX_ORIGINAL = zeros(NGER_ORIGINAL)
-PGMIN_EFETIVO = zeros(NGER_ORIGINAL)
-PGMAX_EFETIVO = zeros(NGER_ORIGINAL)
-CPG_ORIGINAL = zeros(NGER_ORIGINAL)
-
-# Primeiro identificar geradores GWD
-for (i, g) in enumerate(geradores_data)
-    id_barra = g["ID_Barra"]
-    BARPG_ORIGINAL[i] = idx_map[id_barra]
-    tipo_ger = g["Tipo"]
-    
-    if tipo_ger == "GWD"
-        push!(BAR_GWD, idx_map[id_barra])
-    end
-end
-
-# Agora processar todos os geradores
-for (i, g) in enumerate(geradores_data)
-    id_barra = g["ID_Barra"]
-    BARPG_ORIGINAL[i] = idx_map[id_barra]
-    tipo_ger = g["Tipo"]
-    
-    PGMIN_ORIGINAL[i] = g["Pmin_pu"]
-    PGMAX_ORIGINAL[i] = g["Pmax_pu"]
-    
-    if tipo_ger == "UTE"
-        CPG_ORIGINAL[i] = get(g, "custo_var_USD_MWh", 50.0) * SB
-    elseif tipo_ger == "UTH"
-        CPG_ORIGINAL[i] = get(g, "custo_var_USD_MWh", 80.0) * SB
-    elseif tipo_ger == "GWD"
-        CPG_ORIGINAL[i] = get(g, "custo_var_USD_MWh", 5.0) * SB
-        
-        potencia_disponivel = rand(Uniform(0.2, 1.0)) * PGMAX_ORIGINAL[i]
-        PGMAX_EFETIVO[i] = potencia_disponivel
-        PGMIN_EFETIVO[i] = potencia_disponivel
-    else
-        CPG_ORIGINAL[i] = 0.0
-    end
-    
-    if tipo_ger != "GWD"
-        PGMAX_EFETIVO[i] = PGMAX_ORIGINAL[i]
-        PGMIN_EFETIVO[i] = PGMIN_ORIGINAL[i]
-    end
-end
-
-# Demanda
-PLOAD = zeros(NBAR)
-for d in demandas_data
-    id_barra = d["ID_Barra"]
-    idx = idx_map[id_barra]
-    potencia_demanda = get(d, "PLOAD", 0.0) / SB
-    PLOAD[idx] += max(0, potencia_demanda)
-end
-
-# Geradores de curtailment e déficit
-barras_PQ = filter(b -> b["tipo"] == "PQ", barras)
-barras_com_gerador = Set(BARPG_ORIGINAL)
-barras_PQ_sem_gerador = [b for b in barras_PQ if idx_map[b["ID_Barra"]] ∉ barras_com_gerador]
-
-NGER_CURTAILMENT = length(BAR_GWD)
-NGER_DEFICIT = length(barras_PQ)
-
-custo_maximo_existente = isempty(CPG_ORIGINAL) ? 1000.0 : maximum(CPG_ORIGINAL)
-CUSTO_CURTAILMENT = 10.0 * custo_maximo_existente
-CUSTO_DEFICIT = 1000.0 * custo_maximo_existente
-
-# Curtailment
-BARPG_CURTAILMENT = Vector{Int}(undef, NGER_CURTAILMENT)
-PGMIN_CURTAILMENT = zeros(NGER_CURTAILMENT)
-PGMAX_CURTAILMENT = zeros(NGER_CURTAILMENT)
-CPG_CURTAILMENT = zeros(NGER_CURTAILMENT)
-
-for (i, barra_idx) in enumerate(BAR_GWD)
-    gwd_idx = findfirst(g -> idx_map[g["ID_Barra"]] == barra_idx && get(g, "Tipo", "") == "GWD", geradores_data)
-    
-    if gwd_idx !== nothing
-        BARPG_CURTAILMENT[i] = barra_idx
-        PGMIN_CURTAILMENT[i] = 0.0
-        PGMAX_CURTAILMENT[i] = PGMAX_EFETIVO[gwd_idx]
-        CPG_CURTAILMENT[i] = get(geradores_data[gwd_idx], "custo_curtailment_USD_MWh", CUSTO_CURTAILMENT) * SB
-    end
-end
-
-# Déficit
-BARPG_DEFICIT = Vector{Int}(undef, NGER_DEFICIT)
-PGMIN_DEFICIT = zeros(NGER_DEFICIT)
-PGMAX_DEFICIT = zeros(NGER_DEFICIT)
-CPG_DEFICIT = zeros(NGER_DEFICIT)
-
-for (i, b) in enumerate(barras_PQ)
-    id = b["ID_Barra"]
-    idx = idx_map[id]
-    BARPG_DEFICIT[i] = idx
-    PGMIN_DEFICIT[i] = 0.0
-    PGMAX_DEFICIT[i] = PLOAD[idx] > 0 ? PLOAD[idx] * 2 : 1.0
-    CPG_DEFICIT[i] = CUSTO_DEFICIT
-end
-
-# Combinar todos os geradores
-NGER = NGER_ORIGINAL + NGER_CURTAILMENT + NGER_DEFICIT
-println("Total de geradores: $NGER_ORIGINAL originais + $NGER_CURTAILMENT curtailment + $NGER_DEFICIT déficit = $NGER")
-
-BARPG = vcat(BARPG_ORIGINAL, BARPG_CURTAILMENT, BARPG_DEFICIT)
-PGMIN = vcat(PGMIN_EFETIVO, PGMIN_CURTAILMENT, PGMIN_DEFICIT)
-PGMAX = vcat(PGMAX_EFETIVO, PGMAX_CURTAILMENT, PGMAX_DEFICIT)
-CPG = vcat(CPG_ORIGINAL, CPG_CURTAILMENT, CPG_DEFICIT)
-
-# ==============================================================================
-# LOOP PRINCIPAL DE CONTINGÊNCIAS REVISADO - CORRIGIDO
-# ==============================================================================
-
-resultados_contingencias = Dict{String, Dict}()
-global Pg_anterior = zeros(NGER_ORIGINAL)
-MVu = zeros(length(contingencias_data), NGER_ORIGINAL)
-MVd = zeros(length(contingencias_data), NGER_ORIGINAL)
-
-ID_EXECUCAO = Dates.format(now(), "yyyy-mm-dd_HH-MM-SS") * "_" * randstring(6)
-
-# Salvar cópias dos parâmetros originais das linhas
-r_line_original = copy(r_line)
-x_line_original = copy(x_line)
-y_line_original = copy(y_line)
-g_line_original = copy(g_line)
-FLIM_original = copy(FLIM)
-
-for (ctg_idx, contingencia) in enumerate(contingencias_data)
-    global Pg_anterior
-    
-    ctg_id = contingencia["ID_Contingencia"]
-    ctg_descricao = contingencia["Descricao"]
-    linhas_removidas = get(contingencia, "Linhas_Removidas", [])
-    
-    println("\n" * "="^80)
-    println("CONTINGÊNCIA $ctg_idx/$(length(contingencias_data)): $ctg_id")
-    println("Descrição: $ctg_descricao")
-    println("Linhas removidas: $(isempty(linhas_removidas) ? "Nenhuma" : join(linhas_removidas, ", "))")
-    println("="^80)
-    
-    # Restaurar parâmetros originais antes de aplicar contingência
-    r_line = copy(r_line_original)
-    x_line = copy(x_line_original)
-    y_line = copy(y_line_original)
-    g_line = copy(g_line_original)
-    FLIM = copy(FLIM_original)
-    
-    # Aplicar contingência (remover linhas)
-    for linha_id in linhas_removidas
-        linha_idx = findfirst(ln -> ln["ID_linha"] == linha_id, linhas)
-        if linha_idx !== nothing
-            # Remover linha definindo admitância para valor muito baixo
-            y_line[linha_idx] = 1e-10
-            g_line[linha_idx] = 0.0
-            FLIM[linha_idx] = 0.0
-            println("  - Removendo linha: $linha_id")
-        else
-            println("  ⚠️  Aviso: Linha $linha_id não encontrada")
-        end
-    end
-    
-    # Recalcular Bbus com as linhas removidas
-    Bbus_ctg = zeros(NBAR, NBAR)
-    for e in 1:NLIN
-        i = line_fr[e]
-        j = line_to[e]
-        y = y_line[e]
-        
-        Bbus_ctg[i,i] += y
-        Bbus_ctg[j,j] += y
-        Bbus_ctg[i,j] -= y
-        Bbus_ctg[j,i] -= y
-    end
-    
-    # Resolver OPF revisado
-    convergiu, final_PG, final_ANGLE, perdas, PINJ = resolver_opf_dc_revisado(
-        NBAR, NGER, BARPG, PGMIN, PGMAX, CPG, PLOAD, Bbus_ctg, slack_idx,
-        line_fr, line_to, y_line, g_line, FLIM, NGER_ORIGINAL, geradores_data,
-        NGER_CURTAILMENT, NGER_DEFICIT, Pg_anterior, ctg_idx, SB,
-        idx_map, BARPG_ORIGINAL, BARPG_CURTAILMENT, PGMAX_EFETIVO
-    )
-    
-    # Calcular MVu/MVd apenas se a solução convergiu
-    if convergiu && ctg_idx > 1
-        for g in 1:NGER_ORIGINAL
-            if g <= length(geradores_data)
-                diferenca = final_PG[g] - Pg_anterior[g]
-                
-                if diferenca < 0
-                    diferenca_abs = -diferenca
-                    if diferenca_abs > MVd[ctg_idx, g]
-                        MVd[ctg_idx, g] = diferenca_abs
-                    end
-                elseif diferenca > 0
-                    if diferenca > MVu[ctg_idx, g]
-                        MVu[ctg_idx, g] = diferenca
-                    end
-                end
+            # Comparação
+            if base_result.convergiu && dup_result.convergiu
+                diferenca = dup_result.custo - base_result.custo
+                percentual = (diferenca / base_result.custo) * 100
+                println("   📊 Variação vs base: $(round(diferenca, digits=2)) USD/h ($(round(percentual, digits=1))%)")
             end
         end
-        println("  MVu/MVd calculados para esta contingência")
+        
+        SQLite.close(db)
+        println("\n🎉 ANÁLISE CONCLUÍDA! Resultados salvos no banco de dados.")
+        
+    catch e
+        println("❌ ERRO: $e")
+        showerror(stdout, e, catch_backtrace())
     end
-    
-    # Processar resultados
-    Pg_original = zeros(NBAR)
-    Pg_curtailment = zeros(NBAR)
-    Pg_deficit = zeros(NBAR)
-    Pg_total = zeros(NBAR)
-    
-    for g in 1:NGER
-        bar_idx = BARPG[g]
-        if g <= NGER_ORIGINAL
-            Pg_original[bar_idx] += final_PG[g]
-        elseif g <= NGER_ORIGINAL + NGER_CURTAILMENT
-            Pg_curtailment[bar_idx] += final_PG[g]
-        else
-            Pg_deficit[bar_idx] += final_PG[g]
-        end
-        Pg_total[bar_idx] += final_PG[g]
-    end
-    
-    total_pg = sum(Pg_total)
-    total_pl = sum(PLOAD)
-    total_perdas_val = sum(perdas)
-    total_pg_curtailment = sum(Pg_curtailment)
-    total_pg_deficit = sum(Pg_deficit)
-    
-    # VERIFICAR BALANÇO DE POTÊNCIA
-    balanco = total_pg - total_pl - total_perdas_val
-    println("\n✓ Contingência $ctg_id finalizada:")
-    println("  - Geração total: $(round(total_pg, digits=4)) pu")
-    println("  - Demanda total: $(round(total_pl, digits=4)) pu") 
-    println("  - Perdas totais: $(round(total_perdas_val, digits=4)) pu")
-    println("  - Curtailment: $(round(total_pg_curtailment, digits=4)) pu")
-    println("  - Déficit: $(round(total_pg_deficit, digits=4)) pu")
-    println("  - BALANÇO (Geração - Demanda - Perdas): $(round(balanco, digits=6)) pu")
-    println("  - Convergiu: $convergiu")
-    
-    if abs(balanco) > 1e-4
-        println("  ⚠️  ALERTA: Balanço de potência não fechado adequadamente!")
-    end
-    
-    # Verificar geração negativa
-    if any(x -> x < -1e-6, final_PG)
-        println("  ❌ ERRO CRÍTICO: Geração negativa detectada!")
-    else
-        println("  ✅ Geração não-negativa verificada")
-    end
-    
-    # Atualizar Pg_anterior apenas se convergiu
-    if convergiu
-        Pg_anterior = copy(final_PG[1:NGER_ORIGINAL])
-    end
-    
-    # Armazenar resultados
-    resultados_contingencias[ctg_id] = Dict(
-        "Pg_original" => copy(Pg_original),
-        "Pg_curtailment" => copy(Pg_curtailment),
-        "Pg_deficit" => copy(Pg_deficit),
-        "Pg_total" => copy(Pg_total),
-        "total_pg" => total_pg,
-        "total_pl" => total_pl,
-        "total_perdas" => total_perdas_val,
-        "total_curtailment" => total_pg_curtailment,
-        "total_deficit" => total_pg_deficit,
-        "ANGLE" => copy(final_ANGLE),
-        "PERDAS" => copy(perdas),
-        "PG_FINAL" => copy(final_PG),
-        "BALANCO" => balanco,
-        "CONVERGIU" => convergiu
-    )
-    
-    # Exportar para SQLite
-    exportar_contingencia_para_sqlite(ctg_id, ctg_descricao, linhas_removidas, 
-                                     Pg_original, Pg_curtailment, Pg_deficit, Pg_total,
-                                     final_ANGLE, perdas, final_PG,
-                                     ID_EXECUCAO, barras, NGER_ORIGINAL, geradores_data,
-                                     BARPG, PGMIN, PGMAX, CPG, SB, BAR_GWD, NGER_CURTAILMENT,
-                                     CPG_ORIGINAL, CPG_CURTAILMENT, CPG_DEFICIT, PLOAD,
-                                     linhas, FLIM, contingencias_data, MVu, MVd, y_line)
 end
 
-println("\n" * "="^100)
-println("🎯 ANÁLISE DE CONTINGÊNCIAS CONCLUÍDA!")
-println("📊 Dados exportados para: resultados_opf_contingencias.db")
-println("📈 ID da execução: $ID_EXECUCAO")
-println("="^100)
+end # module
 
-# Resumo dos resultados
-println("\n=== RESUMO DAS CONTINGÊNCIAS ===")
-for (ctg_id, resultado) in resultados_contingencias
-    status = resultado["CONVERGIU"] ? "CONVERGIU" : "NÃO CONVERGIU"
-    deficit = resultado["total_deficit"] > 0.01 ? "COM DÉFICIT" : "SEM DÉFICIT"
-    println("$ctg_id: $status | $deficit | Balanço: $(round(resultado["BALANCO"], digits=6))")
-end
+# Executar
+AnaliseContingencias.main()
+Any
 
-println("\n=== EXECUÇÃO CONCLUÍDA ===")
+data = JSON.parsefile("DATA/input/3barras_BASE.json")

@@ -99,7 +99,7 @@
 
   "LINHAS": [
     {
-      "ID_linha": "1-2", 
+      "ID_linha": "L1", 
       "ID_Barra_Origem": "1", 
       "ID_Barra_Destino": "2", 
       "R": 0.01, 
@@ -112,7 +112,7 @@
       "LIM_Fluxo_Unidade": "MW"
     },
     {
-      "ID_linha": "2-3", 
+      "ID_linha": "L2", 
       "ID_Barra_Origem": "2", 
       "ID_Barra_Destino": "3", 
       "R": 0.02, 
@@ -125,7 +125,7 @@
       "LIM_Fluxo_Unidade": "MW"
     },
     {
-      "ID_linha": "3-4", 
+      "ID_linha": "L3", 
       "ID_Barra_Origem": "3", 
       "ID_Barra_Destino": "4", 
       "R": 0.05, 
@@ -138,7 +138,7 @@
       "LIM_Fluxo_Unidade": "MW"
     },
     {
-      "ID_linha": "4-5", 
+      "ID_linha": "L4", 
       "ID_Barra_Origem": "4", 
       "ID_Barra_Destino": "5", 
       "R": 0.01, 
@@ -151,7 +151,7 @@
       "LIM_Fluxo_Unidade": "MW"
     },
     {
-      "ID_linha": "5-6", 
+      "ID_linha": "L5", 
       "ID_Barra_Origem": "5", 
       "ID_Barra_Destino": "6", 
       "R": 0.02, 
@@ -164,7 +164,7 @@
       "LIM_Fluxo_Unidade": "MW"
     },
     {
-      "ID_linha": "3-6", 
+      "ID_linha": "L6", 
       "ID_Barra_Origem": "3", 
       "ID_Barra_Destino": "6", 
       "R": 0.03, 
@@ -177,7 +177,7 @@
       "LIM_Fluxo_Unidade": "MW"
     },
     {
-      "ID_linha": "1-5", 
+      "ID_linha": "L7", 
       "ID_Barra_Origem": "1", 
       "ID_Barra_Destino": "5", 
       "R": 0.01, 
@@ -190,7 +190,7 @@
       "LIM_Fluxo_Unidade": "MW"
     },
     {
-      "ID_linha": "4-2", 
+      "ID_linha": "L8", 
       "ID_Barra_Origem": "4", 
       "ID_Barra_Destino": "2", 
       "R": 0.02, 
@@ -201,6 +201,48 @@
       "Bsh_Unidade": "pu",
       "LIM_Fluxo": 90.0, 
       "LIM_Fluxo_Unidade": "MW"
+    }
+  ],
+  "CONTINGENCIAS": [
+    {
+      "ID_Contingencia": "C1",
+      "Descricao": "Remoção da linha L1 (1-2)",
+      "Linhas_Removidas": ["L1"]
+    },
+    {
+      "ID_Contingencia": "C2",
+      "Descricao": "Remoção da linha L2 (2-3)",
+      "Linhas_Removidas": ["L2"]
+    },
+    {
+      "ID_Contingencia": "C3",
+      "Descricao": "Remoção da linha L3 (3-4)",
+      "Linhas_Removidas": ["L3"]
+    },
+    {
+      "ID_Contingencia": "C4",
+      "Descricao": "Remoção da linha L4 (4-5)",
+      "Linhas_Removidas": ["L4"]
+    },
+    {
+      "ID_Contingencia": "C5",
+      "Descricao": "Remoção da linha L5 (5-6)",
+      "Linhas_Removidas": ["L5"]
+    },
+    {
+      "ID_Contingencia": "C6",
+      "Descricao": "Remoção da linha L6 (3-6)",
+      "Linhas_Removidas": ["L6"]
+    },
+    {
+      "ID_Contingencia": "C7",
+      "Descricao": "Remoção da linha L7 (1-5)",
+      "Linhas_Removidas": ["L7"]
+    },
+    {
+      "ID_Contingencia": "C8",
+      "Descricao": "Remoção da linha L8 (4-2)",
+      "Linhas_Removidas": ["L8"]
     }
   ]
 }
