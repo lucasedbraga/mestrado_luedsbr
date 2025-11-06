@@ -2960,5 +2960,48 @@
       "LIM_Fluxo": 175,
       "LIM_Fluxo_Unidade": "pu"
     }
+  ],
+
+  "CONTINGENCIAS": [
+    {
+      "ID_Contingencia": "CTG-1",
+      "Descricao": "Base - Sem contingência",
+      "Linhas_Removidas": []
+    },
+    {
+      "ID_Contingencia": "CTG-2",
+      "Descricao": "Remoção da linha 68-69 (conecta G69 - 1000 MW)",
+      "Linhas_Removidas": ["68-69"]
+    },
+    {
+      "ID_Contingencia": "CTG-3",
+      "Descricao": "Remoção da linha 54-59 (conecta G54 - 570 MW)",
+      "Linhas_Removidas": ["54-59"]
+    },
+    {
+      "ID_Contingencia": "CTG-4",
+      "Descricao": "Remoção da linha 15-17 (conecta G15 - 450 MW)",
+      "Linhas_Removidas": ["15-17"]
+    },
+    {
+      "ID_Contingencia": "CTG-5",
+      "Descricao": "Remoção da linha 49-66 (conecta G49 - 450 MW)",
+      "Linhas_Removidas": ["49-66"]
+    },
+    {
+      "ID_Contingencia": "CTG-6",
+      "Descricao": "Remoção da linha 83-85 (conecta G85 - 300 MW)",
+      "Linhas_Removidas": ["83-85"]
+    },
+    {
+      "ID_Contingencia": "CTG-7",
+      "Descricao": "Remoção da linha 89-90 (conecta G90 - 250 MW)",
+      "Linhas_Removidas": ["89-90"]
+    },
+    {
+      "ID_Contingencia": "CTG-8",
+      "Descricao": "Remoção da linha 23-24 (conecta G24 - 250 MW)",
+      "Linhas_Removidas": ["23-24"]
+    }
   ]
 }

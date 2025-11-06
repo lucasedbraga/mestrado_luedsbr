@@ -22,9 +22,8 @@ println("=== OPF DC ITERATIVO COM PERDAS E CURTAILMENT ===")
 # ==============================================================================
 
 # Carrega dados da rede elétrica do arquivo JSON
-data = JSON.parsefile("DATA/input/3barras_BASE.json")
-#TESTE COMMIT
-#data = JSON.parsefile("../DATA/input/B6L8_BASE.json")
+#data = JSON.parsefile("DATA/input/3barras_Teste.json")
+data = JSON.parsefile("../DATA/input/B6L8_BASE.json")
 #data = JSON.parsefile("../DATA/input/ieee14_BASE.json")
 #data = JSON.parsefile("DATA/input/ieee118_BASE.json")
 
@@ -462,7 +461,7 @@ for iter in 1:NITER_MAX
         i = line_fr[e]
         j = line_to[e]
 
-        # Restrições de limite de fluxo (ambos os sentidos)
+        # # Restrições de limite de fluxo (ambos os sentidos)
         @constraint(model,  y_line[e] * (v_ANG[i] - v_ANG[j]) <=  FLIM[e])
         @constraint(model,  y_line[e] * (v_ANG[i] - v_ANG[j]) >= -FLIM[e])
 

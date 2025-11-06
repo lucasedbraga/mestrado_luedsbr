@@ -1,6 +1,8 @@
 tests/__pycache__/
 *.token
 *.venv
+*venv
+*.vs
 *DATA/input/cenarios/
 SRC/decisao_multicriterio/__pycache__/
 pareto.png
