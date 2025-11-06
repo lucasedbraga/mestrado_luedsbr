@@ -16,7 +16,7 @@ input_name = "B6L8_BASE"
 #input_name = "ieee14_BASE"
 
 # Carrega dados da rede elétrica do arquivo JSON
-data = JSON.parsefile("DATA/input/$input_name.json")
+data = JSON.parsefile("../DATA/input/$input_name.json")
 
 """
 Função que resolve o despacho econômico para dados e pesos dados
@@ -84,7 +84,7 @@ function despacho_economico(data, w_c, w_e, cenario_id)
         g_line[e] = denom > 0 ? r/denom : 0.0
         y_line[e] = abs(x) > 0 ? 1.0/x : 0.0
         
-        FLIM[e] = get(ln, "LIM_Fluxo", 1.0)
+        FLIM[e] = get(ln, "LIM_Fluxo", 1.0) / PB  # CORREÇÃO: Converter para pu
     end
 
     # ==============================================================================
@@ -123,37 +123,13 @@ function despacho_economico(data, w_c, w_e, cenario_id)
         BARPG_ORIGINAL[i] = idx_map[id_barra]
         tipo_ger = g["Tipo"]
         
-        if tipo_ger == "UTE"
-            PGMIN_ORIGINAL[i] = get(g, "PGERmin_MW", 0.0) / PB
-            PGMAX_ORIGINAL[i] = get(g, "PGERmax_MW", 1.0) / PB
-            CPG_ORIGINAL[i] = get(g, "custo_var_USD_MWh", 0.0) * PB
-            EMISS[i] = get(g, "emissao_tCO2_MWh", 0.0)
+        # CORREÇÃO: Tratamento unificado para todos os tipos de gerador
+        PGMIN_ORIGINAL[i] = get(g, "PGERmin_MW", 0.0) / PB
+        PGMAX_ORIGINAL[i] = get(g, "PGERmax_MW", 1.0) / PB
+        CPG_ORIGINAL[i] = get(g, "custo_var_USD_MWh", 0.0)
+        EMISS[i] = get(g, "emissao_tCO2_MWh", 0.0)
 
-            PGMAX_EFETIVO[i] = PGMAX_ORIGINAL[i]
-            
-        elseif tipo_ger == "UTH"
-            PGMIN_ORIGINAL[i] = get(g, "PGERmin_MW", 0.0) / PB
-            PGMAX_ORIGINAL[i] = get(g, "PGERmax_MW", 1.0) / PB
-            CPG_ORIGINAL[i] = get(g, "custo_var_USD_MWh", 0.0) * PB
-            EMISS[i] = get(g, "emissao_tCO2_MWh", 0.0)
-
-            PGMAX_EFETIVO[i] = PGMAX_ORIGINAL[i]
-            
-        elseif tipo_ger == "GWD"
-            PGMIN_ORIGINAL[i] = get(g, "PGERmin", 0.0) / PB
-            PGMAX_ORIGINAL[i] = get(g, "PGERmax", 1.0) / PB
-            CPG_ORIGINAL[i] = get(g, "custo_var_USD_MWh", 0.0) * PB
-            EMISS[i] = get(g, "emissao_tCO2_MWh", 0.0)
-
-            PGMAX_EFETIVO[i] = PGMAX_ORIGINAL[i]
-
-        else
-            PGMIN_ORIGINAL[i] = 0.0
-            PGMAX_ORIGINAL[i] = 1.0
-            PGMAX_EFETIVO[i] = PGMAX_ORIGINAL[i]
-            CPG_ORIGINAL[i] = 0.0
-            EMISS[i] = 0.0
-        end
+        PGMAX_EFETIVO[i] = PGMAX_ORIGINAL[i]
     end
 
     # ==============================================================================
@@ -255,6 +231,7 @@ function despacho_economico(data, w_c, w_e, cenario_id)
         
         # Aplicação dos limites físicos
         for i in 1:NGER
+            set_lower_bound(v_PG[i], PGMIN[i])  # CORREÇÃO: Adicionado limite inferior
             set_upper_bound(v_PG[i], PGMAX[i])
         end
         
@@ -414,39 +391,6 @@ function despacho_economico(data, w_c, w_e, cenario_id)
         error("Otimização não convergiu para o cenário $cenario_id. Status final: $last_status")
     end
 
-    # Monta resultados por gerador
-    resultados = []
-    for (g_idx, g_data) in enumerate(geradores_data)
-        gerador_id = g_data["ID_Gerador"]
-        geracao = round(final_PG[g_idx] * PB, digits=4)  # Converte de pu para MW
-        emissao = round(get(g_data, "emissao_tCO2_MWh", 0.0) * geracao, digits=4)
-        
-        push!(resultados, OrderedDict(
-            "ID_Gerador" => gerador_id,
-            "ID_Barra" => g_data["ID_Barra"],
-            "geracao_MW" => geracao,
-            "emissao_tCO2" => emissao
-        ))
-    end
-
-    # Estrutura final com metadados do cenário
-    DATA = OrderedDict(
-        "cenario_id" => cenario_id,
-        "peso_custo" => round(w_c, digits=2),
-        "peso_emissao" => round(w_e, digits=2),
-        "custo_total" => round(last_custo_total, digits=2),
-        "emissao_total" => round(last_emiss_total, digits=2),
-        "total_perdas" => round(last_perdas, digits=5)
-    )
-
-    # Salva JSON
-    output_file = "/home/lucasedbraga/projetos/ufjf/mestrado_luedsbr/DATA/output/MCDA/fluxpot/output_fluxpot_cenario_$(cenario_id).json"
-    open(output_file, "w") do io
-        JSON.print(io, DATA, 4)
-    end
-
-    println("Cenário $cenario_id salvo com sucesso em $output_file")
-
     return last_custo_total, last_emiss_total / custo_credito_carbono_tonelada_co2, last_perdas
 end
 
@@ -456,8 +400,13 @@ for w_c in 1:-0.1:0
     w_e = 1 - w_c
     cenario_id = round(Int, 10 * w_e)
     println("Iniciando Rodada $cenario_id")
-    custo, emiss, perdas_totais = despacho_economico(data, w_c, w_e, cenario_id)
-    push!(pareto_points, (w_c, w_e, custo, emiss, perdas_totais))
+    try
+        custo, emiss, perdas_totais = despacho_economico(data, w_c, w_e, cenario_id)
+        push!(pareto_points, (w_c, w_e, custo, emiss, perdas_totais))
+        println("  Sucesso: Custo=$custo, Emissões=$emiss")
+    catch e
+        println("  Erro na rodada $cenario_id: $e")
+    end
 end
 
 println("\n--- Fronteira de Pareto ---")
@@ -475,57 +424,62 @@ for (w_c, w_e, custo, emiss, perdas_totais) in pareto_points
     ))
 end
 
-df = DataFrame(alternativas)
-df[!,:_chave] = [string(row["Custo Operacao"][1]) * "|" * string(row["Emissao ton CO2"][1]) for row in eachrow(df)]
+# Cria DataFrame e remove duplicatas
+if !isempty(alternativas)
+    df = DataFrame(alternativas)
+    df[!,:_chave] = [string(row["Custo Operacao"][1]) * "|" * string(row["Emissao ton CO2"][1]) for row in eachrow(df)]
 
-df_filtrado = combine(groupby(df, :_chave)) do sdf
-    first(sdf)
-end
-select!(df_filtrado, Not(:_chave))
+    df_filtrado = combine(groupby(df, :_chave)) do sdf
+        first(sdf)
+    end
+    select!(df_filtrado, Not(:_chave))
 
+    alternativas_com_id = [
+        OrderedDict(
+            "id_alternativa" => i,
+            "descricao" => row["descricao"],
+            "Custo Operacao" => row["Custo Operacao"][1],
+            "Emissao ton CO2" => row["Emissao ton CO2"][1],
+            "Perdas" => row["Perdas"][1]
+        )
+        for (i, row) in enumerate(eachrow(df_filtrado))
+    ]
 
-alternativas_com_id = [
-    OrderedDict(
-        "id_alternativa" => i,
-        "descricao" => row["descricao"],
-        "Custo Operacao" => row["Custo Operacao"][1],
-        "Emissao ton CO2" => row["Emissao ton CO2"][1],
-        "Perdas" => row["Perdas"][1]
+    # Estrutura final com critérios + alternativas
+    DATA = OrderedDict(
+        "criterios" => OrderedDict(
+            "Custo Operacao" => "MIN",
+            "Emissao ton CO2" => "MIN",
+            "Perdas" => "MIN"
+        ),
+        "alternativas" => alternativas_com_id
     )
-    for (i, row) in enumerate(eachrow(df_filtrado))
-]
 
-# Estrutura final com critérios + alternativas
-DATA = OrderedDict(
-    "criterios" => OrderedDict(
-        "Custo Operacao" => "MIN",
-        "Emissao ton CO2" => "MIN",
-        "Perdas" => "MIN"
-    ),
-    "alternativas" => alternativas_com_id
-)
+    output_dir = "C:/Users/lucas/repositorios/mestrado_luedsbr/DATA/output/MCDA"
+    # Escreve o JSON
+    open("$output_dir/input_alternativas_NOVO.json", "w") do io
+        JSON.print(io, DATA, 4)
+    end
 
-# Escreve o JSON
-open("/home/lucasedbraga/projetos/ufjf/mestrado_luedsbr/DATA/output/input_alternativas_NOVO.json", "w") do io
-    JSON.print(io, DATA, 4)
+    custos = [row[1] for row in df_filtrado[!,"Custo Operacao"]]
+    emissoes = [row[1] for row in df_filtrado[!,"Emissao ton CO2"]]
+
+    scatter(
+        custos, emissoes;
+        xlabel = "Custo (milhares de \$)",
+        ylabel = "Emissão (ton CO₂)",
+        title = "Fronteira de Pareto: Custo vs Emissão",
+        legend = false,
+        markersize = 6,
+        color = :blue,
+        xlims = (0, maximum(custos) * 1.1),
+        ylims = (0, maximum(emissoes) * 1.1),
+        xformatter = x -> string(round(x , digits=1), ""),
+        yformatter = y -> string(round(y, digits=1), "")
+    )
+
+    #relatorio_dir = "/home/lucasedbraga/projetos/ufjf/mestrado_luedsbr/relatorios"
+    relatorio_dir = "C:/Users/lucas/repositorios/mestrado_luedsbr/relatorios"
+    savefig("$relatorio_dir/pareto_$input_name.png")
+    println("Gráfico salvo como pareto_$input_name.png")
 end
-
-custos = [row[1] for row in df_filtrado[!,"Custo Operacao"]]
-emissoes = [row[1] for row in df_filtrado[!,"Emissao ton CO2"]]
-
-scatter(
-    custos, emissoes;
-    xlabel = "Custo (milhares de \$)",
-    ylabel = "Emissão (ton CO₂)",
-    title = "Fronteira de Pareto: Custo vs Emissão",
-    legend = false,
-    markersize = 6,
-    color = :blue,
-    xlims = (0, maximum(custos) * 1.1),
-    ylims = (0, maximum(emissoes) * 1.1),
-    xformatter = x -> string(round(x / 1000, digits=1), "k"),
-    yformatter = y -> string(round(y / 1000, digits=1), "k")
-)
-
-savefig("/home/lucasedbraga/projetos/ufjf/mestrado_luedsbr/relatorios/pareto_$input_name.png")
-println("Gráfico salvo como pareto_$input_name.png")

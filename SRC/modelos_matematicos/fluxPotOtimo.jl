@@ -22,8 +22,8 @@ println("=== OPF DC ITERATIVO COM PERDAS E CURTAILMENT ===")
 # ==============================================================================
 
 # Carrega dados da rede elétrica do arquivo JSON
-data = JSON.parsefile("DATA/input/3barras_Teste.json")
-#data = JSON.parsefile("../DATA/input/B6L8_BASE.json")
+#data = JSON.parsefile("DATA/input/3barras_Teste.json")
+data = JSON.parsefile("../DATA/input/B6L8_BASE.json")
 #data = JSON.parsefile("../DATA/input/ieee14_BASE.json")
 #data = JSON.parsefile("DATA/input/ieee118_BASE.json")
 
