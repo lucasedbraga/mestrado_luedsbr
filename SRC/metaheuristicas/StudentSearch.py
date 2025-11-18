@@ -10,7 +10,7 @@ from SRC.modelos_matematicos.fluxPotContingencia import *
 class StudentSearch:
     def __init__(self, pop_size=10, max_iter=100, prob_mutacao=0.1):
         # Carregar dados
-        with open("DATA/input/B6L8_BASE.json", "r") as f:
+        with open("DATA/input/3barras_TESTE.json", "r") as f:
             data = json.load(f)
         
         self.sistema = criar_sistema(data)
@@ -24,14 +24,17 @@ class StudentSearch:
     def gerar_candidato_aleatorio(self):
         """Gera um candidato aleatório (vetor binário indicando quais linhas serão investidas)"""
         n_linhas = self.sistema.NLIN
-        
-        while True:
+        cont=0
+        while cont<100:
             # Gera vetor onde 1 indica que a linha será investida (ativa para contingências)
             candidato = [random.randint(0, 1) for _ in range(n_linhas)]
-            
+            cont+=1
             # Verifica se pelo menos uma linha foi selecionada para investimento
             if sum(candidato) > 0:
                 return candidato
+        evitar_loop = np.zeros(len(n_linhas))
+        evitar_loop[0] = 1
+        return evitar_loop
     
     def avaliar_candidato(self, candidato):
         """
@@ -74,37 +77,45 @@ class StudentSearch:
                 impacto_total += max(0, beneficio_dup)  # Só considera benefícios
         
         # 3. Custo do investimento (penaliza muitas linhas)
-        custo_investimento = sum(candidato) * 1000  # Custo fixo por linha investida
+        custo_investimento = sum(candidato) * 100  # Custo fixo por linha investida
         
         # 4. FUNÇÃO FITNESS FINAL
         # Queremos MAXIMIZAR: impacto_total (benefício das linhas críticas)
         # Queremos MINIMIZAR: custo_investimento (número de linhas)
-        fitness = impacto_total + custo_investimento
+        fitness = custo_investimento + fob_dup - (fob_remocao-fob_base)
         
         print(f"\nCandidato: {linhas_investidas}")
         print(f"Impacto total: {impacto_total:.2f}")
         print(f"Custo investimento: {custo_investimento:.2f}")
         print(f"Fitness: {fitness:.2f}")
         
-        return fitness, impacto_total, custo_investimento
+        return fitness
         
     def mutacao(self, candidato):
         """Aplica mutação em um candidato, garantindo que pelo menos uma linha seja selecionada"""
-        while True:
+        cont=0
+        while cont<100:
             candidato_mutado = candidato.copy()
             n_linhas = len(candidato)
             
             for i in range(n_linhas):
                 if random.random() < self.prob_mutacao:
                     candidato_mutado[i] = 1 - candidato_mutado[i]  # Flip bit
-            
+            cont+=1
             # Verifica se pelo menos uma linha foi selecionada
             if sum(candidato_mutado) > 0:
                 return candidato_mutado
+            else:
+                return self.gerar_candidato_aleatorio()
+            
+        evitar_loop = np.zeros(len(n_linhas))
+        evitar_loop[0] = 1
+        return evitar_loop
     
     def crossover(self, pai1, pai2):
         """Realiza crossover entre dois pais, garantindo que os filhos tenham pelo menos uma linha selecionada"""
-        while True:
+        cont=0
+        while cont < 100:
             ponto_corte = random.randint(1, len(pai1) - 1)
             filho1 = pai1[:ponto_corte] + pai2[ponto_corte:]
             filho2 = pai2[:ponto_corte] + pai1[ponto_corte:]
@@ -112,6 +123,10 @@ class StudentSearch:
             # Verifica se ambos os filhos têm pelo menos uma linha selecionada
             if sum(filho1) > 0 and sum(filho2) > 0:
                 return filho1, filho2
+            cont +=1        
+        filho1 = self.gerar_candidato_aleatorio()
+        filho2 = self.gerar_candidato_aleatorio()
+        return filho1, filho2
     
     def executar_busca(self):
         """Executa a metaheurística Student Search"""
@@ -120,17 +135,18 @@ class StudentSearch:
         
         # Inicializar população
         populacao = [self.gerar_candidato_aleatorio() for _ in range(self.pop_size)]
+
         fitness_populacao = []
-        
         # Avaliar população inicial
         for candidato in populacao:
-            fitness, fob, n_linhas = self.avaliar_candidato(candidato)
-            fitness_populacao.append((fitness, fob, n_linhas, candidato))
+            fitness = self.avaliar_candidato(candidato)
+            linhas_usadas = sum(candidato)
+            fitness_populacao.append((fitness, linhas_usadas, candidato))
         
         # Ordenar por fitness (menor é melhor)
         fitness_populacao.sort(key=lambda x: x[0])
-        self.melhor_fitness, melhor_fob, melhor_linhas, self.melhor_candidato = fitness_populacao[0]
-        
+        self.melhor_fitness, melhor_linhas, self.melhor_candidato = fitness_populacao[0]
+        melhor_fob = self.melhor_fitness
         print(f"\nMelhor inicial - Fitness: {self.melhor_fitness:.2f}, FOB: {melhor_fob:.2f}, Linhas: {melhor_linhas}")
         
         # Loop principal da metaheurística
@@ -141,7 +157,7 @@ class StudentSearch:
             
             # Manter os melhores (elitismo)
             n_elite = max(2, self.pop_size // 5)
-            nova_populacao.extend([candidato for _, _, _, candidato in fitness_populacao[:n_elite]])
+            nova_populacao.extend([candidato for _, _, candidato in fitness_populacao[:n_elite]])
             
             # Gerar nova população através de crossover e mutação
             while len(nova_populacao) < self.pop_size:
@@ -159,8 +175,9 @@ class StudentSearch:
             # Avaliar nova população
             fitness_populacao = []
             for candidato in nova_populacao[:self.pop_size]:
-                fitness, fob, n_linhas = self.avaliar_candidato(candidato)
-                fitness_populacao.append((fitness, fob, n_linhas, candidato))
+                fitness = self.avaliar_candidato(candidato)
+                linhas_usadas = sum(candidato)
+                fitness_populacao.append((fitness, linhas_usadas, candidato))
             
             # Ordenar por fitness
             fitness_populacao.sort(key=lambda x: x[0])
@@ -178,7 +195,7 @@ class StudentSearch:
         """Seleção por torneio"""
         participantes = random.sample(fitness_populacao, k)
         participantes.sort(key=lambda x: x[0])  # Ordena por fitness (menor é melhor)
-        return participantes[0][3]  # Retorna o candidato
+        return participantes[0][2]  # Retorna o candidato
     
     def mostrar_resultado(self):
         """Mostra o resultado final da busca"""
@@ -187,18 +204,15 @@ class StudentSearch:
             return
         
         # Reavaliar o melhor candidato para obter os valores corretos
-        fitness, fob, n_linhas = self.avaliar_candidato(self.melhor_candidato)
-        
+        fitness = self.avaliar_candidato(self.melhor_candidato)        
         linhas_investidas = [i for i, investida in enumerate(self.melhor_candidato) if investida == 1]
         nomes_linhas = [self.sistema.linhas[i]["ID_linha"] for i in linhas_investidas]
         
         print("\n" + "="*50)
-        print("🎯 RESULTADO FINAL - STUDENT SEARCH")
+        print("RESULTADO FINAL - STUDENT SEARCH")
         print("="*50)
         print(f"Melhor Fitness: {fitness:.2f}")
-        print(f"FOB Total: {fob:.2f}")
-        print(f"Número de linhas ativas totais: {n_linhas}")
-        print(f"Linhas selecionadas para investimento ({len(linhas_investidas)}):")
+        print(f"Linhas selecionadas para investimento (Total = {len(linhas_investidas)}):")
         for i, idx_linha in enumerate(linhas_investidas):
             nome_linha = self.sistema.linhas[idx_linha]["ID_linha"]
             print(f"  {i+1}. Linha {idx_linha} ({nome_linha})")
@@ -206,6 +220,6 @@ class StudentSearch:
 
 if __name__ == '__main__':
     # Para executar a metaheurística:
-    student_search = StudentSearch(pop_size=8, max_iter=20, prob_mutacao=0.1)
+    student_search = StudentSearch(pop_size=8, max_iter=10, prob_mutacao=0.3)
     melhor_candidato, melhor_fitness = student_search.executar_busca()
     student_search.mostrar_resultado()
