@@ -10,3 +10,5 @@ DATA/output/input_alternativas.json
 DATA/output/MCDA/fluxpot/
 *relatorios/temp/
 SRC/analista_cenario/__pycache__/
+SRC/__pycache__/*
+SRC/modelos_matematicos/__pycache__/*

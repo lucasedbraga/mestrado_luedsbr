@@ -238,7 +238,7 @@ def criar_tabelas():
     
     conn.commit()
     conn.close()
-    print("✅ Todas as tabelas do banco de dados criadas/atualizadas com sucesso!")
+    #print("✅ Todas as tabelas do banco de dados criadas/atualizadas com sucesso!")
 
 # ==============================================================================
 # FUNÇÃO EXPORTAR_RESULTADOS - COMPLETAMENTE REFEITA
@@ -403,15 +403,15 @@ def exportar_resultados(conn, sistema, cenario, linha_afetada, tipo_operacao, re
     """, [sistema.ID_EXECUCAO, "3barras_BASE.json", "CONCLUIDO", sistema.ID_EXECUCAO])
     
     conn.commit()
-    print(f"📊 Dados exportados para: {linha_afetada} ({tipo_operacao})")
-    print(f"   💰 Custos detalhados:")
-    print(f"      Operação: ${custo_operacao:.2f}/h")
-    print(f"      Marginal Total: ${custo_marginal_total:.2f}/h") 
-    print(f"      Marginal Operação: ${custo_marginal_operacao:.2f}/h")
-    print(f"      Curtailment: ${custo_curtailment:.2f}/h")
-    print(f"      Déficit: ${custo_deficit:.2f}/h")
-    print(f"   📈 Curtailment total: {total_curtailment:.4f} pu")
-    print(f"   📉 Déficit total: {total_deficit:.4f} pu")
+    # print(f"📊 Dados exportados para: {linha_afetada} ({tipo_operacao})")
+    # print(f"   💰 Custos detalhados:")
+    # print(f"      Operação: ${custo_operacao:.2f}/h")
+    # print(f"      Marginal Total: ${custo_marginal_total:.2f}/h") 
+    # print(f"      Marginal Operação: ${custo_marginal_operacao:.2f}/h")
+    # print(f"      Curtailment: ${custo_curtailment:.2f}/h")
+    # print(f"      Déficit: ${custo_deficit:.2f}/h")
+    # print(f"   📈 Curtailment total: {total_curtailment:.4f} pu")
+    # print(f"   📉 Déficit total: {total_deficit:.4f} pu")
     
 # ==============================================================================
 # CÁLCULOS DE BBUS
@@ -615,39 +615,39 @@ def resolver_opf(sistema, Bbus, linhas_ativas=None, nome_modelo="opf"):
             lambda_val = calcular_precos_nodais(sistema, PG_val, Bbus)
             dual_power_balance = extrair_variaveis_duais(model, sistema)
             
-            print(f"✅ OPF convergiu - Custo: {custo_total:.2f} USD/h")
-            print(f"   Geração: {sum(PG_val):.4f} pu, Demanda: {sum(sistema.PLOAD):.4f} pu")
-            print(f"   Curtailment: {curtailment_total:.4f} pu, Déficit: {deficit_total:.4f} pu")
+            # print(f"✅ OPF convergiu - Custo: {custo_total:.2f} USD/h")
+            # print(f"   Geração: {sum(PG_val):.4f} pu, Demanda: {sum(sistema.PLOAD):.4f} pu")
+            # print(f"   Curtailment: {curtailment_total:.4f} pu, Déficit: {deficit_total:.4f} pu")
             
-            # DEBUG: Mostrar geração detalhada
-            print("   📊 Geração detalhada:")
+            # # DEBUG: Mostrar geração detalhada
+            # print("   📊 Geração detalhada:")
             for g in range(sistema.NGER):
                 tipo_ger = sistema.geradores[g]["Tipo"]
                 curtailment_info = f", Curtailment: {curtailment_por_gerador[g]:.4f} pu" if tipo_ger == "GWD" else ""
-                print(f"      {sistema.geradores[g]['ID_Gerador']} ({tipo_ger}): {PG_val[g]:.4f} pu{curtailment_info}")
+                #print(f"      {sistema.geradores[g]['ID_Gerador']} ({tipo_ger}): {PG_val[g]:.4f} pu{curtailment_info}")
             
             return ResultadoOPF(True, PG_val, ANG_val, lambda_val, custo_total, 
                               fluxos_val, deficit_total, curtailment_total,
                               curtailment_por_gerador, dual_power_balance)
         else:
-            print(f"❌ OPF não convergiu: {results.solver.termination_condition}")
+            #print(f"❌ OPF não convergiu: {results.solver.termination_condition}")
             return ResultadoOPF(False, 
-                               [0.0] * sistema.NGER, 
-                               [0.0] * sistema.NBAR, 
-                               [0.0] * sistema.NBAR, 
-                               0.0, 
-                               [0.0] * sistema.NLIN)
+                               [100000.0] * sistema.NGER, 
+                               [100000.0] * sistema.NBAR, 
+                               [100000.0] * sistema.NBAR, 
+                               100000.0, 
+                               [100000.0] * sistema.NLIN)
     
     except Exception as e:
-        print(f"❌ Erro no OPF: {e}")
+        #print(f"❌ Erro no OPF: {e}")
         import traceback
         traceback.print_exc()
         return ResultadoOPF(False, 
-                           [0.0] * sistema.NGER, 
-                           [0.0] * sistema.NBAR, 
-                           [0.0] * sistema.NBAR, 
-                           0.0, 
-                           [0.0] * sistema.NLIN)
+                           [100000.0] * sistema.NGER, 
+                           [100000.0] * sistema.NBAR, 
+                           [100000.0] * sistema.NBAR, 
+                           100000.0, 
+                           [100000.0] * sistema.NLIN)
 
 # ==============================================================================
 # CONSTRUÇÃO DO SISTEMA
@@ -720,10 +720,10 @@ def criar_sistema(data):
     random_suffix = ''.join(random.choices(string.ascii_lowercase + string.digits, k=4))
     ID_EXECUCAO = f"{timestamp}_{random_suffix}"
     
-    print(f"✅ Sistema criado: {NBAR} barras, {NLIN} linhas, {NGER} geradores")
-    print(f"📊 Demanda total: {sum(PLOAD):.4f} pu")
-    print(f"📊 Capacidade total: {sum(PGMAX):.4f} pu")
-    print(f"💰 Custos dos geradores: {CPG}")
+    # print(f"✅ Sistema criado: {NBAR} barras, {NLIN} linhas, {NGER} geradores")
+    # print(f"📊 Demanda total: {sum(PLOAD):.4f} pu")
+    # print(f"📊 Capacidade total: {sum(PGMAX):.4f} pu")
+    # print(f"💰 Custos dos geradores: {CPG}")
     
     return SistemaEletrico(
         barras, geradores, demandas, linhas, contingencias,
@@ -738,14 +738,14 @@ def criar_sistema(data):
 # ==============================================================================
 
 def executar_caso_base(sistema, conn):
-    print("\n" + "="*60)
-    print("CASO BASE")
-    print("="*60)
+    # print("\n" + "="*60)
+    # print("CASO BASE")
+    # print("="*60)
     
     resultado = resolver_opf(sistema, sistema.Bbus_base, None, "caso_base")
     
     if resultado.convergiu:
-        print(f"✅ Custo base: {resultado.custo:.2f} USD/h")
+        #print(f"✅ Custo base: {resultado.custo:.2f} USD/h")
         exportar_resultados(conn, sistema, "CASO_BASE", "CASO_BASE", "BASE", 
                            resultado, "Caso base com topologia original")
     else:
@@ -777,14 +777,14 @@ def executar_remocao_artificial(sistema, conn, linha_id):
     if resultado.convergiu:
         exportar_resultados(conn, sistema, "REMOCAO_ARTIFICIAL", linha_id, "REMOCAO", 
                            resultado, f"Remoção artificial da linha {linha_id}")
-        print(f"✅ Custo com remoção: {resultado.custo:.2f} USD/h")
+        #print(f"✅ Custo com remoção: {resultado.custo:.2f} USD/h")
         
-        # DEBUG ESPECIAL para remoção da linha 2-3
-        if linha_id == "2-3":
-            print("\n🔍 DEBUG REMOÇÃO LINHA 2-3:")
-            print(f"   Geração esperada: G1=0.9 pu, G3=0.1 pu")
-            print(f"   Geração obtida: G1={resultado.PG[0]:.4f} pu, G3={resultado.PG[2]:.4f} pu")
-            print(f"   Curtailment G3: {resultado.curtailment_por_gerador[2]:.4f} pu")
+        # # DEBUG ESPECIAL para remoção da linha 2-3
+        # if linha_id == "2-3":
+        #     print("\n🔍 DEBUG REMOÇÃO LINHA 2-3:")
+        #     print(f"   Geração esperada: G1=0.9 pu, G3=0.1 pu")
+        #     print(f"   Geração obtida: G1={resultado.PG[0]:.4f} pu, G3={resultado.PG[2]:.4f} pu")
+        #     print(f"   Curtailment G3: {resultado.curtailment_por_gerador[2]:.4f} pu")
             
     else:
         print("❌ Remoção não convergiu")
@@ -800,7 +800,7 @@ def executar_duplicacao_linha(sistema, conn, linha_id):
     if resultado.convergiu:
         exportar_resultados(conn, sistema, "DUPLICACAO_LINHA", linha_id, "DUPLICACAO", 
                            resultado, f"Duplicação da linha {linha_id}")
-        print(f"✅ Custo com duplicação: {resultado.custo:.2f} USD/h")
+        #print(f"✅ Custo com duplicação: {resultado.custo:.2f} USD/h")
     else:
         print("❌ Duplicação não convergiu")
     
@@ -824,11 +824,11 @@ def main():
         sistema = criar_sistema(data)
         
         # 1. Caso base
-        print("\n🎯 ETAPA 1: CASO BASE")
+        print("\n ETAPA 1: CASO BASE")
         base_result = executar_caso_base(sistema, conn)
         
         # 2. Remoções individuais
-        print("\n🎯 ETAPA 2: REMOÇÕES INDIVIDUAIS")
+        print("\n ETAPA 2: REMOÇÕES INDIVIDUAIS")
         for linha in sistema.linhas:
             rem_result = executar_remocao_artificial(sistema, conn, linha["ID_linha"])
             
@@ -836,10 +836,10 @@ def main():
             if base_result and base_result.convergiu and rem_result and rem_result.convergiu:
                 diferenca = rem_result.custo - base_result.custo
                 percentual = (diferenca / base_result.custo) * 100 if base_result.custo > 0 else 0
-                print(f"   📊 Variação vs base: {diferenca:.2f} USD/h ({percentual:.1f}%)")
+                #print(f"   📊 Variação vs base: {diferenca:.2f} USD/h ({percentual:.1f}%)")
         
         # 3. Duplicações
-        print("\n🎯 ETAPA 3: DUPLICAÇÕES")
+        print("\n ETAPA 3: DUPLICAÇÕES")
         for linha in sistema.linhas:
             dup_result = executar_duplicacao_linha(sistema, conn, linha["ID_linha"])
             
@@ -847,18 +847,12 @@ def main():
             if base_result and base_result.convergiu and dup_result and dup_result.convergiu:
                 diferenca = dup_result.custo - base_result.custo
                 percentual = (diferenca / base_result.custo) * 100 if base_result.custo > 0 else 0
-                print(f"   📊 Variação vs base: {diferenca:.2f} USD/h ({percentual:.1f}%)")
+                #print(f"   📊 Variação vs base: {diferenca:.2f} USD/h ({percentual:.1f}%)")
         
         conn.close()
-        print("\n🎉 ANÁLISE CONCLUÍDA! Resultados salvos no banco de dados.")
-        print("📊 Dados exportados incluem:")
-        print("   ✅ Geração e curtailment por gerador")
-        print("   ✅ Variáveis duais (preços nodais)")
-        print("   ✅ Fluxos de linha e limites")
-        print("   ✅ Déficit e curtailment totais")
         
     except Exception as e:
-        print(f"❌ ERRO: {e}")
+        print(f" ERRO: {e}")
         import traceback
         traceback.print_exc()
 
