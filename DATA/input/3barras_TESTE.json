@@ -111,5 +111,16 @@
       "LIM_Fluxo": 0.9,
       "LIM_Fluxo_Unidade": "pu"
     }
+  ] ,
+    "BATERIAS": [
+    {
+      "ID_Bateria": "Bat1",
+      "ID_Barra": "3",
+      "Pmax_carga_MW": 0.05,
+      "Pmax_descarga_MW": 0.05,
+      "custo_carga_USD_MWh": -1.0,
+      "custo_descarga_USD_MWh": 5.0,
+      "Unidade": "pu"
+    }
   ]
 }
