@@ -10,7 +10,7 @@ from SRC.modelos_matematicos.fluxPotContingencia import *
 class StudentSearch:
     def __init__(self, pop_size=10, max_iter=100, prob_mutacao=0.1):
         # Carregar dados
-        with open("DATA/input/B6L8_BASE.json", "r") as f:
+        with open("DATA/input/3barras_TESTE.json", "r") as f:
             data = json.load(f)
         
         self.sistema = criar_sistema(data)
