@@ -229,19 +229,19 @@
     {
       "ID_Bateria": "BAT1",
       "ID_Barra": 1,
-      "Pmax_carga_MW": 100.0,
-      "Pmax_descarga_MW": 100.0,
+      "Pmax_carga_MW": 10.0,
+      "Pmax_descarga_MW": 10.0,
       "capacidade_armazenamento_MWh": 100.0,
-      "custo_carga_USD_MWh": -1,
+      "custo_carga_USD_MWh": 1,
       "custo_descarga_USD_MWh": 1
     },
     {
       "ID_Bateria": "BAT2",
       "ID_Barra": 5,
-      "Pmax_carga_MW": 100.0,
-      "Pmax_descarga_MW": 100.0,
+      "Pmax_carga_MW": 5,
+      "Pmax_descarga_MW": 5,
       "capacidade_armazenamento_MWh": 100.0,
-      "custo_carga_USD_MWh": -1,
+      "custo_carga_USD_MWh": 1,
       "custo_descarga_USD_MWh": 1
     }
   ]

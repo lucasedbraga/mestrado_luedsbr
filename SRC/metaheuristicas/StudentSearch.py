@@ -5,7 +5,7 @@ import random
 import copy
 
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..")))
-from SRC.modelos_matematicos.fluxPotContingencia import *
+from SRC.modelos_matematicos.fluxPot_Contingencia import *
 
 class StudentSearch:
     def __init__(self, pop_size=10, max_iter=100, prob_mutacao=0.1):

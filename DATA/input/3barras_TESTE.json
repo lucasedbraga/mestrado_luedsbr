@@ -112,12 +112,24 @@
       "LIM_Fluxo_Unidade": "pu"
     }
   ] ,
-    "BATERIAS": [
+
+  "BATERIAS": [
     {
       "ID_Bateria": "Bat1",
       "ID_Barra": "3",
-      "Pmax_carga_MW": 0.05,
-      "Pmax_descarga_MW": 0.05,
+      "Pmax_carga_MW": 0.1,
+      "Pmax_descarga_MW": 1,
+      "capacidade_armazenamento_MWh":0.5,
+      "custo_carga_USD_MWh": -1.0,
+      "custo_descarga_USD_MWh": 5.0,
+      "Unidade": "pu"
+    },
+    {
+      "ID_Bateria": "Bat2",
+      "ID_Barra": "3",
+      "Pmax_carga_MW": 0.1,
+      "Pmax_descarga_MW": 1,
+      "capacidade_armazenamento_MWh":0.5,
       "custo_carga_USD_MWh": -1.0,
       "custo_descarga_USD_MWh": 5.0,
       "Unidade": "pu"
