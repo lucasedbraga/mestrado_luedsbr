@@ -32,7 +32,7 @@
       "ID_Barra": "2",
       "Tipo": "UTE",
       "PGERmin_MW": 0.0,
-      "PGERmax_MW": 1.0,
+      "PGERmax_MW": 0.5,
       "Qmin_MW": -0.5,
       "Qmax_MW": 1.5,
       "ramp_up_MW_h": 0.4,
@@ -119,17 +119,7 @@
       "ID_Barra": "3",
       "Pmax_carga_MW": 0.1,
       "Pmax_descarga_MW": 1,
-      "capacidade_armazenamento_MWh":0.5,
-      "custo_carga_USD_MWh": -1.0,
-      "custo_descarga_USD_MWh": 5.0,
-      "Unidade": "pu"
-    },
-    {
-      "ID_Bateria": "Bat2",
-      "ID_Barra": "3",
-      "Pmax_carga_MW": 0.1,
-      "Pmax_descarga_MW": 1,
-      "capacidade_armazenamento_MWh":0.5,
+      "capacidade_armazenamento_MWh":1,
       "custo_carga_USD_MWh": -1.0,
       "custo_descarga_USD_MWh": 5.0,
       "Unidade": "pu"

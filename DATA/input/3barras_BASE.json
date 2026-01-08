@@ -50,8 +50,6 @@
       "PGERmax_MW": 0.5,
       "Qmin_MW": -0.2,
       "Qmax_MW": 0.5,
-      "ramp_up_MW_h": 1.0,
-      "ramp_down_MW_h": 1.0,
       "startup_USD": 0.1,
       "custo_var_USD_MW": 0.0,
       "custo_curtailment_USD_MW": 1000.0,
@@ -65,7 +63,7 @@
       "ID_Demanda": "D1",
       "ID_Barra": "3",
       "Tipo_Demanda": "Residencial",
-      "PLOAD": 2.0,
+      "PLOAD": 1.0,
       "QLOAD_MW": 0.0,
       "Unidade": "pu"
     }

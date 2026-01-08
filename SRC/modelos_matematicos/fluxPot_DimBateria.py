@@ -22,11 +22,11 @@ class ResultadoOPF:
 class Sistema:
     def __init__(self, json_file_path):
         self.json_file_path = json_file_path
-        self.load_data()
-        self.process_base_data()
-        self.initialize_system()
+        self.carregaSistema()
+        self.ProcessSistemaBase()
+        self.MontaCenarioOPF()
         
-    def load_data(self):
+    def carregaSistema(self):
         with open(self.json_file_path, 'r') as f:
             self.data = json.load(f)
         
@@ -36,24 +36,25 @@ class Sistema:
         self.linhas = self.data["LINHAS"]
         self.baterias_data = self.data.get("BATERIAS", [])
         
-    def process_base_data(self):
+    def ProcessSistemaBase(self):
         self.SB = self.data["S_base"]
         self.PB = self.data["P_base"]
         self.VB = self.data["V_base"]
         self.ZB = (self.VB ** 2) / self.PB
         
-    def initialize_system(self):
-        self.convert_to_pu()
-        self.create_bus_mapping()
-        self.process_lines()
-        self.build_susceptance_matrix()
-        self.process_generators()
-        self.process_loads()
-        self.identify_slack_bus()
-        self.add_curtailment_and_deficit_generators()
-        self.process_batteries()
+    def MontaCenarioOPF(self):
+        self.ProcessaPU()
+        self.ProcessaDBAR()
+        self.IdentificaBarraSlack()
+
+        self.ProcessaDLIN()
+        self.MontaBbus()
+        self.ProcessaDGER()
+        self.ProcessaLOAD()
+        self.ProcessaDEF_GWD()
+        self.ProcessaBAT()
     
-    def convert_to_pu(self):
+    def ProcessaPU(self):
         # Barras
         for b in self.barras:
             b["P_carga_pu"] = b.get("P_carga_MW", 0.0) / self.SB
@@ -71,20 +72,27 @@ class Sistema:
         
         # Baterias
         for bat in self.baterias_data:
-            bat["Pmax_carga_pu"] = bat.get("Pmax_carga_MW", 0.0) / self.SB
-            bat["Pmax_descarga_pu"] = bat.get("Pmax_descarga_MW", 0.0) / self.SB
+            bat["Pmax_carga_base_pu"] = bat.get("Pmax_carga_MW", 0.0) / self.SB
+            bat["Pmax_descarga_base_pu"] = bat.get("Pmax_descarga_MW", 0.0) / self.SB
             if "capacidade_armazenamento_MWh" in bat:
-                bat["capacidade_armazenamento_pu"] = bat["capacidade_armazenamento_MWh"] / self.SB
+                bat["capacidade_base_pu"] = bat["capacidade_armazenamento_MWh"] / self.SB
             else:
-                bat["capacidade_armazenamento_pu"] = bat["Pmax_carga_MW"] * 4 / self.SB
+                bat["capacidade_base_pu"] = bat["Pmax_carga_MW"] * 4 / self.SB
     
-    def create_bus_mapping(self):
+    def ProcessaDBAR(self):
         self.bus_ids = [b["ID_Barra"] for b in self.barras]
         self.idx_map = {id: i for i, id in enumerate(self.bus_ids)}
         self.NBAR = len(self.bus_ids)
         self.NLIN = len(self.linhas)
-    
-    def process_lines(self):
+
+    def IdentificaBarraSlack(self):
+        slack_list = [b for b in self.barras if b["tipo"] == "Slack"]
+        if len(slack_list) != 1:
+            raise ValueError("Deve haver exatamente 1 barra Slack")
+        slack_id = slack_list[0]["ID_Barra"]
+        self.slack_idx = self.idx_map[slack_id]
+            
+    def ProcessaDLIN(self):
         self.line_fr = []
         self.line_to = []
         self.x_line = np.zeros(self.NLIN)
@@ -102,7 +110,7 @@ class Sistema:
             self.y_line[e] = 1.0 / x if abs(x) > 0 else 0.0
             self.FLIM[e] = ln["Fmax_pu"]
     
-    def build_susceptance_matrix(self):
+    def MontaBbus(self):
         self.Bbus = np.zeros((self.NBAR, self.NBAR))
         for e in range(self.NLIN):
             i = self.line_fr[e]
@@ -113,7 +121,7 @@ class Sistema:
             self.Bbus[i, j] -= y
             self.Bbus[j, i] -= y
     
-    def process_generators(self):
+    def ProcessaDGER(self):
         self.NGER_ORIGINAL = len(self.geradores_data)
         self.BARPG_ORIGINAL = []
         self.BAR_GWD = []
@@ -136,21 +144,21 @@ class Sistema:
             self.PGMAX_EFETIVO[i] = self.PGMAX_ORIGINAL[i]
             self.PGMIN_EFETIVO[i] = self.PGMIN_ORIGINAL[i]
     
-    def process_loads(self):
+    def ProcessaLOAD(self):
         self.PLOAD = np.zeros(self.NBAR)
         for d in self.demandas_data:
             id_barra = d["ID_Barra"]
             idx = self.idx_map[id_barra]
             self.PLOAD[idx] += d.get("PLOAD", 0.0) / self.SB
 
-    def process_batteries(self):
+    def ProcessaBAT(self):
         self.BARRAS_COM_BATERIA = []
-        self.BATmax_in = np.zeros(self.NBAR)
-        self.BATmax_out = np.zeros(self.NBAR)
+        self.BATmax_in_base = np.zeros(self.NBAR)  # Valores BASE (sem dimensionamento)
+        self.BATmax_out_base = np.zeros(self.NBAR)
+        self.BATcapacidade_base = np.zeros(self.NBAR)
         self.BATcusto_in = np.zeros(self.NBAR)
         self.BATcusto_out = np.zeros(self.NBAR)
-        self.BATcapacidade = np.zeros(self.NBAR)
-        self.BATarm_inicial = np.zeros(self.NBAR)
+        self.BATarm_inicial_base = np.zeros(self.NBAR)
         
         for bat in self.baterias_data:
             id_barra = bat["ID_Barra"]
@@ -158,23 +166,21 @@ class Sistema:
                 continue
             idx = self.idx_map[id_barra]
             self.BARRAS_COM_BATERIA.append(idx)
-            self.BATmax_in[idx] = bat["Pmax_carga_pu"]
-            self.BATmax_out[idx] = bat["Pmax_descarga_pu"]
-            self.BATcapacidade[idx] = bat["capacidade_armazenamento_pu"]
-            self.BATarm_inicial[idx] = 0.5 * self.BATcapacidade[idx]  # SOC 50%
+            self.BATmax_in_base[idx] = bat["Pmax_carga_base_pu"]
+            self.BATmax_out_base[idx] = bat["Pmax_descarga_base_pu"]
+            self.BATcapacidade_base[idx] = bat["capacidade_base_pu"]
+            self.BATarm_inicial_base[idx] = 0.5 * self.BATcapacidade_base[idx]  # SOC 50% da capacidade BASE
             
-            # CORREÇÃO: Custos POSITIVOS
-            self.BATcusto_in[idx] = bat.get("custo_carga_USD_MWh", 5.0)    # POSITIVO
-            self.BATcusto_out[idx] = bat.get("custo_descarga_USD_MWh", 10.0) # POSITIVO
+            self.BATcusto_in[idx] = 0.1*bat.get("custo_carga_USD_MWh", -5.0)
+            self.BATcusto_out[idx] = bat.get("custo_descarga_USD_MWh", 10.0)
+        
+        # Valores atuais (inicialmente iguais aos base)
+        self.BATmax_in = self.BATmax_in_base.copy()
+        self.BATmax_out = self.BATmax_out_base.copy()
+        self.BATcapacidade = self.BATcapacidade_base.copy()
+        self.BATarm_inicial = self.BATarm_inicial_base.copy()
     
-    def identify_slack_bus(self):
-        slack_list = [b for b in self.barras if b["tipo"] == "Slack"]
-        if len(slack_list) != 1:
-            raise ValueError("Deve haver exatamente 1 barra Slack")
-        slack_id = slack_list[0]["ID_Barra"]
-        self.slack_idx = self.idx_map[slack_id]
-    
-    def add_curtailment_and_deficit_generators(self):
+    def ProcessaDEF_GWD(self):
         barras_PQ = [b for b in self.barras if b["tipo"] == "PQ"]
         barras_com_gerador = set(self.BARPG_ORIGINAL)
         self.barras_PQ_sem_gerador = [b for b in barras_PQ 
@@ -194,7 +200,7 @@ class Sistema:
                           if self.idx_map[g["ID_Barra"]] == barra_idx and g["Tipo"] == "GWD"), None)
             if gwd_idx is not None:
                 self.PGMAX_CURTAILMENT[i] = self.PGMAX_EFETIVO[gwd_idx]
-                self.CPG_CURTAILMENT[i] = 100  # Custo fixo
+                self.CPG_CURTAILMENT[i] = 100
         
         # Déficit
         self.NGER_DEFICIT = len(self.barras_PQ_sem_gerador)
@@ -208,7 +214,7 @@ class Sistema:
             self.BARPG_DEFICIT.append(idx)
             self.PGMIN_DEFICIT[i] = 0.0
             self.PGMAX_DEFICIT[i] = self.PLOAD[idx] * 2 if self.PLOAD[idx] > 0 else 1.0
-            self.CPG_DEFICIT[i] = 1000  # Custo fixo
+            self.CPG_DEFICIT[i] = 1000
         
         # Combinar todos os geradores
         self.NGER = self.NGER_ORIGINAL + self.NGER_CURTAILMENT + self.NGER_DEFICIT
@@ -364,16 +370,6 @@ def SolveOPF(sistema, Bbus):
                            [0.0] * sistema.NLIN,
                            0.0, 0.0, [0.0] * sistema.NBAR, [0.0] * sistema.NBAR, [0.0] * sistema.NBAR)
 
-def criar_load_shape_24h():
-    """Cria um perfil típico de carga para 24 horas"""
-    return [1,2,3]
-#  return [
-#         0.7, 0.8, 0.8, 0.9, 1.0, 1.2,  # 00-05h: Madrugada
-#         1.3, 0.8, 0.9, 1.0, 1.2, 1.0,  # 06-11h: Manhã
-#         0.9, 1.0, 1.0, 1.2, 1.8, 1.5,  # 12-17h: Tarde
-#         1.7, 1.5, 1.2, 1.3, 0.8, 0.7   # 18-23h: Noite
-#     ]
-
 def SolveDespachoEconomicoCenario(sistema, fator_demanda=1.0, hora=0, primeiro_periodo=True):
     """
     Simula despacho econômico para 1 hora
@@ -404,7 +400,7 @@ def SolveDespachoEconomicoCenario(sistema, fator_demanda=1.0, hora=0, primeiro_p
     
     if resultado.sucesso:
         print(f"✓ Custo: {resultado.custo_total:.2f} USD")
-        print(f"  Geração: {sum(resultado.PG):.3f} pu, Demanda: {sum(sistema.PLOAD):.3f} pu")
+        print(f"  Geração: {sum(resultado.PG):.3f} pu, Demanda: {fator_demanda*sum(sistema.PLOAD):.3f} pu")
         print(f"  Curtailment: {resultado.curtailment_total:.3f} pu, Déficit: {resultado.deficit_total:.3f} pu")
         print(f"  Baterias: Carga={sum(resultado.BATin):.3f}, Descarga={sum(resultado.BATout):.3f}")
         
@@ -431,6 +427,15 @@ def SolveDespachoEconomicoCenario(sistema, fator_demanda=1.0, hora=0, primeiro_p
         'descarga_bateria': sum(resultado.BATout) if resultado.sucesso else 0,
         'BATarm_atual': resultado.BATarm.copy() if resultado.sucesso else sistema.BATarm_inicial.copy()
     }
+
+def criar_load_shape_24h():
+    """Cria um perfil típico de carga para 24 horas"""
+    return [
+        0.7, 0.8, 0.8, 0.9, 1.0, 1.2,  # 00-05h: Madrugada
+        1.3, 0.8, 0.9, 1.0, 1.2, 1.0,  # 06-11h: Manhã
+        0.9, 1.0, 1.0, 1.2, 1.8, 2.2,  # 12-17h: Tarde
+        2, 1.9, 1.2, 1.3, 0.8, 0.7   # 18-23h: Noite
+    ]
 
 def SolveCenarioDespachoDia(json_file_path, load_shape=None):
     """Executa despacho econômico para um dia inteiro"""
@@ -482,15 +487,115 @@ def SolveCenarioDespachoDia(json_file_path, load_shape=None):
     
     return df
 
+def EncontrarFatorEscalaOtimo(json_file_path, load_shape=None, fatores_teste=None):
+    """Encontra o fator de escala ótimo para a bateria"""
+    
+    if load_shape is None:
+        load_shape = criar_load_shape_24h()
+    
+    if fatores_teste is None:
+        fatores_teste = np.linspace(0.1,2,20)
+    
+    sistema = Sistema(json_file_path)
+    
+    melhor_fator = 1.0
+    menor_custo = float('inf')
+    resultados_por_fator = []
+    
+    for fator in fatores_teste:
+        print(f"\nTestando fator de escala: {fator}")
+        
+        # Ajustar a capacidade da bateria no sistema
+        sistema.BATcapacidade = sistema.BATcapacidade_base * fator
+        sistema.BATmax_in = sistema.BATmax_in_base * fator
+        sistema.BATmax_out = sistema.BATmax_out_base * fator
+        
+        # Reiniciar o estado da bateria para cada simulação
+        sistema.BATarm_inicial = 0.5 * sistema.BATcapacidade
+        
+        # Rodar o despacho de 24 horas
+        custo_operacional = 0
+        sucesso_total = True
+        
+        for hora, fator_demanda in enumerate(load_shape):
+            resultado_hora = SolveDespachoEconomicoCenario(
+                sistema=sistema, 
+                fator_demanda=fator_demanda, 
+                hora=hora, 
+                primeiro_periodo=(hora==0)
+            )
+            
+            if resultado_hora['sucesso']:
+                custo_operacional += resultado_hora['custo']
+                # Atualizar o estado da bateria para a próxima hora
+                if hora < len(load_shape) - 1:
+                    sistema.BATarm_inicial = resultado_hora['BATarm_atual']
+            else:
+                sucesso_total = False
+                break
+        
+        if sucesso_total:
+            # Custo de investimento: $1 por MW de capacidade adicional
+            # Capacidade total original em MW
+            capacidade_original_MW = sum(sistema.BATcapacidade_base) * sistema.SB
+            custo_investimento = capacidade_original_MW * abs(fator - 1)
+            custo_total = custo_operacional + custo_investimento
+            
+            resultados_por_fator.append({
+                'fator': fator,
+                'custo_operacional': custo_operacional,
+                'custo_investimento': custo_investimento,
+                'custo_total': custo_total
+            })
+            
+            print(f"  Custo operacional: ${custo_operacional:.2f}")
+            print(f"  Custo investimento: ${round(custo_investimento):.2f}")
+            print(f"  Custo total: ${custo_total:.2f}")
+            
+            if custo_total < menor_custo:
+                menor_custo = custo_total
+                melhor_fator = fator
+        else:
+            resultados_por_fator.append({
+                'fator': fator,
+                'custo_operacional': None,
+                'custo_investimento': None,
+                'custo_total': None
+            })
+            print(f"  Falha na convergência")
+    
+    # Relatório final
+    print("\n" + "=" * 50)
+    print("RESULTADO DO DIMENSIONAMENTO")
+    print("=" * 50)
+    print(f"Fator de escala ótimo: {melhor_fator}")
+    print(f"Custo mínimo total: ${menor_custo:.2f}")
+    
+    # Calcular capacidade recomendada
+    capacidade_original_MWh = sum(sistema.BATcapacidade_base) * sistema.SB
+    capacidade_recomendada_MWh = capacidade_original_MWh * melhor_fator
+    
+    print(f"Capacidade original: {capacidade_original_MWh:.2f} MWh")
+    print(f"Capacidade recomendada: {capacidade_recomendada_MWh:.2f} MWh")
+    print(f"Aumento: {100*(melhor_fator-1):.1f}%")
+    
+    return melhor_fator, menor_custo, resultados_por_fator
+
 # EXECUÇÃO PRINCIPAL
 if __name__ == "__main__":
     try:
-        # Executar despacho econômico para 24 horas
-        resultados_df = SolveCenarioDespachoDia("DATA/input/3barras_TESTE.json")
+        # Executar dimensionamento da bateria
+        melhor_fator, menor_custo, resultados = EncontrarFatorEscalaOtimo(
+            "DATA/input/3barras_TESTE.json"
+        )
         
-        print("\n✅ Despacho econômico concluído com sucesso!")
-        
+        # Mostrar tabela de resultados
+        df_resultados = pd.DataFrame(resultados)
+        df_resultados = df_resultados.round(3)
+        print("\nTabela de resultados:")
+        print(df_resultados.to_string())
+
     except Exception as e:
-        print(f"\n❌ Erro durante a simulação: {e}")
+        print(f"\n Erro durante a simulação: {e}")
         import traceback
         traceback.print_exc()
