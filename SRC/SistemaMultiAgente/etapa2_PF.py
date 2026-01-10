@@ -519,7 +519,7 @@ class FluxoPotenciaSimplificado:
 class FluxoPotenciaComPLSimplificado:
     """Executa fluxo de potência simplificado com dados do PL"""
     
-    def __init__(self, sistema_json_path: str, resultados_pl_db: str = 'resultados_opf.db'):
+    def __init__(self, sistema_json_path: str, resultados_pl_db: str = 'resultados_PL.db'):
         self.sistema_json_path = sistema_json_path
         self.resultados_pl_db = resultados_pl_db
     
@@ -530,7 +530,7 @@ class FluxoPotenciaComPLSimplificado:
         conn = sqlite3.connect(self.resultados_pl_db)
         cursor = conn.cursor()
         
-        cursor.execute("SELECT DISTINCT timestamp FROM resultados_opf ORDER BY timestamp DESC LIMIT 1")
+        cursor.execute("SELECT DISTINCT timestamp FROM resultados_PL ORDER BY timestamp DESC LIMIT 1")
         ultimo_timestamp = cursor.fetchone()
         
         if not ultimo_timestamp:
@@ -543,7 +543,7 @@ class FluxoPotenciaComPLSimplificado:
         
         # Carregar PGs e carga_total para cada hora
         cursor.execute('''
-        SELECT hora, pg_json, carga_total FROM resultados_opf 
+        SELECT hora, pg_json, carga_total FROM resultados_PL 
         WHERE timestamp = ? AND sucesso = 1 
         ORDER BY hora
         ''', (ultimo_timestamp,))
@@ -714,7 +714,7 @@ class FluxoPotenciaComPLSimplificado:
     def salvar_resultados(self, resultados: Dict[int, ResultadoFluxoPotencia]):
         """Salva resultados em banco de dados"""
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        db_nome = f'resultados_fluxo_simplificado_{timestamp}.db'
+        db_nome = f'resultados_PF.db'
         
         conn = sqlite3.connect(db_nome)
         cursor = conn.cursor()
@@ -778,7 +778,7 @@ def main():
     print("="*70)
     
     sistema_json = "DATA/input/3barras_BASE.json"
-    resultados_pl_db = 'resultados_opf.db'
+    resultados_pl_db = 'resultados_PL.db'
     
     print(f"Sistema elétrico: {sistema_json}")
     print(f"Banco de dados PL: {resultados_pl_db}")

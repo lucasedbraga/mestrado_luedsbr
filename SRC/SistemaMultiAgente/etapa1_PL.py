@@ -376,7 +376,8 @@ def SolveOPF(sistema, considerar_perdas=False, tol=1e-5, max_iter=20):
             model.FOB = pyo.Objective(rule=FOB, sense=pyo.minimize)
             
             # RESOLVER
-            solver = pyo.SolverFactory('couenne', executable='../../../scripts/couenne/couenne')
+            solver = pyo.SolverFactory('glpk')
+            
             results = solver.solve(model, tee=False)
 
             if results.solver.termination_condition != pyo.TerminationCondition.optimal:
@@ -492,12 +493,12 @@ def calcular_custo_operacao_24h(sistema, perfil_carga, perfil_eolica):
     print(f"{'='*60}")
     
     # Criar conexão SQLite
-    conn = sqlite3.connect('resultados_opf.db')
+    conn = sqlite3.connect('resultados_PL.db')
     cursor = conn.cursor()
     
     # Criar tabela simples
     cursor.execute('''
-    CREATE TABLE IF NOT EXISTS resultados_opf (
+    CREATE TABLE IF NOT EXISTS resultados_PL (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         timestamp TEXT,
         hora INTEGER,
@@ -544,7 +545,7 @@ def calcular_custo_operacao_24h(sistema, perfil_carga, perfil_eolica):
             
             # Salvar no SQLite
             cursor.execute('''
-            INSERT INTO resultados_opf 
+            INSERT INTO resultados_PL 
             (timestamp, hora, sucesso, custo, curtailment, deficit, perdas, 
              carga_total, eolica_disponivel, pg_json, ang_json, fluxos_json)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -578,7 +579,7 @@ def calcular_custo_operacao_24h(sistema, perfil_carga, perfil_eolica):
         else:
             # Salvar falha no SQLite
             cursor.execute('''
-            INSERT INTO resultados_opf (timestamp, hora, sucesso)
+            INSERT INTO resultados_PL (timestamp, hora, sucesso)
             VALUES (?, ?, ?)
             ''', (data_exec, hora, 0))
             
@@ -596,7 +597,7 @@ def calcular_custo_operacao_24h(sistema, perfil_carga, perfil_eolica):
     print(f"{'='*60}")
     print(f"Custo total 24h: ${custo_total:.2f}")
     print(f"Custo médio por hora: ${custo_total/24:.2f}")
-    print(f"✅ Dados salvos em 'resultados_opf.db' na tabela 'resultados_opf'")
+    print(f"✅ Dados salvos em 'resultados_PL.db' na tabela 'resultados_PL'")
     
     # Calcular totais
     if resultados_horarios:
