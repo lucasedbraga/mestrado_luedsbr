@@ -1,0 +1,27 @@
+{
+  "S_base": 100,
+  "P_base": 100,
+  "V_base": 138,
+  "BARRAS": [
+    {"ID_Barra": 1, "tipo": "Slack", "P_carga_MW": 0},
+    {"ID_Barra": 2, "tipo": "PV", "P_carga_MW": 0},
+    {"ID_Barra": 3, "tipo": "PQ", "P_carga_MW": 16}
+  ],
+  "GERADORES": [
+    {"ID_Barra": 1, "Tipo": "Termica", "PGERmax_MW": 25, "PGERmin_MW": 0, "custo_var_USD_MWh": 40},
+    {"ID_Barra": 2, "Tipo": "GWD", "PGERmax_MW": 12, "PGERmin_MW": 0, "custo_var_USD_MWh": 0}
+  ],
+  "DEMANDAS": [
+    {"ID_Barra": 3, "PLOAD": 16}
+  ],
+  "LINHAS": [
+    {"ID_Barra_Origem": 1, "ID_Barra_Destino": 2, "X": 1.0, "R": 0.1, "LIM_Fluxo": 2},
+    {"ID_Barra_Origem": 1, "ID_Barra_Destino": 3, "X": 1.0, "R": 0.1, "LIM_Fluxo": 10},
+    {"ID_Barra_Origem": 2, "ID_Barra_Destino": 3, "X": 1.0, "R": 0.1, "LIM_Fluxo": 4}
+  ],
+  "BATERIAS": [
+    {"ID_Barra": 3, "Pmax_carga_MW": 5, "Pmax_descarga_MW": 5, 
+     "capacidade_armazenamento_MWh": 20, "custo_carga_USD_MWh": 0, 
+     "custo_descarga_USD_MWh": 0}
+  ]
+}
