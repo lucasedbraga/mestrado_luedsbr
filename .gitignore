@@ -13,3 +13,4 @@ SRC/analista_cenario/__pycache__/
 SRC/__pycache__/*
 SRC/modelos_matematicos/__pycache__/*
 SRC/SistemaMultiAgente/__pycache__/*
+DATA/SMA/*
