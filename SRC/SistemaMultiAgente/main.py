@@ -20,7 +20,9 @@ print(f"Diretório raiz do projeto: {DIRETORIO_RAIZ}")
 
 # Caminhos absolutos
 SISTEMA_JSON = os.path.join(DIRETORIO_RAIZ, "DATA", "input", "3barras_BASE.json")
-DIRETORIO_DADOS = DIRETORIO_RAIZ  # Onde os arquivos .db serão salvos
+
+#SISTEMA_JSON = os.path.join(DIRETORIO_RAIZ, "DATA", "input", "B6L8_BASE.json")
+DIRETORIO_DADOS =  DIRETORIO_RAIZ+'/DATA/SMA' # Onde os arquivos .db serão salvos
 
 print(f"Arquivo do sistema: {SISTEMA_JSON}")
 print(f"Diretório de dados: {DIRETORIO_DADOS}")
@@ -144,6 +146,8 @@ def executar_etapa2(arquivo_pl):
         # Criar instância e executar análise
         analisador = FluxoPotenciaComPLSimplificado(SISTEMA_JSON, arquivo_pl)
         resultados = analisador.executar_analise_24h()
+        if resultados:
+            analisador.plotar_resultados(resultados)
         
         print(f"\n✅ Etapa 2 concluída com sucesso!")
         
@@ -186,8 +190,8 @@ def executar_etapa3(arquivo_pf):
         opf_system = OPFNaoLinear(dados_rede)
         
         # Executar apenas para hora 1
-        resultados_opf = opf_system.resolver_opf_multiplas_horas(arquivo_pf, [1])
-        opf_system.salvar_resultados_opf(resultados_opf, 'resultados_OPF.db')
+        resultados_opf = opf_system.resolver_opf_multiplas_horas(arquivo_pf, [0])
+        opf_system.salvar_resultados_opf(resultados_opf, 'DATA/SMA/resultados_OPF.db')
         
         if resultados_opf:
             print(f"\n✅ Etapa 3 concluída com sucesso!")
@@ -215,9 +219,9 @@ def executar_etapa3(arquivo_pf):
 def carregar_resultados_para_graficos(arquivo_pl, arquivo_pf, arquivo_opf):
     """Carrega resultados das 3 etapas para geração de gráficos"""
     dados = {
-        'PL': {'V_mag': None, 'V_ang': None, 'fluxos': None},
-        'PF': {'V_mag': None, 'V_ang': None, 'fluxos': None},
-        'OPF': {'V_mag': None, 'V_ang': None, 'fluxos': None}
+        'PL': {'V_mag': None, 'V_ang': None, 'fluxos': None, 'geradores':None},
+        'PF': {'V_mag': None, 'V_ang': None, 'fluxos': None, 'geradores':None},
+        'OPF': {'V_mag': None, 'V_ang': None, 'fluxos': None, 'geradores':None},
     }
     
     # Carregar dados do PL
@@ -225,7 +229,7 @@ def carregar_resultados_para_graficos(arquivo_pl, arquivo_pf, arquivo_opf):
         try:
             conn = sqlite3.connect(arquivo_pl)
             cursor = conn.cursor()
-            cursor.execute("SELECT tensoes_mag_json, tensoes_ang_json, fluxos_json FROM resultados_PL WHERE hora = 1")
+            cursor.execute("SELECT tensoes_mag_json, tensoes_ang_json, fluxos_json, pg_json FROM resultados_PL WHERE hora = 0")
             resultado = cursor.fetchone()
             conn.close()
             
@@ -233,6 +237,7 @@ def carregar_resultados_para_graficos(arquivo_pl, arquivo_pf, arquivo_opf):
                 dados['PL']['V_mag'] = json.loads(resultado[0])
                 dados['PL']['V_ang'] = json.loads(resultado[1])
                 dados['PL']['fluxos'] = json.loads(resultado[2])
+                dados['PL']['geradores'] = json.loads(resultado[3])
         except Exception as e:
             print(f"Aviso: Não foi possível carregar dados do PL para gráficos: {e}")
     
@@ -241,7 +246,7 @@ def carregar_resultados_para_graficos(arquivo_pl, arquivo_pf, arquivo_opf):
         try:
             conn = sqlite3.connect(arquivo_pf)
             cursor = conn.cursor()
-            cursor.execute("SELECT tensoes_mag_json, tensoes_ang_json, fluxos_json FROM resultados_fluxo WHERE hora = 1")
+            cursor.execute("SELECT tensoes_mag_json, tensoes_ang_json, fluxos_json, P_gerado_json FROM resultados_fluxo WHERE hora = 0")
             resultado = cursor.fetchone()
             conn.close()
             
@@ -249,6 +254,7 @@ def carregar_resultados_para_graficos(arquivo_pl, arquivo_pf, arquivo_opf):
                 dados['PF']['V_mag'] = json.loads(resultado[0])
                 dados['PF']['V_ang'] = json.loads(resultado[1])
                 dados['PF']['fluxos'] = json.loads(resultado[2])
+                dados['PF']['geradores'] = json.loads(resultado[3])
         except Exception as e:
             print(f"Aviso: Não foi possível carregar dados do PF para gráficos: {e}")
     
@@ -257,7 +263,7 @@ def carregar_resultados_para_graficos(arquivo_pl, arquivo_pf, arquivo_opf):
         try:
             conn = sqlite3.connect(arquivo_opf)
             cursor = conn.cursor()
-            cursor.execute("SELECT tensoes_mag_json, tensoes_ang_json, fluxos_json FROM resultados_OPF WHERE hora = 1")
+            cursor.execute("SELECT tensoes_mag_json, tensoes_ang_json, fluxos_json, P_gerado_json FROM resultados_OPF WHERE hora = 0")
             resultado = cursor.fetchone()
             conn.close()
             
@@ -265,6 +271,7 @@ def carregar_resultados_para_graficos(arquivo_pl, arquivo_pf, arquivo_opf):
                 dados['OPF']['V_mag'] = json.loads(resultado[0])
                 dados['OPF']['V_ang'] = json.loads(resultado[1])
                 dados['OPF']['fluxos'] = json.loads(resultado[2])
+                dados['OPF']['geradores'] = json.loads(resultado[3])
         except Exception as e:
             print(f"Aviso: Não foi possível carregar dados do OPF para gráficos: {e}")
     
@@ -317,9 +324,9 @@ def gerar_graficos_simples(arquivo_pl, arquivo_pf, arquivo_opf):
                         if de is not None and para is not None:
                             linha_id = f"{de}-{para}"
                             fluxos_dict[linha_id] = {
-                                'P_ij': item.get('P_de_para', 0.0),
+                                'P_ij': item.get('P_para_de', 0.0),
                                 'Q_ij': item.get('Q_de_para', 0.0),
-                                'S_ij': abs(item.get('P_de_para', 0.0))  # Simplificado
+                                'S_ij': abs(item.get('P_para_de', 0.0))  # Simplificado
                             }
         
         elif tipo_etapa == 'OPF':
@@ -371,36 +378,6 @@ def gerar_graficos_simples(arquivo_pl, arquivo_pf, arquivo_opf):
             return df_final
         else:
             return pd.DataFrame()
-
-
-    # Função para calcular perdas
-    def calcular_perdas_aproximadas(fluxos_data, tipo_etapa):
-        """Calcula perdas aproximadas independentemente da estrutura"""
-        perdas = 0.0
-        
-        if not fluxos_data:
-            return perdas
-        
-        if tipo_etapa == 'PL':
-            # Para PL: soma dos valores absolutos * 0.1
-            if isinstance(fluxos_data, list):
-                perdas = sum(abs(val) * 0.1 for val in fluxos_data if isinstance(val, (int, float)))
-        
-        elif tipo_etapa == 'PF':
-            # Para PF: soma das perdas_ativas
-            if isinstance(fluxos_data, list):
-                for item in fluxos_data:
-                    if isinstance(item, dict):
-                        perdas += abs(item.get('perda_ativa', 0.0))
-        
-        elif tipo_etapa == 'OPF':
-            # Para OPF: aproximação baseada em P_ij
-            if isinstance(fluxos_data, dict):
-                for linha_id, dados in fluxos_data.items():
-                    if isinstance(dados, dict):
-                        perdas += abs(dados.get('P_ij', 0.0)) * 0.05  # Aproximação
-        
-        return perdas
     
     """Gera gráficos comparativos simplificados"""
     print("\n" + "="*60)
@@ -428,7 +405,9 @@ def gerar_graficos_simples(arquivo_pl, arquivo_pf, arquivo_opf):
     
     # 1. Gráfico de Tensões (Magnitude)
     ax1 = axes[0, 0]
-    cores = {'PL': 'blue', 'PF': 'green', 'OPF': 'orange'}
+    cores = {'PL': 'blue',
+            'PF': 'green',
+            'OPF': 'orange'}
     
     barras = [0, 1, 2]  # Índices das barras
     width = 0.25
@@ -458,7 +437,7 @@ def gerar_graficos_simples(arquivo_pl, arquivo_pf, arquivo_opf):
     for idx, etapa in enumerate(etapas_com_dados):
         if dados[etapa]['V_ang']:
             # Converter para graus
-            angulos = [np.degrees(ang) for ang in dados[etapa]['V_ang']]
+            angulos = [abs(np.degrees(ang)) for ang in dados[etapa]['V_ang']]
             ax2.plot(barras, angulos, 'o-', label=etapa, 
                     linewidth=2, markersize=8, color=cores.get(etapa, 'gray'))
     
@@ -473,8 +452,13 @@ def gerar_graficos_simples(arquivo_pl, arquivo_pf, arquivo_opf):
     # 3. Gráfico de Fluxos nas Linhas
     ax3 = axes[1, 0]
 
-    # Linhas do sistema
+    # Linhas do sistema e seus limites (hardcoded)
     linhas = ['1-2', '1-3', '2-3']
+    limites = {
+        '1-2': 0.2,   # Limite da linha 1-2
+        '1-3': 1.0,   # Limite da linha 1-3
+        '2-3': 0.6    # Limite da linha 2-3
+    }
 
     # Criar DataFrame comparativo
     df_comparacao = criar_df_comparacao(dados)
@@ -503,72 +487,160 @@ def gerar_graficos_simples(arquivo_pl, arquivo_pf, arquivo_opf):
                 alpha=0.7,
                 color=cores.get(etapa, 'gray'))
 
+    # Adicionar linhas de limite como retas pontilhadas
+    for i, linha in enumerate(linhas):
+        limite_positivo = limites[linha]
+        limite_negativo = -limites[linha]
+        
+        # Calcular a posição horizontal média das barras para esta linha
+        posicao_media = i + width * (len(etapas_com_dados) - 1) / 2
+        
+        # Linha de limite superior (positivo)
+        ax3.axhline(y=limite_positivo, xmin=0, xmax=1, 
+                    color='red', linestyle='--', linewidth=1.5, alpha=0.7)
+        
+        # # Linha de limite inferior (negativo)
+        # ax3.axhline(y=limite_negativo, xmin=0, xmax=1, 
+        #             color='red', linestyle='--', linewidth=1.5, alpha=0.7)
+        
+        # Adicionar texto com o valor do limite
+        ax3.text(posicao_media + 0.1, limite_positivo + 0.02, 
+                f'{limite_positivo} pu', fontsize=9, color='red', ha='center')
+        # ax3.text(posicao_media + 0.1, limite_negativo - 0.04, 
+        #         f'{limite_negativo} pu', fontsize=9, color='red', ha='center')
+
     ax3.set_xlabel('Linha')
     ax3.set_ylabel('Fluxo de Potência (pu)')
-    ax3.set_title('Fluxo Ativo nas Linhas')
+    ax3.set_title('Fluxo Ativo nas Linhas com Limites')
     ax3.set_xticks([i + width for i in range(len(linhas))])
     ax3.set_xticklabels(linhas)
     ax3.legend()
     ax3.grid(True, alpha=0.3)
-        
-    # 4. Tabela comparativa
+
+    # Ajustar limites do eixo Y para melhor visualização dos limites
+    limite_max = max(limites.values())
+    ax3.set_ylim(0, limite_max * 1.3)
+
+    # # Adicionar anotação explicativa
+    # ax3.text(0.02, 0.98, 'Linhas vermelhas tracejadas: Limites de fluxo', 
+    #         transform=ax3.transAxes, fontsize=10, color='red',
+    #         verticalalignment='top', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.5))
+
+    # 4. Gráfico comparativo de geração por barra
     ax4 = axes[1, 1]
-    ax4.axis('tight')
-    ax4.axis('off')
+    df = pd.DataFrame(dados)
+        # Função para calcular perdas
+   
 
-    # Preparar dados para tabela
-    tabela_dados = []
-    cabecalhos = ['Etapa', 'V_medio', 'θ_medio', 'Perdas (pu)']
+    # Lista de geradores (barras)
+    geradores = [f"Gerador {i+1}" for i in range(3)]  # Assumindo 3 geradores
 
-    for etapa in etapas_com_dados:
-        if dados[etapa]['V_mag'] and dados[etapa]['V_ang']:
-            v_medio = np.mean(dados[etapa]['V_mag'])
-            theta_medio = np.mean([np.degrees(ang) for ang in dados[etapa]['V_ang']])
+    width = 0.35  # Largura das barras
+    cores = {'PL': 'blue',
+        'PF': 'green',
+        'OPF': 'orange'}
+
+    # Preparar dados para cada etapa
+    dados_geradores = []
+
+    for idx, etapa in enumerate(etapas_com_dados):
+        if etapa in df.columns:
+            # Extrair valores dos geradores para esta etapa
+            geradores_valores = df.loc['geradores', etapa]
             
-            # Calcular perdas usando a nova função
-            perdas = calcular_perdas_aproximadas(dados[etapa]['fluxos'], etapa)
+            # Se for numpy array ou lista, converter para lista
+            if hasattr(geradores_valores, 'tolist'):
+                geradores_valores = geradores_valores.tolist()
             
-            tabela_dados.append([etapa, f"{v_medio:.4f}", f"{theta_medio:.2f}°", f"{perdas:.4f}"])
+            # Plotar barras para cada gerador
+            posicoes = [i + idx * width for i in range(len(geradores))]
+            
+            # Verificar se temos valores suficientes
+            if len(geradores_valores) >= len(geradores):
+                ax4.bar(posicoes, 
+                    geradores_valores[:len(geradores)], 
+                    width=width, 
+                    label=etapa,
+                    alpha=0.7,
+                    color=cores.get(etapa, 'gray'))
+            else:
+                # Se não tiver valores suficientes, completar com zeros
+                valores_completos = geradores_valores + [0] * (len(geradores) - len(geradores_valores))
+                ax4.bar(posicoes, 
+                    valores_completos, 
+                    width=width, 
+                    label=etapa,
+                    alpha=0.7,
+                    color=cores.get(etapa, 'gray'))
 
-    if tabela_dados:
-        # Criar tabela
-        tabela = ax4.table(cellText=tabela_dados, 
-                        colLabels=cabecalhos, 
-                        cellLoc='center', 
-                        loc='center',
-                        colWidths=[0.2, 0.25, 0.25, 0.3])
+    ax4.set_xlabel('Gerador')
+    ax4.set_ylabel('Geração (pu)')
+    ax4.set_title('Geração Ativa por Barra Geradora')
+    ax4.set_xticks([i + width/2 for i in range(len(geradores))])
+    ax4.set_xticklabels(geradores)
+    ax4.legend(title='Etapa')
+    ax4.grid(True, alpha=0.3, axis='y')
+
+    # Adicionar valores nas barras
+    for container in ax4.containers:
+        ax4.bar_label(container, fmt='%.3f', padding=3, fontsize=8)
+
+    # Adicionar linha horizontal para mostrar limites (opcional)
+    ax4.axhline(y=0, color='black', linewidth=0.5, linestyle='-')
+
+    # # Preparar dados para tabela
+    # tabela_dados = []
+    # cabecalhos = ['Etapa', 'V_medio', 'θ_medio', 'Perdas (pu)']
+
+    # for etapa in etapas_com_dados:
+    #     if dados[etapa]['V_mag'] and dados[etapa]['V_ang']:
+    #         v_medio = np.mean(dados[etapa]['V_mag'])
+    #         theta_medio = np.mean([np.degrees(ang) for ang in dados[etapa]['V_ang']])
+            
+    #         # Calcular perdas usando a nova função
+    #         perdas = calcular_perdas_aproximadas(dados[etapa]['fluxos'], etapa)
+            
+    #         tabela_dados.append([etapa, f"{v_medio:.4f}", f"{theta_medio:.2f}°", f"{perdas:.4f}"])
+
+    # if tabela_dados:
+    #     # Criar tabela
+    #     tabela = ax4.table(cellText=tabela_dados, 
+    #                     colLabels=cabecalhos, 
+    #                     cellLoc='center', 
+    #                     loc='center',
+    #                     colWidths=[0.2, 0.25, 0.25, 0.3])
         
-        tabela.auto_set_font_size(False)
-        tabela.set_fontsize(10)
-        tabela.scale(1.2, 1.5)
+    #     tabela.auto_set_font_size(False)
+    #     tabela.set_fontsize(10)
+    #     tabela.scale(1.2, 1.5)
         
-        # Colorir cabeçalho
-        for i in range(len(cabecalhos)):
-            tabela[(0, i)].set_facecolor('#40466e')
-            tabela[(0, i)].set_text_props(weight='bold', color='white')
+    #     # Colorir cabeçalho
+    #     for i in range(len(cabecalhos)):
+    #         tabela[(0, i)].set_facecolor('#40466e')
+    #         tabela[(0, i)].set_text_props(weight='bold', color='white')
         
-        plt.tight_layout()
+    plt.tight_layout()
         
-        # Salvar figura no diretório de dados
-        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        figura_path = os.path.join(DIRETORIO_DADOS, f'comparacao_etapas_{timestamp}.png')
-        plt.savefig(figura_path, dpi=300, bbox_inches='tight')
-        
-        print(f"✅ Gráficos salvos em: {figura_path}")
-        plt.show()
+    # Salvar figura no diretório de dados
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    figura_path = os.path.join(DIRETORIO_DADOS, f'comparacao_etapas_{timestamp}.png')
+    plt.savefig(figura_path, dpi=300, bbox_inches='tight')
+
+    print(f"✅ Gráficos salvos em: {figura_path}")
+    plt.show()
     
     # Imprimir tabela no console também
-    if tabela_dados:
-        print("\n" + "="*60)
-        print("RESUMO COMPARATIVO - Hora 1")
-        print("="*60)
-        print(f"{'Etapa':<10} {'V_medio':<12} {'θ_medio':<12} {'Perdas (pu)':<12}")
-        print("-"*48)
+#     if tabela_dados:
+#         print("\n" + "="*60)
+#         print("RESUMO COMPARATIVO - Hora 1")
+#         print("="*60)
+#         print(f"{'Etapa':<10} {'V_medio':<12} {'θ_medio':<12} {'Perdas (pu)':<12}")
+#         print("-"*48)
         
-        for linha in tabela_dados:
-            print(f"{linha[0]:<10} {linha[1]:<12} {linha[2]:<12} {linha[3]:<12}")
+#         for linha in tabela_dados:
+#             print(f"{linha[0]:<10} {linha[1]:<12} {linha[2]:<12} {linha[3]:<12}")
 
-# ==================== FUNÇÃO PRINCIPAL ====================
+# # ==================== FUNÇÃO PRINCIPAL ====================
 
 def main():
     """Função principal que orquestra todas as etapas"""

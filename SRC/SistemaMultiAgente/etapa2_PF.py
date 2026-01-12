@@ -519,7 +519,7 @@ class FluxoPotenciaSimplificado:
 class FluxoPotenciaComPLSimplificado:
     """Executa fluxo de potência simplificado com dados do PL"""
     
-    def __init__(self, sistema_json_path: str, resultados_pl_db: str = 'resultados_PL.db'):
+    def __init__(self, sistema_json_path: str, resultados_pl_db: str = 'DATA/SMA/resultados_PL.db'):
         self.sistema_json_path = sistema_json_path
         self.resultados_pl_db = resultados_pl_db
     
@@ -714,7 +714,7 @@ class FluxoPotenciaComPLSimplificado:
     def salvar_resultados(self, resultados: Dict[int, ResultadoFluxoPotencia]):
         """Salva resultados em banco de dados"""
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
-        db_nome = f'resultados_PF.db'
+        db_nome = f'DATA/SMA/resultados_PF.db'
         
         conn = sqlite3.connect(db_nome)
         cursor = conn.cursor()
@@ -764,6 +764,142 @@ class FluxoPotenciaComPLSimplificado:
         
         print(f"\n Resultados salvos em: {db_nome}")
 
+    def plotar_resultados(self, resultados: Dict[int, ResultadoFluxoPotencia]):
+        """
+        Plota resultados da operação do fluxo de potência para 24 horas
+        
+        Parâmetros:
+        resultados: Dicionário com chave=hora (0-23) e valor=ResultadoFluxoPotencia
+        """
+        try:
+            import matplotlib.pyplot as plt
+            import numpy as np
+        except ImportError:
+            print("Matplotlib não está instalado. Não é possível plotar os gráficos.")
+            return
+        
+        if not resultados:
+            print("Nenhum resultado para plotar.")
+            return
+        
+        # Filtrar apenas horas com sucesso
+        horas_convergidas = [h for h, r in resultados.items() if r.sucesso]
+        
+        if not horas_convergidas:
+            print("Nenhum resultado com sucesso para plotar.")
+            return
+        
+        horas_convergidas.sort()
+        
+        # Preparar dados para plotagem
+        perdas_ativas = [resultados[h].perdas_ativas for h in horas_convergidas]
+        perdas_reativas = [resultados[h].perdas_reativas for h in horas_convergidas]
+        
+        # Calcular totais de geração e carga por hora
+        geracao_total = [np.sum(resultados[h].P_gerado) for h in horas_convergidas]
+        carga_total = [np.sum(resultados[h].P_carga) for h in horas_convergidas]
+        
+        # Calcular ângulo médio (em graus) por hora (excluindo slack)
+        angulo_medio = []
+        for h in horas_convergidas:
+            r = resultados[h]
+            # Encontrar índice da barra slack (ângulo = 0)
+            idx_slack = np.argmin(np.abs(r.V_ang))
+            # Calcular média dos ângulos absolutos (excluindo slack)
+            angulos_absolutos = np.abs(np.delete(r.V_ang, idx_slack))
+            angulo_medio.append(np.mean(np.degrees(angulos_absolutos)))
+        
+        # Calcular número de linhas com violação de limite (>85% do limite)
+        violacoes_limite = []
+        for h in horas_convergidas:
+            r = resultados[h]
+            violacoes = 0
+            for fluxo in r.fluxos_linhas:
+                limite = fluxo.get('limite', 9999)
+                if limite > 0 and abs(fluxo['P_de_para']) > limite * 0.85:
+                    violacoes += 1
+            violacoes_limite.append(violacoes)
+        
+        # Criar figura com 4 subplots
+        fig, ((ax1, ax2), (ax3, ax4)) = plt.subplots(2, 2, figsize=(14, 10))
+        
+        # Gráfico 1: Perdas ativas e reativas por hora
+        ax1.plot(horas_convergidas, perdas_ativas, 'ro-', linewidth=2, markersize=8, label='Perdas Ativas (MW)')
+        ax1.plot(horas_convergidas, perdas_reativas, 'bs-', linewidth=2, markersize=8, label='Perdas Reativas (MVAr)')
+        ax1.set_xlabel('Hora do Dia')
+        ax1.set_ylabel('Perdas (MW / MVAr)')
+        ax1.set_title('Perdas Ativas e Reativas por Hora')
+        ax1.legend()
+        ax1.grid(True, alpha=0.3)
+        ax1.set_xticks(range(0, 24, 2))
+        
+        # Gráfico 2: Geração vs Carga total
+        ax2.bar(horas_convergidas, carga_total, alpha=0.6, label='Carga Total (MW)', color='orange')
+        ax2.plot(horas_convergidas, geracao_total, 'go-', linewidth=2, markersize=8, label='Geração Total (MW)')
+        ax2.set_xlabel('Hora do Dia')
+        ax2.set_ylabel('Potência (MW)')
+        ax2.set_title('Geração Total vs Carga Total')
+        ax2.legend()
+        ax2.grid(True, alpha=0.3)
+        ax2.set_xticks(range(0, 24, 2))
+        
+        # Gráfico 3: Ângulo médio das tensões
+        ax3.bar(horas_convergidas, angulo_medio, alpha=0.7, color='purple')
+        ax3.set_xlabel('Hora do Dia')
+        ax3.set_ylabel('Ângulo Médio (graus)')
+        ax3.set_title('Ângulo Médio das Tensões (excluindo barra slack)')
+        ax3.grid(True, alpha=0.3)
+        ax3.set_xticks(range(0, 24, 2))
+        
+        # Gráfico 4: Violações de limite nas linhas
+        ax4.bar(horas_convergidas, violacoes_limite, alpha=0.7, color='red')
+        ax4.set_xlabel('Hora do Dia')
+        ax4.set_ylabel('Número de Linhas')
+        ax4.set_title(f'Linhas com Fluxo > 85% do Limite')
+        ax4.grid(True, alpha=0.3)
+        ax4.set_xticks(range(0, 24, 2))
+        
+        plt.suptitle(f'Resultados do Fluxo de Potência - {len(horas_convergidas)} horas convergentes', fontsize=14)
+        plt.tight_layout()
+        
+        # Salvar figura
+        timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+        filename = f'DATA/SMA/resultados_fluxo_potencia_{timestamp}.png'
+        plt.savefig(filename, dpi=150)
+        print(f"\nGrágico salvo como: {filename}")
+        plt.show()
+        
+        # Adicional: Plotar tensões para uma hora específica (última hora convergida)
+        if horas_convergidas:
+            ultima_hora = horas_convergidas[-1]
+            r = resultados[ultima_hora]
+            
+            fig2, (ax5, ax6) = plt.subplots(1, 2, figsize=(12, 5))
+            
+            # Gráfico de barras das tensões em pu (todas são 1.0 pu no simplificado)
+            barras_ids = list(range(1, len(r.V_mag) + 1))
+            ax5.bar(barras_ids, r.V_mag, alpha=0.7, color='green')
+            ax5.set_xlabel('Barra')
+            ax5.set_ylabel('Tensão (pu)')
+            ax5.set_title(f'Tensões nas Barras - Hora {ultima_hora:02d}:00')
+            ax5.set_xticks(barras_ids)
+            ax5.grid(True, alpha=0.3)
+            ax5.axhline(y=1.0, color='r', linestyle='--', alpha=0.5, label='1.0 pu')
+            
+            # Gráfico de ângulos
+            angulos_graus = np.degrees(r.V_ang)
+            ax6.bar(barras_ids, angulos_graus, alpha=0.7, color='blue')
+            ax6.set_xlabel('Barra')
+            ax6.set_ylabel('Ângulo (graus)')
+            ax6.set_title(f'Ângulos das Tensões - Hora {ultima_hora:02d}:00')
+            ax6.set_xticks(barras_ids)
+            ax6.grid(True, alpha=0.3)
+            ax6.axhline(y=0, color='r', linestyle='--', alpha=0.5)
+            
+            plt.tight_layout()
+            plt.savefig(f'DATA/SMA/detalhes_barras_hora_{ultima_hora:02d}.png', dpi=150)
+            plt.show()
+
 # ============================================================================
 # SCRIPT PRINCIPAL
 # ============================================================================
@@ -778,7 +914,7 @@ def main():
     print("="*70)
     
     sistema_json = "DATA/input/3barras_BASE.json"
-    resultados_pl_db = 'resultados_PL.db'
+    resultados_pl_db = 'DATA/SMA/resultados_PL.db'
     
     print(f"Sistema elétrico: {sistema_json}")
     print(f"Banco de dados PL: {resultados_pl_db}")
@@ -797,6 +933,8 @@ def main():
         # Executar análise de 24 horas
         analisador = FluxoPotenciaComPLSimplificado(sistema_json, resultados_pl_db)
         resultados = analisador.executar_analise_24h()
+        if resultados:
+            analisador.plotar_resultados(resultados)
         
     except Exception as e:
         print(f" Erro inesperado: {e}")

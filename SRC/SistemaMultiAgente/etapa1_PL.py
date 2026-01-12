@@ -248,7 +248,7 @@ class SistemaTransmissao:
         self.PGMAX = np.concatenate([self.PGMAX_EFETIVO, self.PGMAX_CURTAILMENT, self.PGMAX_DEFICIT])
         self.CPG = np.concatenate([self.CPG_ORIGINAL, self.CPG_CURTAILMENT, self.CPG_DEFICIT])
 
-def SolveOPF(sistema, considerar_perdas=False, tol=1e-5, max_iter=20):
+def SolvePL(sistema, considerar_perdas=False, tol=1e-5, max_iter=20):
     """OPF DC com restrições de transmissão - COM CURTAILMENT CORRETO"""
     try:
         # Inicializar perdas
@@ -287,8 +287,7 @@ def SolveOPF(sistema, considerar_perdas=False, tol=1e-5, max_iter=20):
             # LIMITES DE GERAÇÃO PARA TODOS OS GERADORES
             def C_LimiteGER(m, g):
                 if g in m.GWD:
-                    # Para geradores eólicos, PG[g] é a geração DISPONÍVEL (não controlável)
-                    # Devemos fixá-la no máximo disponível
+                    # Para geradores eólicos, PG[g]
                     return m.PG[g] == sistema.PGMAX_EFETIVO[g]
                 else:
                     # Para outros geradores, limites normais
@@ -376,6 +375,7 @@ def SolveOPF(sistema, considerar_perdas=False, tol=1e-5, max_iter=20):
             model.FOB = pyo.Objective(rule=FOB, sense=pyo.minimize)
             
             # RESOLVER
+            model.pprint()
             solver = pyo.SolverFactory('glpk')
             
             results = solver.solve(model, tee=False)
@@ -493,7 +493,7 @@ def calcular_custo_operacao_24h(sistema, perfil_carga, perfil_eolica):
     print(f"{'='*60}")
     
     # Criar conexão SQLite
-    conn = sqlite3.connect('resultados_PL.db')
+    conn = sqlite3.connect('DATA/SMA/resultados_PL.db')
     cursor = conn.cursor()
     
     # Criar tabela simples
@@ -518,7 +518,7 @@ def calcular_custo_operacao_24h(sistema, perfil_carga, perfil_eolica):
     # Data da execução
     data_exec = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
     
-    for hora in range(24):
+    for hora in range(1):
         print(f"\nHORA {hora:02d}:00")
         
         # Atualizar perfis para a hora
@@ -538,7 +538,7 @@ def calcular_custo_operacao_24h(sistema, perfil_carga, perfil_eolica):
         
         # Resolver OPF
         print(f"  Resolvendo OPF...")
-        resultado = SolveOPF(sistema_hora, considerar_perdas=True)
+        resultado = SolvePL(sistema_hora, considerar_perdas=True)
         
         if resultado.sucesso:
             custo_total += resultado.custo_total
@@ -622,7 +622,7 @@ class PlanejamentoTransmissao:
         """
         # Perfil de carga 
         self.perfil_carga = [
-            0.7, 0.6, 0.5, 0.5, 0.6, 0.8,  # 00-05h
+            1.0, 0.6, 0.5, 0.5, 0.6, 0.8,  # 00-05h
             1.0, 1.2, 1.3, 1.2, 1.5, 1.2,  # 06-11h
             0.9, 0.8, 0.8, 0.9, 1.5, 1.6,  # 12-17h
             1.3, 0.8, 0.7, 0.9, 0.8, 0.7   # 18-23h
@@ -630,7 +630,7 @@ class PlanejamentoTransmissao:
         
         # Perfil eólica 
         self.perfil_eolica = [
-            0.6, 1.3, 0.7, 1.6, 0.5, 0.4,  # 00-05h
+            0.0, 0.3, 0.7, 0.6, 0.5, 0.4,  # 00-05h
             0.3, 0.2, 0.3, 1.4, 0.6, 0.8,  # 06-11h
             0.9, 1.0, 0.9, 0.8, 0.7, 0.6,  # 12-17h
             0.5, 0.4, 0.3, 0.2, 0.1, 0.1   # 18-23h
@@ -687,7 +687,7 @@ class PlanejamentoTransmissao:
         ax4.set_xticks(range(0, 24, 2))
         
         plt.tight_layout()
-        plt.savefig('resultados_planejamento.png', dpi=150)
+        plt.savefig('DATA/SMA/resultados_planejamento_PL.png', dpi=150)
         plt.show()
     
     def executar_planejamento(self):
