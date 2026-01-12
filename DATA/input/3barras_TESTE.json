@@ -17,7 +17,7 @@
       "ID_Barra": "1",
       "Tipo": "UTH",
       "PGERmin_MW": 0.0,
-      "PGERmax_MW": 1.5,
+      "PGERmax_MW": 1.0,
       "Qmin_MW": -0.5,
       "Qmax_MW": 1.5,
       "ramp_up_MW_h": 0.4,
@@ -32,7 +32,7 @@
       "ID_Barra": "2",
       "Tipo": "UTE",
       "PGERmin_MW": 0.0,
-      "PGERmax_MW": 1.5,
+      "PGERmax_MW": 0.5,
       "Qmin_MW": -0.5,
       "Qmax_MW": 1.5,
       "ramp_up_MW_h": 0.4,
@@ -47,9 +47,11 @@
       "ID_Barra": "3",
       "Tipo": "GWD",
       "PGERmin_MW": 0.0,
-      "PGERmax_MW": 0.5,
+      "PGERmax_MW": 0.05,
       "Qmin_MW": -0.2,
       "Qmax_MW": 0.5,
+      "ramp_up_MW_h": 1.0,
+      "ramp_down_MW_h": 1.0,
       "startup_USD": 0.1,
       "custo_var_USD_MW": 0.0,
       "custo_curtailment_USD_MW": 1000.0,
@@ -80,7 +82,7 @@
       "X_Unidade": "pu",
       "Bsh": 0.0,
       "Bsh_Unidade": "pu",
-      "LIM_Fluxo": 0.2,
+      "LIM_Fluxo": 0.8,
       "LIM_Fluxo_Unidade": "pu"
     },
     {
@@ -106,8 +108,21 @@
       "X_Unidade": "pu",
       "Bsh": 0.0,
       "Bsh_Unidade": "pu",
-      "LIM_Fluxo": 0.6,
+      "LIM_Fluxo": 0.9,
       "LIM_Fluxo_Unidade": "pu"
+    }
+  ] ,
+
+  "BATERIAS": [
+    {
+      "ID_Bateria": "Bat1",
+      "ID_Barra": "3",
+      "Pmax_carga_MW": 0.1,
+      "Pmax_descarga_MW": 1,
+      "capacidade_armazenamento_MWh":1,
+      "custo_carga_USD_MWh": -1.0,
+      "custo_descarga_USD_MWh": 5.0,
+      "Unidade": "pu"
     }
   ]
 }

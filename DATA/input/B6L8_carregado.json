@@ -1,0 +1,248 @@
+{
+  "S_base": 100,
+  "P_base": 100,
+  "V_base": 138,
+  "f_base": 60,
+  
+  "BARRAS": [
+    {
+      "ID_Barra": 1,
+      "tipo": "Slack",
+      "V_pu": 1.0,
+      "theta_graus": 0.0,
+      "P_carga_MW": 0.0,
+      "Q_carga_MVAr": 0.0
+    },
+    {
+      "ID_Barra": 2,
+      "tipo": "PQ",
+      "V_pu": 1.0,
+      "theta_graus": -4.98,
+      "P_carga_MW": 0.0,
+      "Q_carga_MVAr": 0.0
+    },
+    {
+      "ID_Barra": 3,
+      "tipo": "PV",
+      "V_pu": 1.05,
+      "theta_graus": -12.72,
+      "P_carga_MW": 0.0,
+      "Q_carga_MVAr": 0.0
+    },
+    {
+      "ID_Barra": 4,
+      "tipo": "PQ",
+      "V_pu": 1.0,
+      "theta_graus": 0.0,
+      "P_carga_MW": 0.0,
+      "Q_carga_MVAr": 0.0
+    },
+    {
+      "ID_Barra": 5,
+      "tipo": "PQ",
+      "V_pu": 1.0,
+      "theta_graus": -4.98,
+      "P_carga_MW": 0.0,
+      "Q_carga_MVAr": 0.0
+    },
+    {
+      "ID_Barra": 6,
+      "tipo": "PQ",
+      "V_pu": 1.0,
+      "theta_graus": -12.72,
+      "P_carga_MW": 0.0,
+      "Q_carga_MVAr": 0.0
+    }
+  ],
+  "GERADORES": [
+    {
+      "ID_Gerador": "G1",
+      "ID_Barra": 1,
+      "Tipo": "UTE",
+      "PGERmin_MW": 0.0,
+      "PGERmax_MW": 50.0,
+      "custo_var_USD_MWh": 10.0,
+      "Pg_ref_MW": 1.0,
+      "Qg_ref_MVAr": 6.9
+    },
+    {
+      "ID_Gerador": "G2",
+      "ID_Barra": 3,
+      "Tipo": "UTE",
+      "PGERmin_MW": 0.0,
+      "PGERmax_MW": 70.0,
+      "custo_var_USD_MWh": 20.0,
+      "Pg_ref_MW": 0.0,
+      "Qg_ref_MVAr": 0.0
+    },
+    {
+      "ID_Gerador": "G3",
+      "ID_Barra": 4,
+      "Tipo": "UTE",
+      "PGERmin_MW": 0.0,
+      "PGERmax_MW": 60.0,
+      "custo_var_USD_MWh": 30.0,
+      "Pg_ref_MW": 0.0,
+      "Qg_ref_MVAr": 0.0
+    },
+    {
+      "ID_Gerador": "G4",
+      "ID_Barra": 1,
+      "Tipo": "GWD",
+      "PGERmin_MW": 0.0,
+      "PGERmax_MW": 70.0,
+      "custo_var_USD_MWh": 0.0,
+      "custo_curtailment_USD_MWh": 1000.0,
+      "Pg_ref_MW": 0.0,
+      "Qg_ref_MVAr": 0.0
+    },
+    {
+      "ID_Gerador": "G5",
+      "ID_Barra": 3,
+      "Tipo": "GWD",
+      "PGERmin_MW": 0.0,
+      "PGERmax_MW": 70.0,
+      "custo_var_USD_MWh": 0.0,
+      "custo_curtailment_USD_MWh": 1000.0,
+      "Pg_ref_MW": 0.0,
+      "Qg_ref_MVAr": 0.0
+    },
+    {
+      "ID_Gerador": "G6",
+      "ID_Barra": 4,
+      "Tipo": "GWD",
+      "PGERmin_MW": 0.0,
+      "PGERmax_MW": 70.0,
+      "custo_var_USD_MWh": 0.0,
+      "custo_curtailment_USD_MWh": 1000.0,
+      "Pg_ref_MW": 0.0,
+      "Qg_ref_MVAr": 0.0
+    }
+  ],
+  "DEMANDAS": [
+    {
+      "ID_Demanda": "D1",
+      "ID_Barra": 2,
+      "PLOAD": 40.0,
+      "QLOAD": 8.5
+    },
+    {
+      "ID_Demanda": "D2",
+      "ID_Barra": 3,
+      "PLOAD": 80.0,
+      "QLOAD": 17.0
+    },
+    {
+      "ID_Demanda": "D3",
+      "ID_Barra": 4,
+      "PLOAD": 60.0,
+      "QLOAD": 4.0
+    },
+    {
+      "ID_Demanda": "D4",
+      "ID_Barra": 5,
+      "PLOAD": 60.0,
+      "QLOAD": 12.7
+    },
+    {
+      "ID_Demanda": "D5",
+      "ID_Barra": 6,
+      "PLOAD": 80.0,
+      "QLOAD": 17.3
+    }
+  ],
+  "LINHAS": [
+    {
+      "ID_Linha": 1,
+      "ID_Barra_Origem": 1,
+      "ID_Barra_Destino": 2,
+      "R": 0.01,
+      "X": 0.1,
+      "Bsh": 0.0,
+      "LIM_Fluxo": 15.0
+    },
+    {
+      "ID_Linha": 2,
+      "ID_Barra_Origem": 2,
+      "ID_Barra_Destino": 3,
+      "R": 0.02,
+      "X": 0.17,
+      "Bsh": 0.0,
+      "LIM_Fluxo": 15.0
+    },
+    {
+      "ID_Linha": 3,
+      "ID_Barra_Origem": 3,
+      "ID_Barra_Destino": 4,
+      "R": 0.05,
+      "X": 0.1,
+      "Bsh": 0.0,
+      "LIM_Fluxo": 10.0
+    },
+    {
+      "ID_Linha": 4,
+      "ID_Barra_Origem": 4,
+      "ID_Barra_Destino": 5,
+      "R": 0.01,
+      "X": 0.15,
+      "Bsh": 0.0,
+      "LIM_Fluxo": 25.0
+    },
+    {
+      "ID_Linha": 5,
+      "ID_Barra_Origem": 5,
+      "ID_Barra_Destino": 6,
+      "R": 0.02,
+      "X": 0.18,
+      "Bsh": 0.0,
+      "LIM_Fluxo": 20.0
+    },
+    {
+      "ID_Linha": 6,
+      "ID_Barra_Origem": 3,
+      "ID_Barra_Destino": 6,
+      "R": 0.03,
+      "X": 0.13,
+      "Bsh": 0.0,
+      "LIM_Fluxo": 30.0
+    },
+    {
+      "ID_Linha": 7,
+      "ID_Barra_Origem": 1,
+      "ID_Barra_Destino": 5,
+      "R": 0.01,
+      "X": 0.14,
+      "Bsh": 0.0,
+      "LIM_Fluxo": 30.0
+    },
+    {
+      "ID_Linha": 8,
+      "ID_Barra_Origem": 4,
+      "ID_Barra_Destino": 2,
+      "R": 0.02,
+      "X": 0.12,
+      "Bsh": 0.0,
+      "LIM_Fluxo": 20.0
+    }
+  ],
+  "BATERIAS": [
+    {
+      "ID_Bateria": "BAT1",
+      "ID_Barra": 1,
+      "Pmax_carga_MW": 10.0,
+      "Pmax_descarga_MW": 10.0,
+      "capacidade_armazenamento_MWh": 100.0,
+      "custo_carga_USD_MWh": 1,
+      "custo_descarga_USD_MWh": 1
+    },
+    {
+      "ID_Bateria": "BAT2",
+      "ID_Barra": 5,
+      "Pmax_carga_MW": 5,
+      "Pmax_descarga_MW": 5,
+      "capacidade_armazenamento_MWh": 100.0,
+      "custo_carga_USD_MWh": 1,
+      "custo_descarga_USD_MWh": 1
+    }
+  ]
+}

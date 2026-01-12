@@ -8,9 +8,8 @@
   "Y_base": 0.00525,
   "T_base": 1.0,
 
-
   "BARRAS": [
-    {"ID_Barra": "1", "tipo": "Slack"},
+    {"ID_Barra": "1", "tipo": "PV"},
     {"ID_Barra": "2", "tipo": "PQ"},
     {"ID_Barra": "3", "tipo": "PQ"},
     {"ID_Barra": "4", "tipo": "PV"},
@@ -78,7 +77,7 @@
     {"ID_Barra": "66", "tipo": "PV"},
     {"ID_Barra": "67", "tipo": "PQ"},
     {"ID_Barra": "68", "tipo": "PQ"},
-    {"ID_Barra": "69", "tipo": "PV"},
+    {"ID_Barra": "69", "tipo": "Slack"},
     {"ID_Barra": "70", "tipo": "PV"},
     {"ID_Barra": "71", "tipo": "PQ"},
     {"ID_Barra": "72", "tipo": "PV"},
@@ -134,717 +133,324 @@
     {
       "ID_Gerador": "G1",
       "ID_Barra": "1",
-      "Tipo": "GWD",
-      "custo_curtailment_USD_MWh": 100.0,
-
+      "Tipo": "UTE",
       "PGERmin_MW": 0.0,
       "PGERmax_MW": 130.0,
       "ramp_up_MW_h": 40.0,
       "ramp_down_MW_h": 40.0,
       "startup_USD": 100.0,
-      "custo_var_USD_MWh": 10.0,
+      "custo_var_USD_MWh": 1.0,
       "emissao_tCO2_MWh": 0.8,
       "Unidade": "MW"
     },
     {
-      "ID_Gerador": "G4",
-      "ID_Barra": "4",
-      "Tipo": "GWD",
-      "custo_curtailment_USD_MWh": 100.0,
-
-      
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 25.0,
-      "emissao_tCO2_MWh": 1.2,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G6",
-      "ID_Barra": "6",
-      "Tipo": "GWD",
-      "custo_curtailment_USD_MWh": 100.0,
-
-      
+      "ID_Gerador": "G2",
+      "ID_Barra": "5",
+      "Tipo": "UTE",
       "PGERmin_MW": 0.0,
       "PGERmax_MW": 150.0,
       "ramp_up_MW_h": 40.0,
       "ramp_down_MW_h": 40.0,
       "startup_USD": 100.0,
-      "custo_var_USD_MWh": 30.0,
-      "emissao_tCO2_MWh": 1.5,
+      "custo_var_USD_MWh": 6.0,
+      "emissao_tCO2_MWh": 1.2,
       "Unidade": "MW"
     },
     {
-      "ID_Gerador": "G8",
-      "ID_Barra": "8",
-      "Tipo": "GWD",
-      "custo_curtailment_USD_MWh": 100.0,
-
-      
+      "ID_Gerador": "G3",
+      "ID_Barra": "7",
+      "Tipo": "UTE",
       "PGERmin_MW": 0.0,
       "PGERmax_MW": 470.0,
       "ramp_up_MW_h": 40.0,
       "ramp_down_MW_h": 40.0,
       "startup_USD": 100.0,
-      "custo_var_USD_MWh": 35.0,
-      "emissao_tCO2_MWh": 2.0,
+      "custo_var_USD_MWh": 8.0,
+      "emissao_tCO2_MWh": 1.6,
       "Unidade": "MW"
     },
     {
-      "ID_Gerador": "G10",
-      "ID_Barra": "10",
-      "Tipo": "GWD",
-      "custo_curtailment_USD_MWh": 100.0,
-
-      
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 40.0,
-      "emissao_tCO2_MWh": 1.8,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G12",
-      "ID_Barra": "12",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 45.0,
-      "emissao_tCO2_MWh": 2.2,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G15",
-      "ID_Barra": "15",
+      "ID_Gerador": "G4",
+      "ID_Barra": "14",
       "Tipo": "UTE",
       "PGERmin_MW": 0.0,
       "PGERmax_MW": 450.0,
       "ramp_up_MW_h": 40.0,
       "ramp_down_MW_h": 40.0,
       "startup_USD": 100.0,
-      "custo_var_USD_MWh": 50.0,
-      "emissao_tCO2_MWh": 2.5,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G18",
-      "ID_Barra": "18",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 55.0,
-      "emissao_tCO2_MWh": 2.8,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G19",
-      "ID_Barra": "19",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 60.0,
+      "custo_var_USD_MWh": 15.0,
       "emissao_tCO2_MWh": 3.0,
       "Unidade": "MW"
     },
     {
-      "ID_Gerador": "G24",
-      "ID_Barra": "24",
+      "ID_Gerador": "G5",
+      "ID_Barra": "23",
       "Tipo": "UTE",
       "PGERmin_MW": 0.0,
       "PGERmax_MW": 250.0,
       "ramp_up_MW_h": 40.0,
       "ramp_down_MW_h": 40.0,
       "startup_USD": 100.0,
-      "custo_var_USD_MWh": 65.0,
-      "emissao_tCO2_MWh": 3.2,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G25",
-      "ID_Barra": "25",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 70.0,
-      "emissao_tCO2_MWh": 3.5,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G26",
-      "ID_Barra": "26",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 75.0,
-      "emissao_tCO2_MWh": 3.8,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G27",
-      "ID_Barra": "27",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 80.0,
-      "emissao_tCO2_MWh": 4.0,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G31",
-      "ID_Barra": "31",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 85.0,
-      "emissao_tCO2_MWh": 4.2,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G32",
-      "ID_Barra": "32",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 90.0,
-      "emissao_tCO2_MWh": 4.5,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G34",
-      "ID_Barra": "34",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 95.0,
+      "custo_var_USD_MWh": 24.0,
       "emissao_tCO2_MWh": 4.8,
       "Unidade": "MW"
     },
     {
-      "ID_Gerador": "G36",
-      "ID_Barra": "36",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 100.0,
-      "emissao_tCO2_MWh": 5.0,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G40",
-      "ID_Barra": "40",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 105.0,
-      "emissao_tCO2_MWh": 5.2,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G42",
-      "ID_Barra": "42",
+      "ID_Gerador": "G6",
+      "ID_Barra": "41",
       "Tipo": "UTE",
       "PGERmin_MW": 0.0,
       "PGERmax_MW": 140.0,
       "ramp_up_MW_h": 40.0,
       "ramp_down_MW_h": 40.0,
       "startup_USD": 100.0,
-      "custo_var_USD_MWh": 110.0,
-      "emissao_tCO2_MWh": 5.5,
+      "custo_var_USD_MWh": 42.0,
+      "emissao_tCO2_MWh": 8.4,
       "Unidade": "MW"
     },
     {
-      "ID_Gerador": "G46",
-      "ID_Barra": "46",
+      "ID_Gerador": "G7",
+      "ID_Barra": "45",
       "Tipo": "UTE",
       "PGERmin_MW": 0.0,
       "PGERmax_MW": 120.0,
       "ramp_up_MW_h": 40.0,
       "ramp_down_MW_h": 40.0,
       "startup_USD": 100.0,
-      "custo_var_USD_MWh": 115.0,
-      "emissao_tCO2_MWh": 5.8,
+      "custo_var_USD_MWh": 46.0,
+      "emissao_tCO2_MWh": 9.2,
       "Unidade": "MW"
     },
     {
-      "ID_Gerador": "G49",
-      "ID_Barra": "49",
+      "ID_Gerador": "G8",
+      "ID_Barra": "48",
       "Tipo": "UTE",
       "PGERmin_MW": 0.0,
       "PGERmax_MW": 450.0,
       "ramp_up_MW_h": 40.0,
       "ramp_down_MW_h": 40.0,
       "startup_USD": 100.0,
-      "custo_var_USD_MWh": 120.0,
-      "emissao_tCO2_MWh": 6.0,
+      "custo_var_USD_MWh": 49.0,
+      "emissao_tCO2_MWh": 9.8,
       "Unidade": "MW"
     },
     {
-      "ID_Gerador": "G54",
-      "ID_Barra": "54",
+      "ID_Gerador": "G9",
+      "ID_Barra": "53",
       "Tipo": "UTE",
       "PGERmin_MW": 0.0,
       "PGERmax_MW": 570.0,
       "ramp_up_MW_h": 40.0,
       "ramp_down_MW_h": 40.0,
       "startup_USD": 100.0,
-      "custo_var_USD_MWh": 125.0,
-      "emissao_tCO2_MWh": 6.2,
+      "custo_var_USD_MWh": 54.0,
+      "emissao_tCO2_MWh": 10.8,
       "Unidade": "MW"
     },
     {
-      "ID_Gerador": "G55",
-      "ID_Barra": "55",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 130.0,
-      "emissao_tCO2_MWh": 6.5,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G56",
-      "ID_Barra": "56",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 135.0,
-      "emissao_tCO2_MWh": 6.8,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G59",
-      "ID_Barra": "59",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 140.0,
-      "emissao_tCO2_MWh": 7.0,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G61",
-      "ID_Barra": "61",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 145.0,
-      "emissao_tCO2_MWh": 7.2,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G62",
-      "ID_Barra": "62",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 150.0,
-      "emissao_tCO2_MWh": 7.5,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G65",
-      "ID_Barra": "65",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 155.0,
-      "emissao_tCO2_MWh": 7.8,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G66",
-      "ID_Barra": "66",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 160.0,
-      "emissao_tCO2_MWh": 8.0,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G69",
-      "ID_Barra": "69",
+      "ID_Gerador": "G10",
+      "ID_Barra": "68",
       "Tipo": "UTE",
       "PGERmin_MW": 0.0,
       "PGERmax_MW": 1000.0,
       "ramp_up_MW_h": 40.0,
       "ramp_down_MW_h": 40.0,
       "startup_USD": 100.0,
-      "custo_var_USD_MWh": 165.0,
-      "emissao_tCO2_MWh": 8.2,
+      "custo_var_USD_MWh": 69.0,
+      "emissao_tCO2_MWh": 13.8,
       "Unidade": "MW"
     },
     {
-      "ID_Gerador": "G70",
-      "ID_Barra": "70",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 170.0,
-      "emissao_tCO2_MWh": 8.5,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G72",
-      "ID_Barra": "72",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 175.0,
-      "emissao_tCO2_MWh": 8.8,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G73",
-      "ID_Barra": "73",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 180.0,
-      "emissao_tCO2_MWh": 9.0,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G74",
-      "ID_Barra": "74",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 185.0,
-      "emissao_tCO2_MWh": 9.2,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G76",
-      "ID_Barra": "76",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 190.0,
-      "emissao_tCO2_MWh": 9.5,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G77",
-      "ID_Barra": "77",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 195.0,
-      "emissao_tCO2_MWh": 9.8,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G80",
-      "ID_Barra": "80",
+      "ID_Gerador": "G11",
+      "ID_Barra": "79",
       "Tipo": "UTE",
       "PGERmin_MW": 0.0,
       "PGERmax_MW": 1000.0,
       "ramp_up_MW_h": 40.0,
       "ramp_down_MW_h": 40.0,
       "startup_USD": 100.0,
-      "custo_var_USD_MWh": 200.0,
-      "emissao_tCO2_MWh": 10.0,
+      "custo_var_USD_MWh": 80.0,
+      "emissao_tCO2_MWh": 16.0,
       "Unidade": "MW"
     },
     {
-      "ID_Gerador": "G85",
-      "ID_Barra": "85",
+      "ID_Gerador": "G12",
+      "ID_Barra": "84",
       "Tipo": "UTE",
       "PGERmin_MW": 0.0,
       "PGERmax_MW": 300.0,
       "ramp_up_MW_h": 40.0,
       "ramp_down_MW_h": 40.0,
       "startup_USD": 100.0,
-      "custo_var_USD_MWh": 205.0,
-      "emissao_tCO2_MWh": 10.2,
+      "custo_var_USD_MWh": 85.0,
+      "emissao_tCO2_MWh": 17.0,
       "Unidade": "MW"
     },
     {
-      "ID_Gerador": "G87",
-      "ID_Barra": "87",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 210.0,
-      "emissao_tCO2_MWh": 10.5,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G89",
+      "ID_Gerador": "G13",
       "ID_Barra": "89",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 215.0,
-      "emissao_tCO2_MWh": 10.8,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G90",
-      "ID_Barra": "90",
       "Tipo": "UTE",
       "PGERmin_MW": 0.0,
       "PGERmax_MW": 250.0,
       "ramp_up_MW_h": 40.0,
       "ramp_down_MW_h": 40.0,
       "startup_USD": 100.0,
-      "custo_var_USD_MWh": 220.0,
-      "emissao_tCO2_MWh": 11.0,
+      "custo_var_USD_MWh": 90.0,
+      "emissao_tCO2_MWh": 18.0,
       "Unidade": "MW"
     },
     {
-      "ID_Gerador": "G91",
-      "ID_Barra": "91",
-      "Tipo": "UTE",
+      "ID_Gerador": "W1",
+      "ID_Barra": "1",
+      "Tipo": "GWD",
+      "custo_curtailment_USD_MWh": 100.0,
       "PGERmin_MW": 0.0,
       "PGERmax_MW": 100.0,
       "ramp_up_MW_h": 40.0,
       "ramp_down_MW_h": 40.0,
       "startup_USD": 100.0,
-      "custo_var_USD_MWh": 225.0,
-      "emissao_tCO2_MWh": 11.2,
+      "custo_var_USD_MWh": 0.0,
+      "emissao_tCO2_MWh": 0.0,
       "Unidade": "MW"
     },
     {
-      "ID_Gerador": "G92",
-      "ID_Barra": "92",
-      "Tipo": "UTE",
+      "ID_Gerador": "W2",
+      "ID_Barra": "7",
+      "Tipo": "GWD",
+      "custo_curtailment_USD_MWh": 100.0,
       "PGERmin_MW": 0.0,
       "PGERmax_MW": 100.0,
       "ramp_up_MW_h": 40.0,
       "ramp_down_MW_h": 40.0,
       "startup_USD": 100.0,
-      "custo_var_USD_MWh": 230.0,
-      "emissao_tCO2_MWh": 11.5,
+      "custo_var_USD_MWh": 0.0,
+      "emissao_tCO2_MWh": 0.0,
       "Unidade": "MW"
     },
     {
-      "ID_Gerador": "G99",
-      "ID_Barra": "99",
-      "Tipo": "UTE",
+      "ID_Gerador": "W3",
+      "ID_Barra": "14",
+      "Tipo": "GWD",
+      "custo_curtailment_USD_MWh": 100.0,
+      "PGERmin_MW": 0.0,
+      "PGERmax_MW": 150.0,
+      "ramp_up_MW_h": 40.0,
+      "ramp_down_MW_h": 40.0,
+      "startup_USD": 100.0,
+      "custo_var_USD_MWh": 0.0,
+      "emissao_tCO2_MWh": 0.0,
+      "Unidade": "MW"
+    },
+    {
+      "ID_Gerador": "W4",
+      "ID_Barra": "23",
+      "Tipo": "GWD",
+      "custo_curtailment_USD_MWh": 100.0,
+      "PGERmin_MW": 0.0,
+      "PGERmax_MW": 150.0,
+      "ramp_up_MW_h": 40.0,
+      "ramp_down_MW_h": 40.0,
+      "startup_USD": 100.0,
+      "custo_var_USD_MWh": 0.0,
+      "emissao_tCO2_MWh": 0.0,
+      "Unidade": "MW"
+    },
+    {
+      "ID_Gerador": "W5",
+      "ID_Barra": "53",
+      "Tipo": "GWD",
+      "custo_curtailment_USD_MWh": 100.0,
+      "PGERmin_MW": 0.0,
+      "PGERmax_MW": 300.0,
+      "ramp_up_MW_h": 40.0,
+      "ramp_down_MW_h": 40.0,
+      "startup_USD": 100.0,
+      "custo_var_USD_MWh": 0.0,
+      "emissao_tCO2_MWh": 0.0,
+      "Unidade": "MW"
+    },
+    {
+      "ID_Gerador": "W6",
+      "ID_Barra": "58",
+      "Tipo": "GWD",
+      "custo_curtailment_USD_MWh": 100.0,
+      "PGERmin_MW": 0.0,
+      "PGERmax_MW": 200.0,
+      "ramp_up_MW_h": 40.0,
+      "ramp_down_MW_h": 40.0,
+      "startup_USD": 100.0,
+      "custo_var_USD_MWh": 0.0,
+      "emissao_tCO2_MWh": 0.0,
+      "Unidade": "MW"
+    },
+    {
+      "ID_Gerador": "W7",
+      "ID_Barra": "68",
+      "Tipo": "GWD",
+      "custo_curtailment_USD_MWh": 100.0,
+      "PGERmin_MW": 0.0,
+      "PGERmax_MW": 200.0,
+      "ramp_up_MW_h": 40.0,
+      "ramp_down_MW_h": 40.0,
+      "startup_USD": 100.0,
+      "custo_var_USD_MWh": 0.0,
+      "emissao_tCO2_MWh": 0.0,
+      "Unidade": "MW"
+    },
+    {
+      "ID_Gerador": "W8",
+      "ID_Barra": "73",
+      "Tipo": "GWD",
+      "custo_curtailment_USD_MWh": 100.0,
       "PGERmin_MW": 0.0,
       "PGERmax_MW": 100.0,
       "ramp_up_MW_h": 40.0,
       "ramp_down_MW_h": 40.0,
       "startup_USD": 100.0,
-      "custo_var_USD_MWh": 235.0,
-      "emissao_tCO2_MWh": 11.8,
+      "custo_var_USD_MWh": 0.0,
+      "emissao_tCO2_MWh": 0.0,
       "Unidade": "MW"
     },
     {
-      "ID_Gerador": "G100",
-      "ID_Barra": "100",
-      "Tipo": "UTE",
+      "ID_Gerador": "W9",
+      "ID_Barra": "79",
+      "Tipo": "GWD",
+      "custo_curtailment_USD_MWh": 100.0,
+      "PGERmin_MW": 0.0,
+      "PGERmax_MW": 150.0,
+      "ramp_up_MW_h": 40.0,
+      "ramp_down_MW_h": 40.0,
+      "startup_USD": 100.0,
+      "custo_var_USD_MWh": 0.0,
+      "emissao_tCO2_MWh": 0.0,
+      "Unidade": "MW"
+    },
+    {
+      "ID_Gerador": "W10",
+      "ID_Barra": "84",
+      "Tipo": "GWD",
+      "custo_curtailment_USD_MWh": 100.0,
       "PGERmin_MW": 0.0,
       "PGERmax_MW": 100.0,
       "ramp_up_MW_h": 40.0,
       "ramp_down_MW_h": 40.0,
       "startup_USD": 100.0,
-      "custo_var_USD_MWh": 240.0,
-      "emissao_tCO2_MWh": 12.0,
+      "custo_var_USD_MWh": 0.0,
+      "emissao_tCO2_MWh": 0.0,
       "Unidade": "MW"
     },
     {
-      "ID_Gerador": "G103",
-      "ID_Barra": "103",
-      "Tipo": "UTE",
+      "ID_Gerador": "W11",
+      "ID_Barra": "109",
+      "Tipo": "GWD",
+      "custo_curtailment_USD_MWh": 100.0,
       "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
+      "PGERmax_MW": 200.0,
       "ramp_up_MW_h": 40.0,
       "ramp_down_MW_h": 40.0,
       "startup_USD": 100.0,
-      "custo_var_USD_MWh": 245.0,
-      "emissao_tCO2_MWh": 12.2,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G104",
-      "ID_Barra": "104",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 250.0,
-      "emissao_tCO2_MWh": 12.5,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G105",
-      "ID_Barra": "105",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 255.0,
-      "emissao_tCO2_MWh": 12.8,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G107",
-      "ID_Barra": "107",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 260.0,
-      "emissao_tCO2_MWh": 13.0,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G110",
-      "ID_Barra": "110",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 265.0,
-      "emissao_tCO2_MWh": 13.2,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G111",
-      "ID_Barra": "111",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 270.0,
-      "emissao_tCO2_MWh": 13.5,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G112",
-      "ID_Barra": "112",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 275.0,
-      "emissao_tCO2_MWh": 13.8,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G113",
-      "ID_Barra": "113",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 280.0,
-      "emissao_tCO2_MWh": 14.0,
-      "Unidade": "MW"
-    },
-    {
-      "ID_Gerador": "G116",
-      "ID_Barra": "116",
-      "Tipo": "UTE",
-      "PGERmin_MW": 0.0,
-      "PGERmax_MW": 100.0,
-      "ramp_up_MW_h": 40.0,
-      "ramp_down_MW_h": 40.0,
-      "startup_USD": 100.0,
-      "custo_var_USD_MWh": 285.0,
-      "emissao_tCO2_MWh": 14.2,
+      "custo_var_USD_MWh": 0.0,
+      "emissao_tCO2_MWh": 0.0,
       "Unidade": "MW"
     }
   ],
@@ -854,118 +460,93 @@
     {"ID_Demanda": "D2", "ID_Barra": "2", "Tipo_Demanda": "Comercial", "PLOAD": 20.0, "Unidade": "MW"},
     {"ID_Demanda": "D3", "ID_Barra": "3", "Tipo_Demanda": "Industrial", "PLOAD": 39.0, "Unidade": "MW"},
     {"ID_Demanda": "D4", "ID_Barra": "4", "Tipo_Demanda": "Residencial", "PLOAD": 30.0, "Unidade": "MW"},
-    {"ID_Demanda": "D6", "ID_Barra": "6", "Tipo_Demanda": "Industrial", "PLOAD": 52.0, "Unidade": "MW"},
-    {"ID_Demanda": "D7", "ID_Barra": "7", "Tipo_Demanda": "Comercial", "PLOAD": 19.0, "Unidade": "MW"},
-    {"ID_Demanda": "D9", "ID_Barra": "9", "Tipo_Demanda": "Residencial", "PLOAD": 0.0, "Unidade": "MW"},
-    {"ID_Demanda": "D10", "ID_Barra": "10", "Tipo_Demanda": "Industrial", "PLOAD": 0.0, "Unidade": "MW"},
-    {"ID_Demanda": "D11", "ID_Barra": "11", "Tipo_Demanda": "Industrial", "PLOAD": 70.0, "Unidade": "MW"},
-    {"ID_Demanda": "D12", "ID_Barra": "12", "Tipo_Demanda": "Comercial", "PLOAD": 47.0, "Unidade": "MW"},
-    {"ID_Demanda": "D13", "ID_Barra": "13", "Tipo_Demanda": "Residencial", "PLOAD": 34.0, "Unidade": "MW"},
-    {"ID_Demanda": "D14", "ID_Barra": "14", "Tipo_Demanda": "Comercial", "PLOAD": 14.0, "Unidade": "MW"},
-    {"ID_Demanda": "D15", "ID_Barra": "15", "Tipo_Demanda": "Industrial", "PLOAD": 90.0, "Unidade": "MW"},
-    {"ID_Demanda": "D16", "ID_Barra": "16", "Tipo_Demanda": "Residencial", "PLOAD": 25.0, "Unidade": "MW"},
-    {"ID_Demanda": "D17", "ID_Barra": "17", "Tipo_Demanda": "Comercial", "PLOAD": 11.0, "Unidade": "MW"},
-    {"ID_Demanda": "D18", "ID_Barra": "18", "Tipo_Demanda": "Industrial", "PLOAD": 60.0, "Unidade": "MW"},
-    {"ID_Demanda": "D19", "ID_Barra": "19", "Tipo_Demanda": "Residencial", "PLOAD": 45.0, "Unidade": "MW"},
-    {"ID_Demanda": "D20", "ID_Barra": "20", "Tipo_Demanda": "Comercial", "PLOAD": 18.0, "Unidade": "MW"},
-    {"ID_Demanda": "D21", "ID_Barra": "21", "Tipo_Demanda": "Industrial", "PLOAD": 14.0, "Unidade": "MW"},
-    {"ID_Demanda": "D22", "ID_Barra": "22", "Tipo_Demanda": "Residencial", "PLOAD": 10.0, "Unidade": "MW"},
-    {"ID_Demanda": "D23", "ID_Barra": "23", "Tipo_Demanda": "Comercial", "PLOAD": 7.0, "Unidade": "MW"},
-    {"ID_Demanda": "D24", "ID_Barra": "24", "Tipo_Demanda": "Industrial", "PLOAD": 0.0, "Unidade": "MW"},
-    {"ID_Demanda": "D25", "ID_Barra": "25", "Tipo_Demanda": "Residencial", "PLOAD": 0.0, "Unidade": "MW"},
-    {"ID_Demanda": "D26", "ID_Barra": "26", "Tipo_Demanda": "Comercial", "PLOAD": 0.0, "Unidade": "MW"},
-    {"ID_Demanda": "D27", "ID_Barra": "27", "Tipo_Demanda": "Industrial", "PLOAD": 62.0, "Unidade": "MW"},
-    {"ID_Demanda": "D28", "ID_Barra": "28", "Tipo_Demanda": "Residencial", "PLOAD": 17.0, "Unidade": "MW"},
-    {"ID_Demanda": "D29", "ID_Barra": "29", "Tipo_Demanda": "Comercial", "PLOAD": 24.0, "Unidade": "MW"},
-    {"ID_Demanda": "D30", "ID_Barra": "30", "Tipo_Demanda": "Industrial", "PLOAD": 0.0, "Unidade": "MW"},
-    {"ID_Demanda": "D31", "ID_Barra": "31", "Tipo_Demanda": "Residencial", "PLOAD": 43.0, "Unidade": "MW"},
-    {"ID_Demanda": "D32", "ID_Barra": "32", "Tipo_Demanda": "Comercial", "PLOAD": 59.0, "Unidade": "MW"},
-    {"ID_Demanda": "D33", "ID_Barra": "33", "Tipo_Demanda": "Industrial", "PLOAD": 23.0, "Unidade": "MW"},
-    {"ID_Demanda": "D34", "ID_Barra": "34", "Tipo_Demanda": "Residencial", "PLOAD": 59.0, "Unidade": "MW"},
-    {"ID_Demanda": "D35", "ID_Barra": "35", "Tipo_Demanda": "Comercial", "PLOAD": 33.0, "Unidade": "MW"},
-    {"ID_Demanda": "D36", "ID_Barra": "36", "Tipo_Demanda": "Industrial", "PLOAD": 31.0, "Unidade": "MW"},
-    {"ID_Demanda": "D37", "ID_Barra": "37", "Tipo_Demanda": "Residencial", "PLOAD": 0.0, "Unidade": "MW"},
-    {"ID_Demanda": "D38", "ID_Barra": "38", "Tipo_Demanda": "Comercial", "PLOAD": 0.0, "Unidade": "MW"},
-    {"ID_Demanda": "D39", "ID_Barra": "39", "Tipo_Demanda": "Industrial", "PLOAD": 27.0, "Unidade": "MW"},
-    {"ID_Demanda": "D40", "ID_Barra": "40", "Tipo_Demanda": "Residencial", "PLOAD": 20.0, "Unidade": "MW"},
-    {"ID_Demanda": "D41", "ID_Barra": "41", "Tipo_Demanda": "Comercial", "PLOAD": 37.0, "Unidade": "MW"},
-    {"ID_Demanda": "D42", "ID_Barra": "42", "Tipo_Demanda": "Industrial", "PLOAD": 37.0, "Unidade": "MW"},
-    {"ID_Demanda": "D43", "ID_Barra": "43", "Tipo_Demanda": "Residencial", "PLOAD": 18.0, "Unidade": "MW"},
-    {"ID_Demanda": "D44", "ID_Barra": "44", "Tipo_Demanda": "Comercial", "PLOAD": 16.0, "Unidade": "MW"},
-    {"ID_Demanda": "D45", "ID_Barra": "45", "Tipo_Demanda": "Industrial", "PLOAD": 53.0, "Unidade": "MW"},
-    {"ID_Demanda": "D46", "ID_Barra": "46", "Tipo_Demanda": "Residencial", "PLOAD": 28.0, "Unidade": "MW"},
-    {"ID_Demanda": "D47", "ID_Barra": "47", "Tipo_Demanda": "Comercial", "PLOAD": 34.0, "Unidade": "MW"},
-    {"ID_Demanda": "D48", "ID_Barra": "48", "Tipo_Demanda": "Industrial", "PLOAD": 20.0, "Unidade": "MW"},
-    {"ID_Demanda": "D49", "ID_Barra": "49", "Tipo_Demanda": "Residencial", "PLOAD": 87.0, "Unidade": "MW"},
-    {"ID_Demanda": "D50", "ID_Barra": "50", "Tipo_Demanda": "Comercial", "PLOAD": 17.0, "Unidade": "MW"},
-    {"ID_Demanda": "D51", "ID_Barra": "51", "Tipo_Demanda": "Industrial", "PLOAD": 17.0, "Unidade": "MW"},
-    {"ID_Demanda": "D52", "ID_Barra": "52", "Tipo_Demanda": "Residencial", "PLOAD": 18.0, "Unidade": "MW"},
-    {"ID_Demanda": "D53", "ID_Barra": "53", "Tipo_Demanda": "Comercial", "PLOAD": 23.0, "Unidade": "MW"},
-    {"ID_Demanda": "D54", "ID_Barra": "54", "Tipo_Demanda": "Industrial", "PLOAD": 113.0, "Unidade": "MW"},
-    {"ID_Demanda": "D55", "ID_Barra": "55", "Tipo_Demanda": "Residencial", "PLOAD": 63.0, "Unidade": "MW"},
-    {"ID_Demanda": "D56", "ID_Barra": "56", "Tipo_Demanda": "Comercial", "PLOAD": 84.0, "Unidade": "MW"},
-    {"ID_Demanda": "D57", "ID_Barra": "57", "Tipo_Demanda": "Industrial", "PLOAD": 12.0, "Unidade": "MW"},
-    {"ID_Demanda": "D58", "ID_Barra": "58", "Tipo_Demanda": "Residencial", "PLOAD": 12.0, "Unidade": "MW"},
-    {"ID_Demanda": "D59", "ID_Barra": "59", "Tipo_Demanda": "Comercial", "PLOAD": 277.0, "Unidade": "MW"},
-    {"ID_Demanda": "D60", "ID_Barra": "60", "Tipo_Demanda": "Industrial", "PLOAD": 78.0, "Unidade": "MW"},
-    {"ID_Demanda": "D61", "ID_Barra": "61", "Tipo_Demanda": "Residencial", "PLOAD": 0.0, "Unidade": "MW"},
-    {"ID_Demanda": "D62", "ID_Barra": "62", "Tipo_Demanda": "Comercial", "PLOAD": 77.0, "Unidade": "MW"},
-    {"ID_Demanda": "D63", "ID_Barra": "63", "Tipo_Demanda": "Industrial", "PLOAD": 0.0, "Unidade": "MW"},
-    {"ID_Demanda": "D64", "ID_Barra": "64", "Tipo_Demanda": "Residencial", "PLOAD": 0.0, "Unidade": "MW"},
-    {"ID_Demanda": "D65", "ID_Barra": "65", "Tipo_Demanda": "Comercial", "PLOAD": 0.0, "Unidade": "MW"},
-    {"ID_Demanda": "D66", "ID_Barra": "66", "Tipo_Demanda": "Industrial", "PLOAD": 39.0, "Unidade": "MW"},
-    {"ID_Demanda": "D67", "ID_Barra": "67", "Tipo_Demanda": "Residencial", "PLOAD": 28.0, "Unidade": "MW"},
-    {"ID_Demanda": "D68", "ID_Barra": "68", "Tipo_Demanda": "Comercial", "PLOAD": 0.0, "Unidade": "MW"},
-    {"ID_Demanda": "D69", "ID_Barra": "69", "Tipo_Demanda": "Industrial", "PLOAD": 0.0, "Unidade": "MW"},
-    {"ID_Demanda": "D70", "ID_Barra": "70", "Tipo_Demanda": "Residencial", "PLOAD": 66.0, "Unidade": "MW"},
-    {"ID_Demanda": "D71", "ID_Barra": "71", "Tipo_Demanda": "Comercial", "PLOAD": 0.0, "Unidade": "MW"},
-    {"ID_Demanda": "D72", "ID_Barra": "72", "Tipo_Demanda": "Industrial", "PLOAD": 0.0, "Unidade": "MW"},
-    {"ID_Demanda": "D73", "ID_Barra": "73", "Tipo_Demanda": "Residencial", "PLOAD": 0.0, "Unidade": "MW"},
-    {"ID_Demanda": "D74", "ID_Barra": "74", "Tipo_Demanda": "Comercial", "PLOAD": 68.0, "Unidade": "MW"},
-    {"ID_Demanda": "D75", "ID_Barra": "75", "Tipo_Demanda": "Industrial", "PLOAD": 47.0, "Unidade": "MW"},
-    {"ID_Demanda": "D76", "ID_Barra": "76", "Tipo_Demanda": "Residencial", "PLOAD": 68.0, "Unidade": "MW"},
-    {"ID_Demanda": "D77", "ID_Barra": "77", "Tipo_Demanda": "Comercial", "PLOAD": 61.0, "Unidade": "MW"},
-    {"ID_Demanda": "D78", "ID_Barra": "78", "Tipo_Demanda": "Industrial", "PLOAD": 71.0, "Unidade": "MW"},
-    {"ID_Demanda": "D79", "ID_Barra": "79", "Tipo_Demanda": "Residencial", "PLOAD": 39.0, "Unidade": "MW"},
-    {"ID_Demanda": "D80", "ID_Barra": "80", "Tipo_Demanda": "Comercial", "PLOAD": 130.0, "Unidade": "MW"},
-    {"ID_Demanda": "D81", "ID_Barra": "81", "Tipo_Demanda": "Industrial", "PLOAD": 0.0, "Unidade": "MW"},
-    {"ID_Demanda": "D82", "ID_Barra": "82", "Tipo_Demanda": "Residencial", "PLOAD": 54.0, "Unidade": "MW"},
-    {"ID_Demanda": "D83", "ID_Barra": "83", "Tipo_Demanda": "Comercial", "PLOAD": 20.0, "Unidade": "MW"},
-    {"ID_Demanda": "D84", "ID_Barra": "84", "Tipo_Demanda": "Industrial", "PLOAD": 11.0, "Unidade": "MW"},
-    {"ID_Demanda": "D85", "ID_Barra": "85", "Tipo_Demanda": "Residencial", "PLOAD": 24.0, "Unidade": "MW"},
-    {"ID_Demanda": "D86", "ID_Barra": "86", "Tipo_Demanda": "Comercial", "PLOAD": 21.0, "Unidade": "MW"},
-    {"ID_Demanda": "D87", "ID_Barra": "87", "Tipo_Demanda": "Industrial", "PLOAD": 0.0, "Unidade": "MW"},
-    {"ID_Demanda": "D88", "ID_Barra": "88", "Tipo_Demanda": "Residencial", "PLOAD": 48.0, "Unidade": "MW"},
-    {"ID_Demanda": "D89", "ID_Barra": "89", "Tipo_Demanda": "Comercial", "PLOAD": 0.0, "Unidade": "MW"},
-    {"ID_Demanda": "D90", "ID_Barra": "90", "Tipo_Demanda": "Industrial", "PLOAD": 78.0, "Unidade": "MW"},
-    {"ID_Demanda": "D91", "ID_Barra": "91", "Tipo_Demanda": "Residencial", "PLOAD": 0.0, "Unidade": "MW"},
-    {"ID_Demanda": "D92", "ID_Barra": "92", "Tipo_Demanda": "Comercial", "PLOAD": 65.0, "Unidade": "MW"},
-    {"ID_Demanda": "D93", "ID_Barra": "93", "Tipo_Demanda": "Industrial", "PLOAD": 12.0, "Unidade": "MW"},
-    {"ID_Demanda": "D94", "ID_Barra": "94", "Tipo_Demanda": "Residencial", "PLOAD": 30.0, "Unidade": "MW"},
-    {"ID_Demanda": "D95", "ID_Barra": "95", "Tipo_Demanda": "Comercial", "PLOAD": 42.0, "Unidade": "MW"},
-    {"ID_Demanda": "D96", "ID_Barra": "96", "Tipo_Demanda": "Industrial", "PLOAD": 38.0, "Unidade": "MW"},
-    {"ID_Demanda": "D97", "ID_Barra": "97", "Tipo_Demanda": "Residencial", "PLOAD": 15.0, "Unidade": "MW"},
-    {"ID_Demanda": "D98", "ID_Barra": "98", "Tipo_Demanda": "Comercial", "PLOAD": 34.0, "Unidade": "MW"},
-    {"ID_Demanda": "D99", "ID_Barra": "99", "Tipo_Demanda": "Industrial", "PLOAD": 0.0, "Unidade": "MW"},
-    {"ID_Demanda": "D100", "ID_Barra": "100", "Tipo_Demanda": "Residencial", "PLOAD": 37.0, "Unidade": "MW"},
-    {"ID_Demanda": "D101", "ID_Barra": "101", "Tipo_Demanda": "Comercial", "PLOAD": 22.0, "Unidade": "MW"},
-    {"ID_Demanda": "D102", "ID_Barra": "102", "Tipo_Demanda": "Industrial", "PLOAD": 5.0, "Unidade": "MW"},
-    {"ID_Demanda": "D103", "ID_Barra": "103", "Tipo_Demanda": "Residencial", "PLOAD": 23.0, "Unidade": "MW"},
-    {"ID_Demanda": "D104", "ID_Barra": "104", "Tipo_Demanda": "Comercial", "PLOAD": 38.0, "Unidade": "MW"},
-    {"ID_Demanda": "D105", "ID_Barra": "105", "Tipo_Demanda": "Industrial", "PLOAD": 31.0, "Unidade": "MW"},
-    {"ID_Demanda": "D106", "ID_Barra": "106", "Tipo_Demanda": "Residencial", "PLOAD": 43.0, "Unidade": "MW"},
-    {"ID_Demanda": "D107", "ID_Barra": "107", "Tipo_Demanda": "Comercial", "PLOAD": 28.0, "Unidade": "MW"},
-    {"ID_Demanda": "D108", "ID_Barra": "108", "Tipo_Demanda": "Industrial", "PLOAD": 2.0, "Unidade": "MW"},
-    {"ID_Demanda": "D109", "ID_Barra": "109", "Tipo_Demanda": "Residencial", "PLOAD": 8.0, "Unidade": "MW"},
-    {"ID_Demanda": "D110", "ID_Barra": "110", "Tipo_Demanda": "Comercial", "PLOAD": 39.0, "Unidade": "MW"},
-    {"ID_Demanda": "D111", "ID_Barra": "111", "Tipo_Demanda": "Industrial", "PLOAD": 0.0, "Unidade": "MW"},
-    {"ID_Demanda": "D112", "ID_Barra": "112", "Tipo_Demanda": "Residencial", "PLOAD": 25.0, "Unidade": "MW"},
-    {"ID_Demanda": "D113", "ID_Barra": "113", "Tipo_Demanda": "Comercial", "PLOAD": 0.0, "Unidade": "MW"},
-    {"ID_Demanda": "D114", "ID_Barra": "114", "Tipo_Demanda": "Industrial", "PLOAD": 8.0, "Unidade": "MW"},
-    {"ID_Demanda": "D115", "ID_Barra": "115", "Tipo_Demanda": "Residencial", "PLOAD": 22.0, "Unidade": "MW"},
-    {"ID_Demanda": "D116", "ID_Barra": "116", "Tipo_Demanda": "Comercial", "PLOAD": 0.0, "Unidade": "MW"},
-    {"ID_Demanda": "D117", "ID_Barra": "117", "Tipo_Demanda": "Industrial", "PLOAD": 20.0, "Unidade": "MW"},
-    {"ID_Demanda": "D118", "ID_Barra": "118", "Tipo_Demanda": "Residencial", "PLOAD": 33.0, "Unidade": "MW"}
+    {"ID_Demanda": "D5", "ID_Barra": "5", "Tipo_Demanda": "Comercial", "PLOAD": 52.0, "Unidade": "MW"},
+    {"ID_Demanda": "D6", "ID_Barra": "6", "Tipo_Demanda": "Industrial", "PLOAD": 19.0, "Unidade": "MW"},
+    {"ID_Demanda": "D7", "ID_Barra": "10", "Tipo_Demanda": "Residencial", "PLOAD": 70.0, "Unidade": "MW"},
+    {"ID_Demanda": "D8", "ID_Barra": "11", "Tipo_Demanda": "Comercial", "PLOAD": 47.0, "Unidade": "MW"},
+    {"ID_Demanda": "D9", "ID_Barra": "12", "Tipo_Demanda": "Industrial", "PLOAD": 34.0, "Unidade": "MW"},
+    {"ID_Demanda": "D10", "ID_Barra": "13", "Tipo_Demanda": "Residencial", "PLOAD": 14.0, "Unidade": "MW"},
+    {"ID_Demanda": "D11", "ID_Barra": "14", "Tipo_Demanda": "Comercial", "PLOAD": 90.0, "Unidade": "MW"},
+    {"ID_Demanda": "D12", "ID_Barra": "15", "Tipo_Demanda": "Industrial", "PLOAD": 25.0, "Unidade": "MW"},
+    {"ID_Demanda": "D13", "ID_Barra": "16", "Tipo_Demanda": "Residencial", "PLOAD": 11.0, "Unidade": "MW"},
+    {"ID_Demanda": "D14", "ID_Barra": "17", "Tipo_Demanda": "Comercial", "PLOAD": 60.0, "Unidade": "MW"},
+    {"ID_Demanda": "D15", "ID_Barra": "18", "Tipo_Demanda": "Industrial", "PLOAD": 45.0, "Unidade": "MW"},
+    {"ID_Demanda": "D16", "ID_Barra": "19", "Tipo_Demanda": "Residencial", "PLOAD": 18.0, "Unidade": "MW"},
+    {"ID_Demanda": "D17", "ID_Barra": "20", "Tipo_Demanda": "Comercial", "PLOAD": 14.0, "Unidade": "MW"},
+    {"ID_Demanda": "D18", "ID_Barra": "21", "Tipo_Demanda": "Industrial", "PLOAD": 10.0, "Unidade": "MW"},
+    {"ID_Demanda": "D19", "ID_Barra": "22", "Tipo_Demanda": "Residencial", "PLOAD": 7.0, "Unidade": "MW"},
+    {"ID_Demanda": "D20", "ID_Barra": "26", "Tipo_Demanda": "Comercial", "PLOAD": 62.0, "Unidade": "MW"},
+    {"ID_Demanda": "D21", "ID_Barra": "27", "Tipo_Demanda": "Industrial", "PLOAD": 17.0, "Unidade": "MW"},
+    {"ID_Demanda": "D22", "ID_Barra": "28", "Tipo_Demanda": "Residencial", "PLOAD": 24.0, "Unidade": "MW"},
+    {"ID_Demanda": "D23", "ID_Barra": "30", "Tipo_Demanda": "Comercial", "PLOAD": 43.0, "Unidade": "MW"},
+    {"ID_Demanda": "D24", "ID_Barra": "31", "Tipo_Demanda": "Industrial", "PLOAD": 59.0, "Unidade": "MW"},
+    {"ID_Demanda": "D25", "ID_Barra": "32", "Tipo_Demanda": "Residencial", "PLOAD": 23.0, "Unidade": "MW"},
+    {"ID_Demanda": "D26", "ID_Barra": "33", "Tipo_Demanda": "Comercial", "PLOAD": 59.0, "Unidade": "MW"},
+    {"ID_Demanda": "D27", "ID_Barra": "34", "Tipo_Demanda": "Industrial", "PLOAD": 33.0, "Unidade": "MW"},
+    {"ID_Demanda": "D28", "ID_Barra": "35", "Tipo_Demanda": "Residencial", "PLOAD": 31.0, "Unidade": "MW"},
+    {"ID_Demanda": "D29", "ID_Barra": "38", "Tipo_Demanda": "Comercial", "PLOAD": 27.0, "Unidade": "MW"},
+    {"ID_Demanda": "D30", "ID_Barra": "39", "Tipo_Demanda": "Industrial", "PLOAD": 20.0, "Unidade": "MW"},
+    {"ID_Demanda": "D31", "ID_Barra": "40", "Tipo_Demanda": "Residencial", "PLOAD": 37.0, "Unidade": "MW"},
+    {"ID_Demanda": "D32", "ID_Barra": "41", "Tipo_Demanda": "Comercial", "PLOAD": 37.0, "Unidade": "MW"},
+    {"ID_Demanda": "D33", "ID_Barra": "42", "Tipo_Demanda": "Industrial", "PLOAD": 18.0, "Unidade": "MW"},
+    {"ID_Demanda": "D34", "ID_Barra": "43", "Tipo_Demanda": "Residencial", "PLOAD": 16.0, "Unidade": "MW"},
+    {"ID_Demanda": "D35", "ID_Barra": "44", "Tipo_Demanda": "Comercial", "PLOAD": 53.0, "Unidade": "MW"},
+    {"ID_Demanda": "D36", "ID_Barra": "45", "Tipo_Demanda": "Industrial", "PLOAD": 28.0, "Unidade": "MW"},
+    {"ID_Demanda": "D37", "ID_Barra": "46", "Tipo_Demanda": "Residencial", "PLOAD": 34.0, "Unidade": "MW"},
+    {"ID_Demanda": "D38", "ID_Barra": "47", "Tipo_Demanda": "Comercial", "PLOAD": 20.0, "Unidade": "MW"},
+    {"ID_Demanda": "D39", "ID_Barra": "48", "Tipo_Demanda": "Industrial", "PLOAD": 87.0, "Unidade": "MW"},
+    {"ID_Demanda": "D40", "ID_Barra": "49", "Tipo_Demanda": "Residencial", "PLOAD": 17.0, "Unidade": "MW"},
+    {"ID_Demanda": "D41", "ID_Barra": "50", "Tipo_Demanda": "Comercial", "PLOAD": 17.0, "Unidade": "MW"},
+    {"ID_Demanda": "D42", "ID_Barra": "51", "Tipo_Demanda": "Industrial", "PLOAD": 18.0, "Unidade": "MW"},
+    {"ID_Demanda": "D43", "ID_Barra": "52", "Tipo_Demanda": "Residencial", "PLOAD": 23.0, "Unidade": "MW"},
+    {"ID_Demanda": "D44", "ID_Barra": "53", "Tipo_Demanda": "Comercial", "PLOAD": 113.0, "Unidade": "MW"},
+    {"ID_Demanda": "D45", "ID_Barra": "54", "Tipo_Demanda": "Industrial", "PLOAD": 63.0, "Unidade": "MW"},
+    {"ID_Demanda": "D46", "ID_Barra": "55", "Tipo_Demanda": "Residencial", "PLOAD": 84.0, "Unidade": "MW"},
+    {"ID_Demanda": "D47", "ID_Barra": "56", "Tipo_Demanda": "Comercial", "PLOAD": 12.0, "Unidade": "MW"},
+    {"ID_Demanda": "D48", "ID_Barra": "57", "Tipo_Demanda": "Industrial", "PLOAD": 12.0, "Unidade": "MW"},
+    {"ID_Demanda": "D49", "ID_Barra": "58", "Tipo_Demanda": "Residencial", "PLOAD": 277.0, "Unidade": "MW"},
+    {"ID_Demanda": "D50", "ID_Barra": "59", "Tipo_Demanda": "Comercial", "PLOAD": 78.0, "Unidade": "MW"},
+    {"ID_Demanda": "D51", "ID_Barra": "61", "Tipo_Demanda": "Industrial", "PLOAD": 77.0, "Unidade": "MW"},
+    {"ID_Demanda": "D52", "ID_Barra": "65", "Tipo_Demanda": "Residencial", "PLOAD": 39.0, "Unidade": "MW"},
+    {"ID_Demanda": "D53", "ID_Barra": "66", "Tipo_Demanda": "Comercial", "PLOAD": 28.0, "Unidade": "MW"},
+    {"ID_Demanda": "D54", "ID_Barra": "69", "Tipo_Demanda": "Industrial", "PLOAD": 66.0, "Unidade": "MW"},
+    {"ID_Demanda": "D55", "ID_Barra": "73", "Tipo_Demanda": "Residencial", "PLOAD": 68.0, "Unidade": "MW"},
+    {"ID_Demanda": "D56", "ID_Barra": "74", "Tipo_Demanda": "Comercial", "PLOAD": 47.0, "Unidade": "MW"},
+    {"ID_Demanda": "D57", "ID_Barra": "75", "Tipo_Demanda": "Industrial", "PLOAD": 68.0, "Unidade": "MW"},
+    {"ID_Demanda": "D58", "ID_Barra": "76", "Tipo_Demanda": "Residencial", "PLOAD": 61.0, "Unidade": "MW"},
+    {"ID_Demanda": "D59", "ID_Barra": "77", "Tipo_Demanda": "Comercial", "PLOAD": 71.0, "Unidade": "MW"},
+    {"ID_Demanda": "D60", "ID_Barra": "78", "Tipo_Demanda": "Industrial", "PLOAD": 39.0, "Unidade": "MW"},
+    {"ID_Demanda": "D61", "ID_Barra": "79", "Tipo_Demanda": "Residencial", "PLOAD": 130.0, "Unidade": "MW"},
+    {"ID_Demanda": "D62", "ID_Barra": "81", "Tipo_Demanda": "Comercial", "PLOAD": 54.0, "Unidade": "MW"},
+    {"ID_Demanda": "D63", "ID_Barra": "82", "Tipo_Demanda": "Industrial", "PLOAD": 20.0, "Unidade": "MW"},
+    {"ID_Demanda": "D64", "ID_Barra": "83", "Tipo_Demanda": "Residencial", "PLOAD": 11.0, "Unidade": "MW"},
+    {"ID_Demanda": "D65", "ID_Barra": "84", "Tipo_Demanda": "Comercial", "PLOAD": 24.0, "Unidade": "MW"},
+    {"ID_Demanda": "D66", "ID_Barra": "85", "Tipo_Demanda": "Industrial", "PLOAD": 21.0, "Unidade": "MW"},
+    {"ID_Demanda": "D67", "ID_Barra": "87", "Tipo_Demanda": "Residencial", "PLOAD": 48.0, "Unidade": "MW"},
+    {"ID_Demanda": "D68", "ID_Barra": "89", "Tipo_Demanda": "Comercial", "PLOAD": 78.0, "Unidade": "MW"},
+    {"ID_Demanda": "D69", "ID_Barra": "91", "Tipo_Demanda": "Industrial", "PLOAD": 65.0, "Unidade": "MW"},
+    {"ID_Demanda": "D70", "ID_Barra": "92", "Tipo_Demanda": "Residencial", "PLOAD": 12.0, "Unidade": "MW"},
+    {"ID_Demanda": "D71", "ID_Barra": "93", "Tipo_Demanda": "Comercial", "PLOAD": 30.0, "Unidade": "MW"},
+    {"ID_Demanda": "D72", "ID_Barra": "94", "Tipo_Demanda": "Industrial", "PLOAD": 42.0, "Unidade": "MW"},
+    {"ID_Demanda": "D73", "ID_Barra": "95", "Tipo_Demanda": "Residencial", "PLOAD": 38.0, "Unidade": "MW"},
+    {"ID_Demanda": "D74", "ID_Barra": "96", "Tipo_Demanda": "Comercial", "PLOAD": 15.0, "Unidade": "MW"},
+    {"ID_Demanda": "D75", "ID_Barra": "97", "Tipo_Demanda": "Industrial", "PLOAD": 34.0, "Unidade": "MW"},
+    {"ID_Demanda": "D76", "ID_Barra": "99", "Tipo_Demanda": "Residencial", "PLOAD": 37.0, "Unidade": "MW"},
+    {"ID_Demanda": "D77", "ID_Barra": "100", "Tipo_Demanda": "Comercial", "PLOAD": 22.0, "Unidade": "MW"},
+    {"ID_Demanda": "D78", "ID_Barra": "101", "Tipo_Demanda": "Industrial", "PLOAD": 5.0, "Unidade": "MW"},
+    {"ID_Demanda": "D79", "ID_Barra": "102", "Tipo_Demanda": "Residencial", "PLOAD": 23.0, "Unidade": "MW"},
+    {"ID_Demanda": "D80", "ID_Barra": "103", "Tipo_Demanda": "Comercial", "PLOAD": 38.0, "Unidade": "MW"},
+    {"ID_Demanda": "D81", "ID_Barra": "104", "Tipo_Demanda": "Industrial", "PLOAD": 31.0, "Unidade": "MW"},
+    {"ID_Demanda": "D82", "ID_Barra": "105", "Tipo_Demanda": "Residencial", "PLOAD": 43.0, "Unidade": "MW"},
+    {"ID_Demanda": "D83", "ID_Barra": "106", "Tipo_Demanda": "Comercial", "PLOAD": 28.0, "Unidade": "MW"},
+    {"ID_Demanda": "D84", "ID_Barra": "107", "Tipo_Demanda": "Industrial", "PLOAD": 2.0, "Unidade": "MW"},
+    {"ID_Demanda": "D85", "ID_Barra": "108", "Tipo_Demanda": "Residencial", "PLOAD": 8.0, "Unidade": "MW"},
+    {"ID_Demanda": "D86", "ID_Barra": "109", "Tipo_Demanda": "Comercial", "PLOAD": 39.0, "Unidade": "MW"},
+    {"ID_Demanda": "D87", "ID_Barra": "111", "Tipo_Demanda": "Industrial", "PLOAD": 25.0, "Unidade": "MW"},
+    {"ID_Demanda": "D88", "ID_Barra": "113", "Tipo_Demanda": "Residencial", "PLOAD": 8.0, "Unidade": "MW"},
+    {"ID_Demanda": "D89", "ID_Barra": "114", "Tipo_Demanda": "Comercial", "PLOAD": 22.0, "Unidade": "MW"},
+    {"ID_Demanda": "D90", "ID_Barra": "116", "Tipo_Demanda": "Industrial", "PLOAD": 20.0, "Unidade": "MW"},
+    {"ID_Demanda": "D91", "ID_Barra": "117", "Tipo_Demanda": "Residencial", "PLOAD": 33.0, "Unidade": "MW"}
   ],
 
   "LINHAS": [
@@ -977,8 +558,8 @@
       "R_Unidade": "pu",
       "X": 0.0999,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "1-3",
@@ -988,8 +569,8 @@
       "R_Unidade": "pu",
       "X": 0.0424,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "4-5",
@@ -999,8 +580,8 @@
       "R_Unidade": "pu",
       "X": 0.00798,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "3-5",
@@ -1010,8 +591,8 @@
       "R_Unidade": "pu",
       "X": 0.1080,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "5-6",
@@ -1021,8 +602,8 @@
       "R_Unidade": "pu",
       "X": 0.0540,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "6-7",
@@ -1032,8 +613,8 @@
       "R_Unidade": "pu",
       "X": 0.0208,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "8-9",
@@ -1043,8 +624,8 @@
       "R_Unidade": "pu",
       "X": 0.0305,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "8-5",
@@ -1054,8 +635,8 @@
       "R_Unidade": "pu",
       "X": 0.0267,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "9-10",
@@ -1065,8 +646,8 @@
       "R_Unidade": "pu",
       "X": 0.0322,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "4-11",
@@ -1076,8 +657,8 @@
       "R_Unidade": "pu",
       "X": 0.0688,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "5-11",
@@ -1087,8 +668,8 @@
       "R_Unidade": "pu",
       "X": 0.0682,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "11-12",
@@ -1098,8 +679,8 @@
       "R_Unidade": "pu",
       "X": 0.0196,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "2-12",
@@ -1109,8 +690,8 @@
       "R_Unidade": "pu",
       "X": 0.0616,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "3-12",
@@ -1120,8 +701,8 @@
       "R_Unidade": "pu",
       "X": 0.1600,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "7-12",
@@ -1131,8 +712,8 @@
       "R_Unidade": "pu",
       "X": 0.0340,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "11-13",
@@ -1142,8 +723,8 @@
       "R_Unidade": "pu",
       "X": 0.0731,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "12-14",
@@ -1153,8 +734,8 @@
       "R_Unidade": "pu",
       "X": 0.0707,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "13-15",
@@ -1164,8 +745,8 @@
       "R_Unidade": "pu",
       "X": 0.2444,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "14-15",
@@ -1175,8 +756,8 @@
       "R_Unidade": "pu",
       "X": 0.1950,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "12-16",
@@ -1186,8 +767,8 @@
       "R_Unidade": "pu",
       "X": 0.0834,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "15-17",
@@ -1197,8 +778,8 @@
       "R_Unidade": "pu",
       "X": 0.0437,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "16-17",
@@ -1208,8 +789,8 @@
       "R_Unidade": "pu",
       "X": 0.1801,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "17-18",
@@ -1219,8 +800,8 @@
       "R_Unidade": "pu",
       "X": 0.0505,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "18-19",
@@ -1230,8 +811,8 @@
       "R_Unidade": "pu",
       "X": 0.0493,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "19-20",
@@ -1241,8 +822,8 @@
       "R_Unidade": "pu",
       "X": 0.1170,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "15-19",
@@ -1252,8 +833,8 @@
       "R_Unidade": "pu",
       "X": 0.0394,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "20-21",
@@ -1263,8 +844,8 @@
       "R_Unidade": "pu",
       "X": 0.0849,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "21-22",
@@ -1274,8 +855,8 @@
       "R_Unidade": "pu",
       "X": 0.0970,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "22-23",
@@ -1285,8 +866,8 @@
       "R_Unidade": "pu",
       "X": 0.1590,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "23-24",
@@ -1296,8 +877,8 @@
       "R_Unidade": "pu",
       "X": 0.0492,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "23-25",
@@ -1307,8 +888,8 @@
       "R_Unidade": "pu",
       "X": 0.0800,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "26-25",
@@ -1318,8 +899,8 @@
       "R_Unidade": "pu",
       "X": 0.0382,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "25-27",
@@ -1329,8 +910,8 @@
       "R_Unidade": "pu",
       "X": 0.1630,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "27-28",
@@ -1340,8 +921,8 @@
       "R_Unidade": "pu",
       "X": 0.0855,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "28-29",
@@ -1351,8 +932,8 @@
       "R_Unidade": "pu",
       "X": 0.0943,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "30-17",
@@ -1362,8 +943,8 @@
       "R_Unidade": "pu",
       "X": 0.0388,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "8-30",
@@ -1373,8 +954,8 @@
       "R_Unidade": "pu",
       "X": 0.0504,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "26-30",
@@ -1384,8 +965,8 @@
       "R_Unidade": "pu",
       "X": 0.0860,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "17-31",
@@ -1395,8 +976,8 @@
       "R_Unidade": "pu",
       "X": 0.1563,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "29-31",
@@ -1406,8 +987,8 @@
       "R_Unidade": "pu",
       "X": 0.0331,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "23-32",
@@ -1417,8 +998,8 @@
       "R_Unidade": "pu",
       "X": 0.1153,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "31-32",
@@ -1428,8 +1009,8 @@
       "R_Unidade": "pu",
       "X": 0.0985,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "27-32",
@@ -1439,8 +1020,8 @@
       "R_Unidade": "pu",
       "X": 0.0755,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "15-33",
@@ -1450,8 +1031,8 @@
       "R_Unidade": "pu",
       "X": 0.1244,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "19-34",
@@ -1461,8 +1042,8 @@
       "R_Unidade": "pu",
       "X": 0.2470,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "35-36",
@@ -1472,8 +1053,8 @@
       "R_Unidade": "pu",
       "X": 0.0102,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "35-37",
@@ -1483,8 +1064,8 @@
       "R_Unidade": "pu",
       "X": 0.0497,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "33-37",
@@ -1494,8 +1075,8 @@
       "R_Unidade": "pu",
       "X": 0.1420,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "34-36",
@@ -1505,8 +1086,8 @@
       "R_Unidade": "pu",
       "X": 0.0268,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "34-37",
@@ -1516,8 +1097,8 @@
       "R_Unidade": "pu",
       "X": 0.0094,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "38-37",
@@ -1527,8 +1108,8 @@
       "R_Unidade": "pu",
       "X": 0.0375,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "37-39",
@@ -1538,8 +1119,8 @@
       "R_Unidade": "pu",
       "X": 0.1060,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "37-40",
@@ -1549,8 +1130,8 @@
       "R_Unidade": "pu",
       "X": 0.1680,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "30-38",
@@ -1560,8 +1141,8 @@
       "R_Unidade": "pu",
       "X": 0.0540,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "39-40",
@@ -1571,8 +1152,8 @@
       "R_Unidade": "pu",
       "X": 0.0605,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "40-41",
@@ -1582,8 +1163,8 @@
       "R_Unidade": "pu",
       "X": 0.0487,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "40-42",
@@ -1593,8 +1174,8 @@
       "R_Unidade": "pu",
       "X": 0.1830,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "41-42",
@@ -1604,8 +1185,8 @@
       "R_Unidade": "pu",
       "X": 0.1350,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "43-44",
@@ -1615,8 +1196,8 @@
       "R_Unidade": "pu",
       "X": 0.2454,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "34-43",
@@ -1626,8 +1207,8 @@
       "R_Unidade": "pu",
       "X": 0.1681,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "44-45",
@@ -1637,8 +1218,8 @@
       "R_Unidade": "pu",
       "X": 0.0901,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "45-46",
@@ -1648,8 +1229,8 @@
       "R_Unidade": "pu",
       "X": 0.1356,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "46-47",
@@ -1659,8 +1240,8 @@
       "R_Unidade": "pu",
       "X": 0.1270,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "46-48",
@@ -1670,8 +1251,8 @@
       "R_Unidade": "pu",
       "X": 0.1890,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "47-49",
@@ -1681,8 +1262,8 @@
       "R_Unidade": "pu",
       "X": 0.0625,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "42-49",
@@ -1692,8 +1273,8 @@
       "R_Unidade": "pu",
       "X": 0.3230,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "45-49",
@@ -1703,8 +1284,8 @@
       "R_Unidade": "pu",
       "X": 0.1860,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "48-49",
@@ -1714,8 +1295,8 @@
       "R_Unidade": "pu",
       "X": 0.0505,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "49-50",
@@ -1725,8 +1306,8 @@
       "R_Unidade": "pu",
       "X": 0.0752,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "49-51",
@@ -1736,8 +1317,8 @@
       "R_Unidade": "pu",
       "X": 0.1370,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "51-52",
@@ -1747,8 +1328,8 @@
       "R_Unidade": "pu",
       "X": 0.0588,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "52-53",
@@ -1758,8 +1339,8 @@
       "R_Unidade": "pu",
       "X": 0.1635,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "53-54",
@@ -1769,8 +1350,8 @@
       "R_Unidade": "pu",
       "X": 0.1220,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "49-54",
@@ -1780,8 +1361,8 @@
       "R_Unidade": "pu",
       "X": 0.2890,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "54-55",
@@ -1791,8 +1372,8 @@
       "R_Unidade": "pu",
       "X": 0.0707,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "54-56",
@@ -1802,8 +1383,8 @@
       "R_Unidade": "pu",
       "X": 0.00955,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "55-56",
@@ -1813,8 +1394,8 @@
       "R_Unidade": "pu",
       "X": 0.0151,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "56-57",
@@ -1824,8 +1405,8 @@
       "R_Unidade": "pu",
       "X": 0.0966,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "50-57",
@@ -1835,8 +1416,8 @@
       "R_Unidade": "pu",
       "X": 0.1340,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "56-58",
@@ -1846,8 +1427,8 @@
       "R_Unidade": "pu",
       "X": 0.0966,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "51-58",
@@ -1857,8 +1438,8 @@
       "R_Unidade": "pu",
       "X": 0.0719,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "54-59",
@@ -1868,8 +1449,8 @@
       "R_Unidade": "pu",
       "X": 0.2293,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "56-59",
@@ -1879,8 +1460,8 @@
       "R_Unidade": "pu",
       "X": 0.2510,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "55-59",
@@ -1890,8 +1471,8 @@
       "R_Unidade": "pu",
       "X": 0.2158,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "59-60",
@@ -1901,8 +1482,8 @@
       "R_Unidade": "pu",
       "X": 0.1450,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "59-61",
@@ -1912,8 +1493,8 @@
       "R_Unidade": "pu",
       "X": 0.1500,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "60-61",
@@ -1923,8 +1504,8 @@
       "R_Unidade": "pu",
       "X": 0.0135,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "60-62",
@@ -1934,8 +1515,8 @@
       "R_Unidade": "pu",
       "X": 0.0561,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "61-62",
@@ -1945,8 +1526,8 @@
       "R_Unidade": "pu",
       "X": 0.0376,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "63-59",
@@ -1956,8 +1537,8 @@
       "R_Unidade": "pu",
       "X": 0.0386,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "63-64",
@@ -1967,8 +1548,8 @@
       "R_Unidade": "pu",
       "X": 0.0200,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "64-61",
@@ -1978,8 +1559,8 @@
       "R_Unidade": "pu",
       "X": 0.0268,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "38-65",
@@ -1989,8 +1570,8 @@
       "R_Unidade": "pu",
       "X": 0.0986,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "64-65",
@@ -2000,8 +1581,8 @@
       "R_Unidade": "pu",
       "X": 0.0302,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "49-66",
@@ -2011,8 +1592,8 @@
       "R_Unidade": "pu",
       "X": 0.0919,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "62-66",
@@ -2022,8 +1603,8 @@
       "R_Unidade": "pu",
       "X": 0.2180,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "62-67",
@@ -2033,8 +1614,8 @@
       "R_Unidade": "pu",
       "X": 0.1170,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "65-66",
@@ -2044,8 +1625,8 @@
       "R_Unidade": "pu",
       "X": 0.0370,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "66-67",
@@ -2055,8 +1636,8 @@
       "R_Unidade": "pu",
       "X": 0.1015,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "65-68",
@@ -2066,8 +1647,8 @@
       "R_Unidade": "pu",
       "X": 0.0160,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "47-69",
@@ -2077,8 +1658,8 @@
       "R_Unidade": "pu",
       "X": 0.2778,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "49-69",
@@ -2088,8 +1669,8 @@
       "R_Unidade": "pu",
       "X": 0.3240,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "68-69",
@@ -2099,8 +1680,8 @@
       "R_Unidade": "pu",
       "X": 0.0370,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "69-70",
@@ -2110,8 +1691,8 @@
       "R_Unidade": "pu",
       "X": 0.1270,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "24-70",
@@ -2121,8 +1702,8 @@
       "R_Unidade": "pu",
       "X": 0.4115,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "70-71",
@@ -2132,8 +1713,8 @@
       "R_Unidade": "pu",
       "X": 0.0355,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "24-72",
@@ -2143,8 +1724,8 @@
       "R_Unidade": "pu",
       "X": 0.1960,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "71-72",
@@ -2154,8 +1735,8 @@
       "R_Unidade": "pu",
       "X": 0.1800,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "71-73",
@@ -2165,8 +1746,8 @@
       "R_Unidade": "pu",
       "X": 0.0454,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "70-74",
@@ -2176,8 +1757,8 @@
       "R_Unidade": "pu",
       "X": 0.1323,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "70-75",
@@ -2187,8 +1768,8 @@
       "R_Unidade": "pu",
       "X": 0.1410,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "69-75",
@@ -2198,8 +1779,8 @@
       "R_Unidade": "pu",
       "X": 0.1220,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "74-75",
@@ -2209,8 +1790,8 @@
       "R_Unidade": "pu",
       "X": 0.0406,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "76-77",
@@ -2220,8 +1801,8 @@
       "R_Unidade": "pu",
       "X": 0.1480,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "69-77",
@@ -2231,8 +1812,8 @@
       "R_Unidade": "pu",
       "X": 0.1010,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "75-77",
@@ -2242,8 +1823,8 @@
       "R_Unidade": "pu",
       "X": 0.1999,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "77-78",
@@ -2253,8 +1834,8 @@
       "R_Unidade": "pu",
       "X": 0.0124,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "78-79",
@@ -2264,8 +1845,8 @@
       "R_Unidade": "pu",
       "X": 0.0244,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "77-80",
@@ -2275,8 +1856,8 @@
       "R_Unidade": "pu",
       "X": 0.0485,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "79-80",
@@ -2286,8 +1867,8 @@
       "R_Unidade": "pu",
       "X": 0.0704,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "68-81",
@@ -2297,8 +1878,8 @@
       "R_Unidade": "pu",
       "X": 0.0202,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "81-80",
@@ -2308,8 +1889,8 @@
       "R_Unidade": "pu",
       "X": 0.0370,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "77-82",
@@ -2319,8 +1900,8 @@
       "R_Unidade": "pu",
       "X": 0.0853,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "82-83",
@@ -2330,8 +1911,8 @@
       "R_Unidade": "pu",
       "X": 0.03665,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "83-84",
@@ -2341,8 +1922,8 @@
       "R_Unidade": "pu",
       "X": 0.1320,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "83-85",
@@ -2352,8 +1933,8 @@
       "R_Unidade": "pu",
       "X": 0.1480,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "84-85",
@@ -2363,8 +1944,8 @@
       "R_Unidade": "pu",
       "X": 0.0641,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "85-86",
@@ -2374,8 +1955,8 @@
       "R_Unidade": "pu",
       "X": 0.1230,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "86-87",
@@ -2385,8 +1966,8 @@
       "R_Unidade": "pu",
       "X": 0.2074,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "85-88",
@@ -2396,8 +1977,8 @@
       "R_Unidade": "pu",
       "X": 0.1020,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "85-89",
@@ -2407,8 +1988,8 @@
       "R_Unidade": "pu",
       "X": 0.1730,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "88-89",
@@ -2418,8 +1999,8 @@
       "R_Unidade": "pu",
       "X": 0.0712,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "89-90",
@@ -2429,8 +2010,8 @@
       "R_Unidade": "pu",
       "X": 0.1880,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "89-90",
@@ -2440,8 +2021,8 @@
       "R_Unidade": "pu",
       "X": 0.0997,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "90-91",
@@ -2451,8 +2032,8 @@
       "R_Unidade": "pu",
       "X": 0.0836,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "89-92",
@@ -2462,8 +2043,8 @@
       "R_Unidade": "pu",
       "X": 0.0505,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "89-92",
@@ -2473,8 +2054,8 @@
       "R_Unidade": "pu",
       "X": 0.1581,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "91-92",
@@ -2484,8 +2065,8 @@
       "R_Unidade": "pu",
       "X": 0.1272,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "92-93",
@@ -2495,8 +2076,8 @@
       "R_Unidade": "pu",
       "X": 0.0848,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "92-94",
@@ -2506,8 +2087,8 @@
       "R_Unidade": "pu",
       "X": 0.1580,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "93-94",
@@ -2517,8 +2098,8 @@
       "R_Unidade": "pu",
       "X": 0.0732,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "94-95",
@@ -2528,8 +2109,8 @@
       "R_Unidade": "pu",
       "X": 0.0434,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "80-96",
@@ -2539,8 +2120,8 @@
       "R_Unidade": "pu",
       "X": 0.1820,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "82-96",
@@ -2550,8 +2131,8 @@
       "R_Unidade": "pu",
       "X": 0.0530,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "94-96",
@@ -2561,8 +2142,8 @@
       "R_Unidade": "pu",
       "X": 0.0869,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "80-97",
@@ -2572,8 +2153,8 @@
       "R_Unidade": "pu",
       "X": 0.0934,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "80-98",
@@ -2583,8 +2164,8 @@
       "R_Unidade": "pu",
       "X": 0.1080,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "80-99",
@@ -2594,8 +2175,8 @@
       "R_Unidade": "pu",
       "X": 0.2060,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "92-100",
@@ -2605,8 +2186,8 @@
       "R_Unidade": "pu",
       "X": 0.2950,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "94-100",
@@ -2616,8 +2197,8 @@
       "R_Unidade": "pu",
       "X": 0.0580,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "95-96",
@@ -2627,8 +2208,8 @@
       "R_Unidade": "pu",
       "X": 0.0547,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "96-97",
@@ -2638,8 +2219,8 @@
       "R_Unidade": "pu",
       "X": 0.0885,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "98-100",
@@ -2649,8 +2230,8 @@
       "R_Unidade": "pu",
       "X": 0.1790,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "99-100",
@@ -2660,8 +2241,8 @@
       "R_Unidade": "pu",
       "X": 0.0813,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "100-101",
@@ -2671,8 +2252,8 @@
       "R_Unidade": "pu",
       "X": 0.1262,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "92-102",
@@ -2682,8 +2263,8 @@
       "R_Unidade": "pu",
       "X": 0.0559,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "101-102",
@@ -2693,8 +2274,8 @@
       "R_Unidade": "pu",
       "X": 0.1120,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "100-103",
@@ -2704,8 +2285,8 @@
       "R_Unidade": "pu",
       "X": 0.0525,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "100-104",
@@ -2715,8 +2296,8 @@
       "R_Unidade": "pu",
       "X": 0.2040,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "103-104",
@@ -2726,8 +2307,8 @@
       "R_Unidade": "pu",
       "X": 0.1584,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "103-105",
@@ -2737,8 +2318,8 @@
       "R_Unidade": "pu",
       "X": 0.1625,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "100-106",
@@ -2748,8 +2329,8 @@
       "R_Unidade": "pu",
       "X": 0.2290,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "104-105",
@@ -2759,8 +2340,8 @@
       "R_Unidade": "pu",
       "X": 0.0378,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "105-106",
@@ -2770,8 +2351,8 @@
       "R_Unidade": "pu",
       "X": 0.0547,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "105-107",
@@ -2781,8 +2362,8 @@
       "R_Unidade": "pu",
       "X": 0.1830,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "105-108",
@@ -2792,8 +2373,8 @@
       "R_Unidade": "pu",
       "X": 0.0703,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "106-107",
@@ -2803,8 +2384,8 @@
       "R_Unidade": "pu",
       "X": 0.1830,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "108-109",
@@ -2814,8 +2395,8 @@
       "R_Unidade": "pu",
       "X": 0.0288,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "103-110",
@@ -2825,8 +2406,8 @@
       "R_Unidade": "pu",
       "X": 0.1813,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "109-110",
@@ -2836,8 +2417,8 @@
       "R_Unidade": "pu",
       "X": 0.0762,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "110-111",
@@ -2847,8 +2428,8 @@
       "R_Unidade": "pu",
       "X": 0.0755,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "110-112",
@@ -2858,8 +2439,8 @@
       "R_Unidade": "pu",
       "X": 0.0640,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "17-113",
@@ -2869,8 +2450,8 @@
       "R_Unidade": "pu",
       "X": 0.0301,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "32-113",
@@ -2880,8 +2461,8 @@
       "R_Unidade": "pu",
       "X": 0.2030,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "32-114",
@@ -2891,8 +2472,8 @@
       "R_Unidade": "pu",
       "X": 0.0612,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "27-115",
@@ -2902,8 +2483,8 @@
       "R_Unidade": "pu",
       "X": 0.0741,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "114-115",
@@ -2913,8 +2494,8 @@
       "R_Unidade": "pu",
       "X": 0.0104,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "68-116",
@@ -2924,8 +2505,8 @@
       "R_Unidade": "pu",
       "X": 0.00405,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "12-117",
@@ -2935,8 +2516,8 @@
       "R_Unidade": "pu",
       "X": 0.1400,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "75-118",
@@ -2946,8 +2527,8 @@
       "R_Unidade": "pu",
       "X": 0.0481,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     },
     {
       "ID_linha": "76-118",
@@ -2957,8 +2538,8 @@
       "R_Unidade": "pu",
       "X": 0.0544,
       "X_Unidade": "pu",
-      "LIM_Fluxo": 175,
-      "LIM_Fluxo_Unidade": "pu"
+      "LIM_Fluxo": 100.0,
+      "LIM_Fluxo_Unidade": "MVA"
     }
   ],
 
@@ -2970,37 +2551,37 @@
     },
     {
       "ID_Contingencia": "CTG-2",
-      "Descricao": "Remoção da linha 68-69 (conecta G69 - 1000 MW)",
+      "Descricao": "Remoção da linha 68-69 (conecta G10 - 1000 MW)",
       "Linhas_Removidas": ["68-69"]
     },
     {
       "ID_Contingencia": "CTG-3",
-      "Descricao": "Remoção da linha 54-59 (conecta G54 - 570 MW)",
+      "Descricao": "Remoção da linha 54-59 (conecta G9 - 570 MW)",
       "Linhas_Removidas": ["54-59"]
     },
     {
       "ID_Contingencia": "CTG-4",
-      "Descricao": "Remoção da linha 15-17 (conecta G15 - 450 MW)",
+      "Descricao": "Remoção da linha 15-17 (conecta G4 - 450 MW)",
       "Linhas_Removidas": ["15-17"]
     },
     {
       "ID_Contingencia": "CTG-5",
-      "Descricao": "Remoção da linha 49-66 (conecta G49 - 450 MW)",
+      "Descricao": "Remoção da linha 49-66 (conecta G8 - 450 MW)",
       "Linhas_Removidas": ["49-66"]
     },
     {
       "ID_Contingencia": "CTG-6",
-      "Descricao": "Remoção da linha 83-85 (conecta G85 - 300 MW)",
+      "Descricao": "Remoção da linha 83-85 (conecta G12 - 300 MW)",
       "Linhas_Removidas": ["83-85"]
     },
     {
       "ID_Contingencia": "CTG-7",
-      "Descricao": "Remoção da linha 89-90 (conecta G90 - 250 MW)",
+      "Descricao": "Remoção da linha 89-90 (conecta G13 - 250 MW)",
       "Linhas_Removidas": ["89-90"]
     },
     {
       "ID_Contingencia": "CTG-8",
-      "Descricao": "Remoção da linha 23-24 (conecta G24 - 250 MW)",
+      "Descricao": "Remoção da linha 23-24 (conecta G5 - 250 MW)",
       "Linhas_Removidas": ["23-24"]
     }
   ]

@@ -9,7 +9,7 @@
     {"ID_Barra": "1", "tipo": "Slack", "P_carga_MW": 0.0, "Q_carga_MVAr": 0.0},
     {"ID_Barra": "2", "tipo": "PV", "P_carga_MW": 0.0, "Q_carga_MVAr": 0.0},
     {"ID_Barra": "3", "tipo": "PV", "P_carga_MW": 0.0, "Q_carga_MVAr": 0.0},
-    {"ID_Barra": "4", "tipo": "PV", "P_carga_MW": 0.0, "Q_carga_MVAr": 0.0},
+    {"ID_Barra": "4", "tipo": "PQ", "P_carga_MW": 0.0, "Q_carga_MVAr": 0.0},
     {"ID_Barra": "5", "tipo": "PQ", "P_carga_MW": 0.0, "Q_carga_MVAr": 0.0},
     {"ID_Barra": "6", "tipo": "PQ", "P_carga_MW": 0.0, "Q_carga_MVAr": 0.0}
   ],
@@ -26,14 +26,29 @@
       "ramp_up_MW_h": 40.0,
       "ramp_down_MW_h": 40.0,
       "startup_USD": 100.0,
-      "custo_var_USD_MWh": 10.0,
+      "custo_var_USD_MW": 10.0,
       "emissao_tCO2_MWh": 3.0,
       "Unidade": "MW"
     },
     {
       "ID_Gerador": "G2",
-      "ID_Barra": "2",
-      "Tipo": "UTH",
+      "ID_Barra": "3",
+      "Tipo": "UTE",
+      "PGERmin_MW": 0.0,
+      "PGERmax_MW": 70.0,
+      "Qmin_MVAr": -25.0,
+      "Qmax_MVAr": 60.0,
+      "ramp_up_MW_h": 50.0,
+      "ramp_down_MW_h": 50.0,
+      "startup_USD": 80.0,
+      "custo_var_USD_MW": 20.0,
+      "emissao_tCO2_MWh": 3.0,
+      "Unidade": "MW"
+    },
+    {
+      "ID_Gerador": "G3",
+      "ID_Barra": "4",
+      "Tipo": "UTE",
       "PGERmin_MW": 0.0,
       "PGERmax_MW": 60.0,
       "Qmin_MVAr": -25.0,
@@ -41,12 +56,28 @@
       "ramp_up_MW_h": 50.0,
       "ramp_down_MW_h": 50.0,
       "startup_USD": 80.0,
-      "custo_var_USD_MWh": 40.0,
-      "emissao_tCO2_MWh": 0.1,
+      "custo_var_USD_MW": 30.0,
+      "emissao_tCO2_MWh": 3.0,
       "Unidade": "MW"
     },
     {
-      "ID_Gerador": "G3",
+      "ID_Gerador": "G4",
+      "ID_Barra": "1",
+      "Tipo": "GWD",
+      "PGERmin_MW": 0.0,
+      "PGERmax_MW": 50.0,
+      "Qmin_MVAr": -20.0,
+      "Qmax_MVAr": 40.0,
+      "ramp_up_MW_h": 100.0,
+      "ramp_down_MW_h": 100.0,
+      "startup_USD": 10.0,
+      "custo_var_USD_MW": 2.0,
+      "custo_curtailment_USD_MW": 100.0,
+      "emissao_tCO2_MWh": 0.01,
+      "Unidade": "MW"
+    },
+    {
+      "ID_Gerador": "G5",
       "ID_Barra": "3",
       "Tipo": "GWD",
       "PGERmin_MW": 0.0,
@@ -56,50 +87,75 @@
       "ramp_up_MW_h": 100.0,
       "ramp_down_MW_h": 100.0,
       "startup_USD": 10.0,
-      "custo_var_USD_MWh": 2.0,
-      "custo_curtailment_USD_MWh": 100.0,
+      "custo_var_USD_MW": 2.0,
+      "custo_curtailment_USD_MW": 100.0,
       "emissao_tCO2_MWh": 0.01,
       "Unidade": "MW"
     },
     {
-      "ID_Gerador": "G4",
+      "ID_Gerador": "G6",
       "ID_Barra": "4",
-      "Tipo": "UTH",
+      "Tipo": "GWD",
       "PGERmin_MW": 0.0,
       "PGERmax_MW": 60.0,
-      "Qmin_MVAr": -25.0,
-      "Qmax_MVAr": 60.0,
-      "ramp_up_MW_h": 50.0,
-      "ramp_down_MW_h": 50.0,
-      "startup_USD": 80.0,
-      "custo_var_USD_MWh": 30.0,
-      "emissao_tCO2_MWh": 0.1,
+      "Qmin_MVAr": -20.0,
+      "Qmax_MVAr": 40.0,
+      "ramp_up_MW_h": 100.0,
+      "ramp_down_MW_h": 100.0,
+      "startup_USD": 10.0,
+      "custo_var_USD_MW": 2.0,
+      "custo_curtailment_USD_MW": 100.0,
+      "emissao_tCO2_MWh": 0.01,
       "Unidade": "MW"
     }
   ],
 
   "DEMANDAS": [
     {
-      "ID_Demanda": "D5", 
-      "ID_Barra": "5", 
+      "ID_Demanda": "D1", 
+      "ID_Barra": "2", 
       "Tipo_Demanda": "Residencial", 
-      "PLOAD": 30.0, 
-      "QLOAD": 15.0,
+      "PLOAD": 20.0, 
+      "QLOAD": 8.5,
       "Unidade": "MW"
     },
     {
-      "ID_Demanda": "D6", 
+      "ID_Demanda": "D2", 
+      "ID_Barra": "3", 
+      "Tipo_Demanda": "Industrial", 
+      "PLOAD": 40.0, 
+      "QLOAD": 17.0,
+      "Unidade": "MW"
+    },
+    {
+      "ID_Demanda": "D3", 
+      "ID_Barra": "4", 
+      "Tipo_Demanda": "Comercial", 
+      "PLOAD": 30.0, 
+      "QLOAD": 4.0,
+      "Unidade": "MW"
+    },
+    {
+      "ID_Demanda": "D4", 
+      "ID_Barra": "5", 
+      "Tipo_Demanda": "Residencial", 
+      "PLOAD": 30.0, 
+      "QLOAD": 12.7,
+      "Unidade": "MW"
+    },
+    {
+      "ID_Demanda": "D5", 
       "ID_Barra": "6", 
       "Tipo_Demanda": "Industrial", 
       "PLOAD": 40.0, 
-      "QLOAD": 20.0,
+      "QLOAD": 17.3,
       "Unidade": "MW"
     }
   ],
 
   "LINHAS": [
     {
-      "ID_linha": "1-2", 
+      "ID_linha": "L1", 
       "ID_Barra_Origem": "1", 
       "ID_Barra_Destino": "2", 
       "R": 0.01, 
@@ -108,11 +164,11 @@
       "X_Unidade": "pu", 
       "Bsh": 0.0,
       "Bsh_Unidade": "pu",
-      "LIM_Fluxo": 80.0, 
+      "LIM_Fluxo": 15.0, 
       "LIM_Fluxo_Unidade": "MW"
     },
     {
-      "ID_linha": "2-3", 
+      "ID_linha": "L2", 
       "ID_Barra_Origem": "2", 
       "ID_Barra_Destino": "3", 
       "R": 0.02, 
@@ -121,11 +177,11 @@
       "X_Unidade": "pu", 
       "Bsh": 0.0,
       "Bsh_Unidade": "pu",
-      "LIM_Fluxo": 80.0, 
+      "LIM_Fluxo": 15.0, 
       "LIM_Fluxo_Unidade": "MW"
     },
     {
-      "ID_linha": "3-4", 
+      "ID_linha": "L3", 
       "ID_Barra_Origem": "3", 
       "ID_Barra_Destino": "4", 
       "R": 0.05, 
@@ -134,11 +190,11 @@
       "X_Unidade": "pu", 
       "Bsh": 0.0,
       "Bsh_Unidade": "pu",
-      "LIM_Fluxo": 60.0, 
+      "LIM_Fluxo": 10.0, 
       "LIM_Fluxo_Unidade": "MW"
     },
     {
-      "ID_linha": "4-5", 
+      "ID_linha": "L4", 
       "ID_Barra_Origem": "4", 
       "ID_Barra_Destino": "5", 
       "R": 0.01, 
@@ -147,11 +203,11 @@
       "X_Unidade": "pu", 
       "Bsh": 0.0,
       "Bsh_Unidade": "pu",
-      "LIM_Fluxo": 100.0, 
+      "LIM_Fluxo": 25.0, 
       "LIM_Fluxo_Unidade": "MW"
     },
     {
-      "ID_linha": "5-6", 
+      "ID_linha": "L5", 
       "ID_Barra_Origem": "5", 
       "ID_Barra_Destino": "6", 
       "R": 0.02, 
@@ -160,11 +216,11 @@
       "X_Unidade": "pu", 
       "Bsh": 0.0,
       "Bsh_Unidade": "pu",
-      "LIM_Fluxo": 90.0, 
+      "LIM_Fluxo": 20.0, 
       "LIM_Fluxo_Unidade": "MW"
     },
     {
-      "ID_linha": "3-6", 
+      "ID_linha": "L6", 
       "ID_Barra_Origem": "3", 
       "ID_Barra_Destino": "6", 
       "R": 0.03, 
@@ -173,11 +229,11 @@
       "X_Unidade": "pu", 
       "Bsh": 0.0,
       "Bsh_Unidade": "pu",
-      "LIM_Fluxo": 120.0, 
+      "LIM_Fluxo": 30.0, 
       "LIM_Fluxo_Unidade": "MW"
     },
     {
-      "ID_linha": "1-5", 
+      "ID_linha": "L7", 
       "ID_Barra_Origem": "1", 
       "ID_Barra_Destino": "5", 
       "R": 0.01, 
@@ -186,11 +242,11 @@
       "X_Unidade": "pu", 
       "Bsh": 0.0,
       "Bsh_Unidade": "pu",
-      "LIM_Fluxo": 120.0, 
+      "LIM_Fluxo": 30.0, 
       "LIM_Fluxo_Unidade": "MW"
     },
     {
-      "ID_linha": "4-2", 
+      "ID_linha": "L8", 
       "ID_Barra_Origem": "4", 
       "ID_Barra_Destino": "2", 
       "R": 0.02, 
@@ -199,8 +255,51 @@
       "X_Unidade": "pu", 
       "Bsh": 0.0,
       "Bsh_Unidade": "pu",
-      "LIM_Fluxo": 90.0, 
+      "LIM_Fluxo": 20.0, 
       "LIM_Fluxo_Unidade": "MW"
+    }
+  ],
+  
+  "CONTINGENCIAS": [
+    {
+      "ID_Contingencia": "C1",
+      "Descricao": "Remoção da linha L1 (1-2)",
+      "Linhas_Removidas": ["L1"]
+    },
+    {
+      "ID_Contingencia": "C2",
+      "Descricao": "Remoção da linha L2 (2-3)",
+      "Linhas_Removidas": ["L2"]
+    },
+    {
+      "ID_Contingencia": "C3",
+      "Descricao": "Remoção da linha L3 (3-4)",
+      "Linhas_Removidas": ["L3"]
+    },
+    {
+      "ID_Contingencia": "C4",
+      "Descricao": "Remoção da linha L4 (4-5)",
+      "Linhas_Removidas": ["L4"]
+    },
+    {
+      "ID_Contingencia": "C5",
+      "Descricao": "Remoção da linha L5 (5-6)",
+      "Linhas_Removidas": ["L5"]
+    },
+    {
+      "ID_Contingencia": "C6",
+      "Descricao": "Remoção da linha L6 (3-6)",
+      "Linhas_Removidas": ["L6"]
+    },
+    {
+      "ID_Contingencia": "C7",
+      "Descricao": "Remoção da linha L7 (1-5)",
+      "Linhas_Removidas": ["L7"]
+    },
+    {
+      "ID_Contingencia": "C8",
+      "Descricao": "Remoção da linha L8 (4-2)",
+      "Linhas_Removidas": ["L8"]
     }
   ]
 }

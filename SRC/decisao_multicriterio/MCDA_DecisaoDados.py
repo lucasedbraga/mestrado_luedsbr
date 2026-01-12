@@ -182,7 +182,6 @@ class AHP_Gaussiano_WASPAS(BaseMCDA_DADOS):
     
 ### LESTE EUROPEU
 
-
 class LOPCOW_WASPAS(BaseMCDA_DADOS):
 
     def __init__(self, arquivo_alternativas=None):
@@ -215,6 +214,8 @@ class LOPCOW_WASPAS(BaseMCDA_DADOS):
                 if c not in matriz_desempenho.columns:
                     matriz_desempenho[c] = 0.0
 
+        print(matriz_desempenho)
+        print("LUCAS"*10)
         # Cálculo dos Valores Percentuais (PV) de cada critério
         RMS = np.sqrt(np.mean(np.square(matriz_desempenho), axis=0))
         DESVPAD = matriz_desempenho.std()

@@ -1,0 +1,23 @@
+{
+    "criterios": {
+        "Custo Operacao": "MIN",
+        "Emissao ton CO2": "MIN",
+        "Perdas": "MIN"
+    },
+    "alternativas": [
+        {
+            "id_alternativa": 1,
+            "descricao": "w_c=1.0, w_e=0.0",
+            "Custo Operacao": 1.47,
+            "Emissao ton CO2": 0.03,
+            "Perdas": 0.00671
+        },
+        {
+            "id_alternativa": 2,
+            "descricao": "w_c=0.7, w_e=0.3",
+            "Custo Operacao": 1.6,
+            "Emissao ton CO2": 0.01,
+            "Perdas": 0.00672
+        }
+    ]
+}
