@@ -22,6 +22,9 @@ class OPFResult:
     tempo_execucao: float = 0.0
     mensagem: str = ""
     timestamp: Optional[datetime] = None
+    SOC: List[float] = field(default_factory=list)
+    BATTERY_OPERATION: List[str] = field(default_factory=list)
+    BATTERY_POWER: List[float] = field(default_factory=list)
     
     def to_dict(self) -> Dict:
         """Converte resultado para dicionário"""
@@ -38,7 +41,10 @@ class OPFResult:
             'iteracoes': self.iteracoes,
             'tempo_execucao': self.tempo_execucao,
             'mensagem': self.mensagem,
-            'timestamp': self.timestamp.isoformat() if self.timestamp else None
+            'timestamp': self.timestamp.isoformat() if self.timestamp else None,
+            'SOC': self.SOC,
+            'BATTERY_OPERATION': self.BATTERY_OPERATION,
+            'BATTERY_POWER': self.BATTERY_POWER
         }
 
 @dataclass
@@ -52,7 +58,7 @@ class OPF_Model:
         """Constrói modelo físico com todas as restrições"""
         self.sistema = sistema
         self.considerar_perdas = considerar_perdas
-        
+
         m = self.model
         s = self.sistema
         
@@ -230,6 +236,29 @@ class OPF_Model:
         if self.considerar_perdas:
             perdas_totais = sum(value(m.perdas_barra[b]) for b in m.BUSES)
         
+        # Adiciona extração de estado da bateria (SOC, operação, potência)
+        BATTERY_SOC = []
+        BATTERY_OPERATION = []
+        BATTERY_POWER = []
+        if hasattr(m, 'BUSES') and len(m.BUSES) > 0:
+            for b in m.BUSES:
+                if b in m.BATTERIES:
+                    BATTERY_SOC.append(value(m.SOC[b]) if hasattr(m, 'SOC') else 0.0)
+                    # Determina operação: 'charge', 'discharge', 'idle'
+                    charge = value(m.CHARGE[b]) if hasattr(m, 'CHARGE') else 0.0
+                    discharge = value(m.DISCHARGE[b]) if hasattr(m, 'DISCHARGE') else 0.0
+                    if charge > 0.01:
+                        BATTERY_OPERATION.append('charge')
+                    elif discharge > 0.01:
+                        BATTERY_OPERATION.append('discharge')
+                    else:
+                        BATTERY_OPERATION.append('idle')
+                    BATTERY_POWER.append(discharge - charge)
+                else:
+                    BATTERY_SOC.append(0.0)
+                    BATTERY_OPERATION.append('none')
+                    BATTERY_POWER.append(0.0)
+
         return OPFResult(
             sucesso=True,
             PG=PG_val,
@@ -243,6 +272,10 @@ class OPF_Model:
             cmo_total=cmo_total,
             perdas=perdas_totais,
             iteracoes=iteracoes,
-            mensagem="Ótimo encontrado",
-            timestamp=datetime.now()
+            tempo_execucao=results.solver.time if hasattr(results.solver, 'time') else 0.0,
+            mensagem="",
+            timestamp=datetime.now(),
+            SOC=BATTERY_SOC,
+            BATTERY_OPERATION=BATTERY_OPERATION,
+            BATTERY_POWER=BATTERY_POWER
         )

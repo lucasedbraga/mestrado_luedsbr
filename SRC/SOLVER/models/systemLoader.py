@@ -280,7 +280,7 @@ class SistemaLoader:
         self.BATTERY_COST = np.zeros(self.NBAR)  # Custo de operação das baterias
 
         for bat in self.baterias_data:
-            id_barra = bat["ID_Barra"]
+            id_barra = str(bat["ID_Barra"])
             if id_barra not in self.idx_map:
                 print(f"  ⚠️  Bateria em barra {id_barra} não encontrada - ignorando")
                 continue

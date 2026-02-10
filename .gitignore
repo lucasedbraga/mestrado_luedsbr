@@ -20,3 +20,4 @@ SRC/SOLVER/FOB/__pycache__/*
 SRC/SOLVER/models/__pycache__/*
 SRC/SOLVER/RES/__pycache__/*
 STUDIES/temp/*
+STUDIES/__pycache__/*

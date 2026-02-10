@@ -50,7 +50,7 @@ class OPF_Solver:
         custo_bateria = 0.0
         if hasattr(m, 'BATTERIES') and len(m.BATTERIES) > 0:
             custo_bateria = sum(
-                (m.CHARGE[b] + m.DISCHARGE[b]) * getattr(self.sistema, 'BATTERY_COST', [0])[b]
+                (-0.1*m.CHARGE[b] + 0.5*m.DISCHARGE[b]) #* getattr(self.sistema, 'BATTERY_COST', [0])[b]
                 for b in m.BATTERIES
             )
         

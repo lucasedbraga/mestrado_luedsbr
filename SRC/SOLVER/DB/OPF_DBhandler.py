@@ -33,6 +33,8 @@ class OPF_DBHandler:
             id INTEGER PRIMARY KEY AUTOINCREMENT,
             timestamp TEXT,
             tipo_snapshot TEXT,
+            data_simulacao TEXT,
+            hora_simulacao INTEGER,
             sucesso INTEGER,
             custo_total REAL,
             deficit_total REAL,
@@ -103,13 +105,32 @@ class OPF_DBHandler:
         )
         ''')
         
+        # Tabela específica para BESS-WIND
+        cursor.execute('''
+        CREATE TABLE IF NOT EXISTS bess_wind_operacao (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            resultado_id INTEGER,
+            data_simulacao TEXT,
+            hora_simulacao INTEGER,
+            barra_bess INTEGER,
+            soc_percent REAL,
+            operacao TEXT,
+            potencia_bess_mw REAL,
+            barra_gwd INTEGER,
+            potencia_gwd_mw REAL,
+            curtailment_gwd_mw REAL,
+            demanda_mw REAL,
+            FOREIGN KEY (resultado_id) REFERENCES resultados_opf(id)
+        )
+        ''')
+        
         conn.commit()
         conn.close()
         print("✓ Tabelas criadas/verificadas")
     
     def save_hourly_result(self, resultado, sistema, hora: int,
                           perfil_carga: float, perfil_eolica: float,
-                          solver_name: str = 'glpk') -> int:
+                          solver_name: str = 'glpk', dia: Optional[str] = None) -> int:
         """Salva resultado no banco de dados"""
         conn = self.connect()
         cursor = conn.cursor()
@@ -127,17 +148,19 @@ class OPF_DBHandler:
             if g_idx < len(resultado.PG):
                 eolica_utilizada += resultado.PG[g_idx] * sistema.SB
         
-        # Inserir resultado principal
+        # Inserir resultado principal (inclui data/hora separados)
         cursor.execute('''
         INSERT INTO resultados_opf 
-        (timestamp, tipo_snapshot, sucesso, custo_total, deficit_total, 
+        (timestamp, tipo_snapshot, data_simulacao, hora_simulacao, sucesso, custo_total, deficit_total, 
          curtailment_total, perdas_total, carga_total, eolica_disponivel, 
          eolica_utilizada, fator_vento, iteracoes, tempo_execucao, 
          solver, sistema_base, pg_json, ang_json, fluxos_json, mensagem)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             timestamp,
             f"Hora_{hora:02d}",
+            dia if dia is not None else None,
+            int(hora),
             int(resultado.sucesso),
             float(resultado.custo_total),
             float(sum(resultado.DEFICIT) * sistema.SB),
@@ -255,6 +278,42 @@ class OPF_DBHandler:
                     float(carregamento),
                     float(perdas_mw)
                 ))
+        
+        # Salvar operação BESS-WIND (um registro por bateria)
+        for idx, barra_bess in enumerate(sistema.BARRAS_COM_BATERIA):
+            soc_percent = None
+            potencia_bess_mw = None
+            operacao = None
+            if hasattr(resultado, 'SOC') and idx < len(resultado.SOC):
+                soc_percent = resultado.SOC[idx] * 100  # SOC em percentual
+            if hasattr(resultado, 'BATTERY_POWER') and idx < len(resultado.BATTERY_POWER):
+                potencia_bess_mw = resultado.BATTERY_POWER[idx] * sistema.SB  # MW
+            if hasattr(resultado, 'BATTERY_OPERATION') and idx < len(resultado.BATTERY_OPERATION):
+                operacao = resultado.BATTERY_OPERATION[idx]
+            # GWD
+            barra_gwd = sistema.BAR_GWD[0] if len(sistema.BAR_GWD) > 0 else None
+            potencia_gwd_mw = None
+            if barra_gwd is not None and barra_gwd < len(resultado.PG):
+                potencia_gwd_mw = resultado.PG[barra_gwd] * sistema.SB  # MW utilizada
+            curtailment_gwd_mw = resultado.CURTAILMENT[0] * sistema.SB if hasattr(resultado, 'CURTAILMENT') and len(resultado.CURTAILMENT) > 0 else None
+            demanda_mw = np.sum(sistema.PLOAD) * sistema.SB
+            cursor.execute('''
+                INSERT INTO bess_wind_operacao 
+                (resultado_id, data_simulacao, hora_simulacao, barra_bess, soc_percent, operacao, potencia_bess_mw, barra_gwd, potencia_gwd_mw, curtailment_gwd_mw, demanda_mw)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            ''', (
+                resultado_id,
+                dia if dia is not None else None,
+                int(hora),
+                barra_bess,
+                soc_percent,
+                operacao,
+                potencia_bess_mw,
+                barra_gwd,
+                potencia_gwd_mw,
+                curtailment_gwd_mw,
+                demanda_mw
+            ))
         
         conn.commit()
         conn.close()

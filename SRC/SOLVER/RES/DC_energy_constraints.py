@@ -32,7 +32,15 @@ class DCEnergyConstraints:
     @staticmethod
     def add_battery_constraints(model, sistema):
         """Adiciona restrições para baterias (se aplicável)"""
+
+        # is_charging[b] = 1 → Modo CARGA
+        # is_charging[b] = 0 → Modo DESCARGA ou PARADO
+        model.is_charging = Var(model.BATTERIES, within=Binary, initialize=0)
         
+        # Parâmetro Big-M (suficientemente grande)
+        # Deve ser maior que o máximo de carga/descarga possível
+        BIG_M = 1000  # Ajuste conforme necessário
+
         # Verificar se o conjunto BATTERIES existe
         if not hasattr(model, 'BATTERIES') or len(model.BATTERIES) == 0:
             return
@@ -59,21 +67,16 @@ class DCEnergyConstraints:
             # SOC atual = SOC anterior + eficiência_carga * carga - descarga/eficiência_descarga
             eficiencia_carga = 0.95  # 95% de eficiência na carga
             eficiencia_descarga = 0.95  # 95% de eficiência na descarga
-            return m.SOC[b] == m.SOC_PREV[b] + eficiencia_carga * m.CHARGE[b] - m.DISCHARGE[b] / eficiencia_descarga
+            return m.SOC[b] == m.SOC_PREV[b] + eficiencia_carga * m.CHARGE[b] - m.DISCHARGE[b]*eficiencia_descarga
         
         def battery_charge_limit_rule(m, b):
             """Limite de potência de carga"""
-            return m.CHARGE[b] <= sistema.BATTERY_POWER_LIMIT[b]
-        
+            return m.CHARGE[b] <= sistema.BATTERY_POWER_LIMIT[b] * m.is_charging[b]
+
         def battery_discharge_limit_rule(m, b):
             """Limite de potência de descarga"""
-            return m.DISCHARGE[b] <= sistema.BATTERY_POWER_OUT[b]
-        
-        def battery_power_exclusive_rule(m, b):
-            """A bateria não pode carregar e descarregar simultaneamente"""
-            # Usar uma variável binária ou relaxar com constraint linear
-            return m.CHARGE[b] * m.DISCHARGE[b] == 0
-        
+            return m.DISCHARGE[b] <= sistema.BATTERY_POWER_OUT[b]* (1 - m.is_charging[b])
+
         # Adicionar constraints
         model.BatterySOCMax = Constraint(model.BATTERIES, rule=battery_soc_limits_rule)
         model.BatterySOCMin = Constraint(model.BATTERIES, rule=battery_soc_min_rule)
@@ -81,6 +84,3 @@ class DCEnergyConstraints:
         model.BatterySOCUpdate = Constraint(model.BATTERIES, rule=battery_soc_update_rule)
         model.BatteryChargeLimit = Constraint(model.BATTERIES, rule=battery_charge_limit_rule)
         model.BatteryDischargeLimit = Constraint(model.BATTERIES, rule=battery_discharge_limit_rule)
-        # Nota: A restrição exclusiva pode causar não-linearidade. Alternativa:
-        # model.BatteryPowerExclusive = Constraint(model.BATTERIES, rule=battery_power_exclusive_rule)
-        
