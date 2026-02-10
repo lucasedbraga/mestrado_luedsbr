@@ -28,15 +28,21 @@ class ResultadoOPF:
         self.perdas_ativas = 0.0
         self.perdas_reativas = 0.0
         self.curtailment_total = 0.0
+        self.deficit_total = 0.0
         self.timestamp = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
         self.detalhes_geradores = {}
         self.geradores_eolicos = {}
 
 class OPFNaoLinear:
-    """Sistema de Fluxo de Potência Ótimo Não Linear com GWD e Curtailment"""
+    """Sistema de Fluxo de Potência Ótimo Não Linear com GWD e Curtailment em PU"""
     
     def __init__(self, dados_rede: dict):
         self.dados = dados_rede
+        self.S_base = dados_rede['S_base']  # Potência base (geralmente 100 MVA)
+        
+        # Converter dados para PU
+        self.converter_para_pu()
+        
         self.n_barras = len(dados_rede['BARRAS'])
         self.n_linhas = len(dados_rede['LINHAS'])
         self.n_geradores = len(dados_rede['GERADORES'])
@@ -68,14 +74,60 @@ class OPFNaoLinear:
         self.peso_custo_ger = 1.0
         self.peso_perdas = 0.5
         self.peso_curtailment = 1000.0
+        self.peso_deficit = 10000.0  # Penalidade MUITO alta para déficit
         
         # Construir matriz de admitância
         self.G, self.B = self.construir_matriz_admitancia()
+    
+    def converter_para_pu(self):
+        """Converte todos os valores para PU usando S_base"""
+        S_base = self.S_base
         
+        # Converter cargas das barras
+        for barra in self.dados['BARRAS']:
+            barra['P_carga_pu'] = barra.get('P_carga_MW', 0.0) / S_base
+            barra['Q_carga_pu'] = barra.get('Q_carga_MVAr', 0.0) / S_base
+        
+        # Converter geradores
+        for ger in self.dados['GERADORES']:
+            # Potências
+            ger['PGERmin_pu'] = ger.get('PGERmin_MW', 0.0) / S_base
+            ger['PGERmax_pu'] = ger.get('PGERmax_MW', 0.0) / S_base
+            ger['Qmin_pu'] = ger.get('Qmin_MW', 0.0) / S_base
+            ger['Qmax_pu'] = ger.get('Qmax_MW', 0.0) / S_base
+            
+            # Rampas (MW/h -> pu/h)
+            ger['ramp_up_pu_h'] = ger.get('ramp_up_MW_h', 0.0) / S_base
+            ger['ramp_down_pu_h'] = ger.get('ramp_down_MW_h', 0.0) / S_base
+            
+            # Custos (USD/MW -> USD/pu)
+            ger['custo_var_USD_pu'] = ger.get('custo_var_USD_MW', 0.0) * S_base
+            ger['custo_curtailment_USD_pu'] = ger.get('custo_curtailment_USD_MW', 0.0) * S_base
+            
+            # Emissões (tCO2/MWh -> tCO2/pu)
+            ger['emissao_tCO2_pu'] = ger.get('emissao_tCO2_MWh', 0.0) * S_base
+        
+        # Converter demandas
+        for demanda in self.dados['DEMANDAS']:
+            demanda['PLOAD_pu'] = demanda.get('PLOAD', 0.0) / S_base
+            demanda['QLOAD_pu'] = demanda.get('QLOAD_MW', 0.0) / S_base
+        
+        # Converter limites de fluxo
+        for linha in self.dados['LINHAS']:
+            if linha.get('LIM_Fluxo_Unidade', 'MW') == 'MW':
+                linha['LIM_Fluxo_pu'] = linha.get('LIM_Fluxo', 0.0) / S_base
+        
+        print(f"Conversão para PU concluída (S_base = {S_base} MVA)")
+    
     def carregar_resultados_pf(self, db_path: str, hora: int) -> dict:
-        """Carrega resultados do Fluxo de Potência da etapa anterior"""
+        """Carrega resultados do Fluxo de Potência da etapa anterior e converte para PU"""
         conn = sqlite3.connect(db_path)
         cursor = conn.cursor()
+        
+        # Primeiro, verificar quais horas estão disponíveis
+        cursor.execute('SELECT DISTINCT hora FROM resultados_fluxo ORDER BY hora')
+        horas_disponiveis = [row[0] for row in cursor.fetchall()]
+        print(f"Horas disponíveis no banco de dados: {horas_disponiveis}")
         
         cursor.execute('''
         SELECT tensoes_mag_json, tensoes_ang_json, P_gerado_json, Q_gerado_json,
@@ -90,13 +142,25 @@ class OPFNaoLinear:
         if not resultado:
             raise ValueError(f"Resultados para hora {hora} não encontrados")
         
+        # Converter resultados do PF para PU
+        P_ger_json = json.loads(resultado[2])
+        Q_ger_json = json.loads(resultado[3])
+        P_carga_json = json.loads(resultado[4])
+        Q_carga_json = json.loads(resultado[5])
+        
+        # Converter MW para pu
+        P_ger_pu = [p / self.S_base for p in P_ger_json]
+        Q_ger_pu = [q / self.S_base for q in Q_ger_json]
+        P_carga_pu = [p / self.S_base for p in P_carga_json]
+        Q_carga_pu = [q / self.S_base for q in Q_carga_json]
+        
         return {
             'V_mag': json.loads(resultado[0]),
-            'V_ang': json.loads(resultado[0]),
-            'P_ger': json.loads(resultado[2]),
-            'Q_ger': json.loads(resultado[3]),
-            'P_carga': json.loads(resultado[4]),
-            'Q_carga': json.loads(resultado[5]),
+            'V_ang': json.loads(resultado[1]),
+            'P_ger': P_ger_pu,
+            'Q_ger': Q_ger_pu,
+            'P_carga': P_carga_pu,
+            'Q_carga': Q_carga_pu,
             'fluxos': json.loads(resultado[6])
         }
     
@@ -133,7 +197,7 @@ class OPFNaoLinear:
     
     def calcular_fluxo_linha(self, V_mag: list, V_ang: list, 
                            linha_idx: int) -> Tuple[float, float, float]:
-        """Calcula fluxo de potência em uma linha e perdas"""
+        """Calcula fluxo de potência em uma linha e perdas (em pu)"""
         linha = self.dados['LINHAS'][linha_idx]
         i = self.barra_para_indice[linha['ID_Barra_Origem']]
         j = self.barra_para_indice[linha['ID_Barra_Destino']]
@@ -148,7 +212,7 @@ class OPFNaoLinear:
         g = r / denom
         b = -x / denom
         
-        # Fluxo da barra i para j
+        # Fluxo da barra i para j (em pu)
         P_ij = (V_mag[i]**2) * g - V_mag[i] * V_mag[j] * (
             g * np.cos(theta_ij) + b * np.sin(theta_ij)
         )
@@ -165,9 +229,13 @@ class OPFNaoLinear:
         P_perda = P_ij + P_ji
         
         return P_ij, Q_ij, P_perda
-    
-    def resolver_opf_pyomo(self, resultados_pf: dict) -> ResultadoOPF:
-        """Resolve o problema de OPF com GWD e curtailment usando Pyomo"""
+
+    def resolver_opf_pyomo(self, resultados_pf: dict, hora: int) -> ResultadoOPF:
+        """Resolve o problema de OPF com GWD, curtailment e déficit usando Pyomo (tudo em PU)"""
+        print(f"\n{'='*60}")
+        print(f"Resolvendo OPF para hora {hora}")
+        print(f"{'='*60}")
+        
         model = pyo.ConcreteModel()
         
         # Conjuntos
@@ -178,20 +246,18 @@ class OPFNaoLinear:
         model.G_CONV = pyo.Set(initialize=self.geradores_convencionais_idx)
         
         # Variáveis de decisão
-        model.V = pyo.Var(model.BARRAS, bounds=(0.85, 1.5))
+        model.V = pyo.Var(model.BARRAS, bounds=(0.85, 1.15))
         model.theta = pyo.Var(model.BARRAS, bounds=(-math.pi, math.pi))
         
-        # VARIÁVEIS DE DÉFICIT (FOLGAS) COM LIMITES
-        # Déficit de potência ativa (positivo = falta de geração)
-        model.DEFICIT_P = pyo.Var(model.BARRAS, within=pyo.NonNegativeReals, bounds=(0, 2.0))
-        # Déficit de potência reativa (positivo = falta de reativo)
-        model.DEFICIT_Q = pyo.Var(model.BARRAS, within=pyo.NonNegativeReals, bounds=(0, 2.0))
+        # VARIÁVEIS DE DÉFICIT (FOLGAS) COM LIMITES (em pu)
+        model.DEFICIT_P = pyo.Var(model.BARRAS, within=pyo.NonNegativeReals, bounds=(0, 1.0))  
+        model.DEFICIT_Q = pyo.Var(model.BARRAS, within=pyo.NonNegativeReals, bounds=(0, 1.0))  
         
-        model.Pg = pyo.Var(model.GERADORES)
-        model.Pg_util = pyo.Var(model.GERADORES)
-        model.Qg = pyo.Var(model.GERADORES)
-        model.curtailment = pyo.Var(model.GWD, within=pyo.NonNegativeReals)
-        model.P_perda = pyo.Var(model.LINHAS, within=pyo.NonNegativeReals)
+        model.Pg = pyo.Var(model.GERADORES)  # Geração disponível (pu)
+        model.Pg_util = pyo.Var(model.GERADORES)  # Geração utilizada (pu)
+        model.Qg = pyo.Var(model.GERADORES)  # Reativo gerado (pu)
+        model.curtailment = pyo.Var(model.GWD, within=pyo.NonNegativeReals)  # Curtailment (pu)
+        model.P_perda = pyo.Var(model.LINHAS, within=pyo.NonNegativeReals)  # Perdas (pu)
         
         # Encontrar barra slack
         slack_idx = None
@@ -205,60 +271,94 @@ class OPFNaoLinear:
             V_slack = resultados_pf['V_mag'][slack_idx] if slack_idx < len(resultados_pf['V_mag']) else 1.0
             model.V[slack_idx].fix(V_slack)
         
-        # Restrições de geração disponível
+        # Restrições de geração disponível (em pu)
         def geracao_disponivel_rule(model, g):
             ger = self.dados['GERADORES'][g]
-            barra_idx = self.barra_para_indice[ger['ID_Barra']]
-            Pg_ref_pf = resultados_pf['P_ger'][barra_idx] if barra_idx < len(resultados_pf['P_ger']) else 0.0
             
             if g in model.GWD:
+                # Para GWD, geração disponível é fixa (valor do PF)
+                barra_idx = self.barra_para_indice[ger['ID_Barra']]
+                Pg_ref_pf = resultados_pf['P_ger'][barra_idx] if barra_idx < len(resultados_pf['P_ger']) else 0.0
                 return model.Pg[g] == Pg_ref_pf
             else:
-                return (ger['PGERmin_MW'], model.Pg[g], ger['PGERmax_MW'])
+                # Para geradores convencionais, limites normais
+                return model.Pg[g] == model.Pg_util[g]
         
         model.geracao_disponivel = pyo.Constraint(model.GERADORES, rule=geracao_disponivel_rule)
         
-        # Relação entre geração disponível e utilizada
-        def geracao_utilizada_rule(model, g):
+        # Relação entre geração disponível e utilizada para GWD
+        def geracao_utilizada_gwd_rule(model, g):
             if g in model.GWD:
                 return model.Pg_util[g] == model.Pg[g] - model.curtailment[g]
             else:
+                return pyo.Constraint.Skip
+        
+        model.geracao_utilizada_gwd = pyo.Constraint(model.GWD, rule=geracao_utilizada_gwd_rule)
+        
+        # Para geradores convencionais, utilizada = disponível
+        def geracao_utilizada_conv_rule(model, g):
+            if g not in model.GWD:
                 return model.Pg_util[g] == model.Pg[g]
+            else:
+                return pyo.Constraint.Skip
         
-        model.geracao_utilizada = pyo.Constraint(model.GERADORES, rule=geracao_utilizada_rule)
+        model.geracao_utilizada_conv = pyo.Constraint(model.G_CONV, rule=geracao_utilizada_conv_rule)
         
-        # Limites da geração utilizada
-        def limites_utilizada_rule(model, g):
+        # Limites inferiores para geração utilizada
+        def limites_inferiores_utilizada_rule(model, g):
             ger = self.dados['GERADORES'][g]
-            barra_idx = self.barra_para_indice[ger['ID_Barra']]
-            Pg_ref_pf = resultados_pf['P_ger'][barra_idx] if barra_idx < len(resultados_pf['P_ger']) else 0.0
+            return model.Pg_util[g] >= ger['PGERmin_pu']
+        
+        model.limites_inf_utilizada = pyo.Constraint(model.GERADORES, 
+                                                    rule=limites_inferiores_utilizada_rule)
+        
+        # Limites superiores para geração utilizada
+        def limites_superiores_utilizada_rule(model, g):
+            ger = self.dados['GERADORES'][g]
             
             if g in model.GWD:
-                return (0.0, model.Pg_util[g], Pg_ref_pf)
+                # Para GWD, limite superior é a geração disponível (valor do PF)
+                return model.Pg_util[g] <= model.Pg[g]
             else:
-                return (ger['PGERmin_MW'], model.Pg_util[g], ger['PGERmax_MW'])
+                # Para geradores convencionais, limite fixo
+                return model.Pg_util[g] <= ger['PGERmax_pu']
         
-        model.limites_utilizada = pyo.Constraint(model.GERADORES, rule=limites_utilizada_rule)
+        model.limites_sup_utilizada = pyo.Constraint(model.GERADORES, 
+                                                    rule=limites_superiores_utilizada_rule)
         
-        # Limites de geração reativa
-        def limites_reativo_rule(model, g):
+        # Limites de geração disponível (convencionais)
+        def limites_disponivel_conv_rule(model, g):
+            if g not in model.GWD:
+                ger = self.dados['GERADORES'][g]
+                return (ger['PGERmin_pu'], model.Pg[g], ger['PGERmax_pu'])
+            else:
+                return pyo.Constraint.Skip
+        
+        model.limites_disponivel_conv = pyo.Constraint(model.G_CONV, rule=limites_disponivel_conv_rule)
+        
+        # Limites de geração reativa (em pu)
+        def limites_reativo_inf_rule(model, g):
             ger = self.dados['GERADORES'][g]
-            return (ger['Qmin_MW'], model.Qg[g], ger['Qmax_MW'])
+            return model.Qg[g] >= ger['Qmin_pu']
         
-        model.limites_Qg = pyo.Constraint(model.GERADORES, rule=limites_reativo_rule)
+        def limites_reativo_sup_rule(model, g):
+            ger = self.dados['GERADORES'][g]
+            return model.Qg[g] <= ger['Qmax_pu']
         
-        # Função objetivo MULTI-OBJETIVO COM PENALIDADES ALTÍSSIMAS PARA DÉFICIT
+        model.limites_Qg_inf = pyo.Constraint(model.GERADORES, rule=limites_reativo_inf_rule)
+        model.limites_Qg_sup = pyo.Constraint(model.GERADORES, rule=limites_reativo_sup_rule)
+        
+        # Função objetivo MULTI-OBJETIVO (tudo em pu) COM DÉFICIT
         def objetivo_multiobjetivo_rule(model):
             custo_total = 0.0
             
-            # 0. COMPONENTE: PENALIDADE ALTÍSSIMA PARA DÉFICIT (MAIOR PRIORIDADE)
+            # 0. CUSTO DE DÉFICIT (prioridade máxima - penalidade MUITO alta)
             custo_deficit = 0.0
-            peso_deficit = 1000000.0  # Penalidade MUITO alta para déficit
             for i in model.BARRAS:
-                custo_deficit += peso_deficit * model.DEFICIT_P[i]
-                custo_deficit += peso_deficit * model.DEFICIT_Q[i]
+                custo_deficit += self.peso_deficit * model.DEFICIT_P[i]
+                custo_deficit += self.peso_deficit * 0.5 * model.DEFICIT_Q[i]
             
-            # 1. Componente: Desvio quadrático em relação ao PF
+            # 1. Desvio quadrático em relação ao PF (em pu)
             custo_desvio = 0.0
             for idx, ger in enumerate(self.dados['GERADORES']):
                 barra_idx = self.barra_para_indice[ger['ID_Barra']]
@@ -278,35 +378,37 @@ class OPFNaoLinear:
                 V_ref = resultados_pf['V_mag'][i]
                 custo_desvio += (model.V[i] - V_ref)**2
             
-            # 2. Componente: Custo de geração (apenas convencionais)
+            # 2. Custo de geração (convencionais, em USD/pu)
             custo_geracao = 0.0
             for idx in model.G_CONV:
                 ger = self.dados['GERADORES'][idx]
-                custo_coef = ger.get('custo_var_USD_MW', 1.0)
+                custo_coef = ger.get('custo_var_USD_pu', 1.0)
                 custo_geracao += custo_coef * model.Pg_util[idx]
             
-            # 3. Componente: Minimização de perdas
+            # 3. Minimização de perdas (em pu)
             custo_perdas = 0.0
             for linha_idx in model.LINHAS:
                 custo_perdas += model.P_perda[linha_idx]
             
-            # 4. Componente: Penalidade por curtailment
+            # 4. Penalidade por curtailment (em USD/pu)
             custo_curtailment = 0.0
             for idx in model.GWD:
-                custo_curtailment += model.curtailment[idx]
+                ger = self.dados['GERADORES'][idx]
+                custo_curtailment_coef = ger.get('custo_curtailment_USD_pu', 1000.0)
+                custo_curtailment += custo_curtailment_coef * model.curtailment[idx]
             
-            # Soma ponderada (déficit tem prioridade máxima)
-            custo_total = (custo_deficit +  # PRIMEIRO: garantir que não haja déficit
+            # Soma ponderada - déficit tem a MAIOR prioridade
+            custo_total = (custo_deficit + 
                         self.peso_desvio * custo_desvio + 
                         self.peso_custo_ger * custo_geracao + 
                         self.peso_perdas * custo_perdas +
-                        self.peso_curtailment * custo_curtailment)
+                        custo_curtailment)
             
             return custo_total
         
         model.objetivo = pyo.Objective(rule=objetivo_multiobjetivo_rule, sense=pyo.minimize)
         
-        # Restrições de balanço de potência COM DÉFICIT
+        # Restrições de balanço de potência COM DÉFICIT (em pu)
         def potencia_ativa_rule(model, i):
             P_ger_total = 0.0
             P_carga_total = 0.0
@@ -316,13 +418,8 @@ class OPFNaoLinear:
                 if self.barra_para_indice[ger['ID_Barra']] == i:
                     P_ger_total += model.Pg_util[idx]
             
-            # Soma cargas na barra i - USANDO resultado PF
-            # Verificar se o valor é negativo (carga) e converter para positivo
-            carga_pf = resultados_pf['P_carga'][i]
-            if carga_pf < 0:
-                P_carga_total = -carga_pf  # Converte para positivo
-            else:
-                P_carga_total = carga_pf
+            # Soma cargas na barra i (já em pu)
+            P_carga_total = resultados_pf['P_carga'][i]
             
             # Potência injetada calculada
             P_inj = 0.0
@@ -333,8 +430,8 @@ class OPFNaoLinear:
                     self.B[i, j] * pyo.sin(theta_ij)
                 )
             
-            # Balanço com déficit (DEFICIT_P é positivo quando falta geração)
-            return P_ger_total + model.DEFICIT_P[i] - P_carga_total == P_inj
+            # Balanço COM DÉFICIT: Geração + Déficit = Carga + Injeção + Perdas
+            return P_ger_total + model.DEFICIT_P[i] == P_carga_total + P_inj
 
         def potencia_reativa_rule(model, i):
             Q_ger_total = 0.0
@@ -345,13 +442,8 @@ class OPFNaoLinear:
                 if self.barra_para_indice[ger['ID_Barra']] == i:
                     Q_ger_total += model.Qg[idx]
             
-            # Soma cargas reativas na barra i - USANDO resultado PF
-            # Verificar se o valor é negativo (carga) e converter para positivo
-            carga_q_pf = resultados_pf['Q_carga'][i]
-            if carga_q_pf < 0:
-                Q_carga_total = -carga_q_pf  # Converte para positivo
-            else:
-                Q_carga_total = carga_q_pf
+            # Soma cargas reativas na barra i (já em pu)
+            Q_carga_total = resultados_pf['Q_carga'][i]
             
             # Potência reativa injetada calculada
             Q_inj = 0.0
@@ -362,13 +454,12 @@ class OPFNaoLinear:
                     self.B[i, j] * pyo.cos(theta_ij)
                 )
             
-            # Balanço com déficit (DEFICIT_Q é positivo quando falta reativo)
-            return Q_ger_total + model.DEFICIT_Q[i] - Q_carga_total == Q_inj
+            # Balanço COM DÉFICIT
+            return Q_ger_total + model.DEFICIT_Q[i] == Q_carga_total + Q_inj
 
         model.balanco_P = pyo.Constraint(model.BARRAS, rule=potencia_ativa_rule)
         model.balanco_Q = pyo.Constraint(model.BARRAS, rule=potencia_reativa_rule)
         
-        # Restrições de fluxo nas linhas e cálculo de perdas
         def fluxo_linhas_rule(model, linha_idx):
             linha = self.dados['LINHAS'][linha_idx]
             i = self.barra_para_indice[linha['ID_Barra_Origem']]
@@ -381,7 +472,7 @@ class OPFNaoLinear:
                 self.B[i, j] * pyo.sin(theta_ij)
             ) - self.G[i, j] * model.V[i]**2
             
-            limite = linha.get('LIM_Fluxo', 2.0)
+            limite = linha.get('LIM_Fluxo_pu', 1.0)
             
             return pyo.inequality(-limite, P_ij, limite)
         
@@ -401,7 +492,7 @@ class OPFNaoLinear:
         model.fluxo_linhas = pyo.Constraint(model.LINHAS, rule=fluxo_linhas_rule)
         model.perdas_linhas = pyo.Constraint(model.LINHAS, rule=perdas_linhas_rule)
         
-        # DESCOMENTAR: Valores iniciais baseados no PF (ajuda na convergência)
+        # Valores iniciais baseados no PF
         for i in model.BARRAS:
             if i != slack_idx:
                 if i < len(resultados_pf['V_mag']):
@@ -421,30 +512,55 @@ class OPFNaoLinear:
         for i in model.BARRAS:
             model.DEFICIT_P[i] = 0.0
             model.DEFICIT_Q[i] = 0.0
+        
+        # Inicializar curtailment com zero
+        for idx in model.GWD:
+            model.curtailment[idx] = 0.0
 
-        # Resolver o problema
+        # RESOLVER COM CONFIGURAÇÕES PARA MELHOR CONVERGÊNCIA
         solver = pyo.SolverFactory('ipopt')
+        
+        # Configurações agressivas para evitar infactibilidade
         solver.options['tol'] = self.tolerancia
         solver.options['max_iter'] = self.iter_max
-        solver.options['print_level'] = 5  # Aumentar para ver mais detalhes
-        solver.options['max_cpu_time'] = 30.0
+        solver.options['print_level'] = 5
+        solver.options['max_cpu_time'] = 60.0
+        solver.options['acceptable_tol'] = 1e-4
+        solver.options['acceptable_iter'] = 5
         
         # Configurações para melhor convergência
         solver.options['mu_strategy'] = 'adaptive'
+        solver.options['mu_init'] = 1e-2
         solver.options['linear_solver'] = 'mumps'
-        solver.options['acceptable_tol'] = 1e-4
+        solver.options['nlp_scaling_method'] = 'gradient-based'
+        solver.options['bound_relax_factor'] = 1e-6
+        
+        # Opções para lidar com infactibilidade
+        solver.options['bound_push'] = 1e-6
+        solver.options['bound_frac'] = 1e-6
+        solver.options['slack_bound_push'] = 1e-6
+        solver.options['slack_bound_frac'] = 1e-6
+        solver.options['constr_viol_tol'] = 1e-4
+        solver.options['acceptable_constr_viol_tol'] = 1e-3
         
         try:
-            results = solver.solve(model, tee=True)  # tee=True para ver o log
+            print(f"\nResolvendo modelo OPF para hora {hora} com IPOPT...")
+            results = solver.solve(model, tee=True)
             
-            sucesso = str(results.solver.termination_condition) in ['optimal', 'locallyOptimal', 'userInterrupt']
+            sucesso = str(results.solver.termination_condition) in ['optimal', 'locallyOptimal', 'userInterrupt', 'acceptable']
             
-            # Calcular componentes da função objetivo
-            custo_deficit = 0.0
-            custo_desvio = 0.0
-            custo_geracao = 0.0
-            custo_perdas = 0.0
-            custo_curtailment = 0.0
+            if not sucesso:
+                print(f"Status do solver: {results.solver.termination_condition}")
+                print("Tentando resolver com configurações relaxadas...")
+                
+                # Tentar com configurações mais relaxadas
+                solver.options['acceptable_tol'] = 1e-3
+                solver.options['constr_viol_tol'] = 1e-3
+                solver.options['acceptable_constr_viol_tol'] = 1e-2
+                solver.options['max_iter'] = 200
+                
+                results = solver.solve(model, tee=True)
+                sucesso = str(results.solver.termination_condition) in ['optimal', 'locallyOptimal', 'userInterrupt', 'acceptable']
             
             resultado = ResultadoOPF(
                 sucesso=sucesso,
@@ -456,13 +572,23 @@ class OPFNaoLinear:
                 # Calcular déficit total
                 deficit_p_total = 0.0
                 deficit_q_total = 0.0
-                for i in model.BARRAS:
-                    deficit_p_total += pyo.value(model.DEFICIT_P[i])
-                    deficit_q_total += pyo.value(model.DEFICIT_Q[i])
-                    custo_deficit += 1000000.0 * (pyo.value(model.DEFICIT_P[i]) + pyo.value(model.DEFICIT_Q[i]))
+                custo_deficit = 0.0
+                custo_desvio = 0.0
+                custo_geracao = 0.0
+                custo_perdas = 0.0
+                custo_curtailment = 0.0
                 
-                print(f"\nDéficit P total: {deficit_p_total:.6f} pu")
-                print(f"Déficit Q total: {deficit_q_total:.6f} pu")
+                for i in model.BARRAS:
+                    deficit_p_val = pyo.value(model.DEFICIT_P[i])
+                    deficit_q_val = pyo.value(model.DEFICIT_Q[i])
+                    deficit_p_total += deficit_p_val
+                    deficit_q_total += deficit_q_val
+                    custo_deficit += self.peso_deficit * deficit_p_val
+                    custo_deficit += self.peso_deficit * 0.5 * deficit_q_val
+                
+                print(f"\n=== RESULTADOS DO OPF para hora {hora} ===")
+                print(f"Déficit P total: {deficit_p_total:.6f} pu ({deficit_p_total * self.S_base:.2f} MW)")
+                print(f"Déficit Q total: {deficit_q_total:.6f} pu ({deficit_q_total * self.S_base:.2f} MVAr)")
                 
                 for idx, ger in enumerate(self.dados['GERADORES']):
                     barra_idx = self.barra_para_indice[ger['ID_Barra']]
@@ -481,7 +607,7 @@ class OPFNaoLinear:
                     custo_desvio += 0.1 * (Qg_val - Qg_ref)**2
                     
                     if idx in self.geradores_convencionais_idx:
-                        custo_coef = ger.get('custo_var_USD_MW', 1.0)
+                        custo_coef = ger.get('custo_var_USD_pu', 1.0)
                         custo_geracao += custo_coef * Pg_util_val
                 
                 for i in model.BARRAS:
@@ -493,24 +619,23 @@ class OPFNaoLinear:
                     custo_perdas += pyo.value(model.P_perda[linha_idx])
                 
                 for idx in self.geradores_eolicos_idx:
-                    custo_curtailment += pyo.value(model.curtailment[idx])
+                    ger = self.dados['GERADORES'][idx]
+                    custo_curtailment_coef = ger.get('custo_curtailment_USD_pu', 1000.0)
+                    custo_curtailment += custo_curtailment_coef * pyo.value(model.curtailment[idx])
             
-            # Armazenar componentes (incluindo déficit)
-            resultado.custo_deficit = custo_deficit
-            resultado.custo_desvio = custo_desvio * self.peso_desvio
-            resultado.custo_geracao = custo_geracao * self.peso_custo_ger
-            resultado.custo_perdas = custo_perdas * self.peso_perdas
-            resultado.custo_curtailment = custo_curtailment * self.peso_curtailment
-            
-            if sucesso:
+                # Armazenar componentes (incluindo déficit)
+                resultado.custo_deficit = custo_deficit
+                resultado.custo_desvio = custo_desvio * self.peso_desvio
+                resultado.custo_geracao = custo_geracao * self.peso_custo_ger
+                resultado.custo_perdas = custo_perdas * self.peso_perdas
+                resultado.custo_curtailment = custo_curtailment
+                
                 # Preencher resultados
                 resultado.V_mag = [pyo.value(model.V[i]) for i in model.BARRAS]
                 resultado.V_ang = [pyo.value(model.theta[i]) for i in model.BARRAS]
                 
                 resultado.P_gerado = [0.0] * self.n_barras
                 resultado.Q_gerado = [0.0] * self.n_barras
-                resultado.DEFICIT_P = [pyo.value(model.DEFICIT_P[i]) for i in model.BARRAS]
-                resultado.DEFICIT_Q = [pyo.value(model.DEFICIT_Q[i]) for i in model.BARRAS]
                 
                 for idx, ger in enumerate(self.dados['GERADORES']):
                     barra_idx = self.barra_para_indice[ger['ID_Barra']]
@@ -526,8 +651,8 @@ class OPFNaoLinear:
                         'P_ger': Pg_util_val,
                         'Q_ger': Qg_val,
                         'P_disponivel': Pg_disponivel_val,
-                        'P_min': ger['PGERmin_MW'],
-                        'P_max': ger['PGERmax_MW'],
+                        'P_min': ger['PGERmin_pu'],
+                        'P_max': ger['PGERmax_pu'],
                         'tipo': ger.get('Tipo', 'CONV')
                     }
                     
@@ -540,30 +665,23 @@ class OPFNaoLinear:
                         resultado.curtailment_total += curtailment_val
                         resultado.geradores_eolicos[ger['ID_Gerador']] = detalhes
                     else:
-                        custo_coef = ger.get('custo_var_USD_MW', 1.0)
+                        custo_coef = ger.get('custo_var_USD_pu', 1.0)
                         detalhes['custo_coef'] = custo_coef
                         detalhes['custo_total'] = custo_coef * Pg_util_val
-                        detalhes['percentual_uso'] = ((Pg_util_val - ger['PGERmin_MW']) / 
-                                                    (ger['PGERmax_MW'] - ger['PGERmin_MW']) * 100 
-                                                    if ger['PGERmax_MW'] > ger['PGERmin_MW'] else 0)
+                        detalhes['percentual_uso'] = ((Pg_util_val - ger['PGERmin_pu']) / 
+                                                    (ger['PGERmax_pu'] - ger['PGERmin_pu']) * 100 
+                                                    if ger['PGERmax_pu'] > ger['PGERmin_pu'] else 0)
                     
                     resultado.detalhes_geradores[ger['ID_Gerador']] = detalhes
                 
-                # Carregar dados de carga do PF (com correção de sinal)
-                for i in range(self.n_barras):
-                    carga_p = resultados_pf['P_carga'][i]
-                    if carga_p < 0:
-                        resultado.P_carga.append(-carga_p)
-                    else:
-                        resultado.P_carga.append(carga_p)
-                        
-                    carga_q = resultados_pf['Q_carga'][i]
-                    if carga_q < 0:
-                        resultado.Q_carga.append(-carga_q)
-                    else:
-                        resultado.Q_carga.append(carga_q)
+                # Carregar dados de carga do PF (já em pu)
+                resultado.P_carga = resultados_pf['P_carga']
+                resultado.Q_carga = resultados_pf['Q_carga']
                 
-                # Calcular fluxos nas linhas e perdas
+                # Calcular déficit total
+                resultado.deficit_total = deficit_p_total
+                
+                # Calcular fluxos nas linhas e perdas (em pu)
                 for linha_idx in range(self.n_linhas):
                     linha = self.dados['LINHAS'][linha_idx]
                     i = self.barra_para_indice[linha['ID_Barra_Origem']]
@@ -574,14 +692,15 @@ class OPFNaoLinear:
                     )
                     
                     linha_id = f"{linha['ID_Barra_Origem']}-{linha['ID_Barra_Destino']}"
+                    limite_pu = linha.get('LIM_Fluxo_pu', 1.0)
                     resultado.fluxos_linhas[linha_id] = {
                         'P_ij': P_ij,
                         'Q_ij': Q_ij,
                         'P_perda': P_perda,
                         'S_ij': math.sqrt(P_ij**2 + Q_ij**2),
-                        'limite': linha.get('LIM_Fluxo', 1.0),
-                        'percentual_uso': abs(P_ij) / linha.get('LIM_Fluxo', 1.0) * 100 
-                                        if linha.get('LIM_Fluxo', 1.0) > 0 else 0
+                        'limite': limite_pu,
+                        'percentual_uso': abs(P_ij) / limite_pu * 100 
+                                        if limite_pu > 0 else 0
                     }
                     
                     resultado.perdas_ativas += abs(P_perda)
@@ -590,37 +709,51 @@ class OPFNaoLinear:
             return resultado
             
         except Exception as e:
-            print(f"Erro ao resolver OPF: {e}")
+            print(f"Erro ao resolver OPF para hora {hora}: {e}")
             import traceback
             traceback.print_exc()
             return ResultadoOPF(sucesso=False, custo_total=0.0)
 
-    def resolver_opf_multiplas_horas(self, db_path: str, horas: List[int]) -> Dict[int, ResultadoOPF]:
+    def resolver_opf_multiplas_horas(self, db_path: str) -> Dict[int, ResultadoOPF]:
         """
-        Resolve OPF para múltiplas horas
+        Resolve OPF para todas as horas disponíveis no banco de dados
         """
         resultados = {}
         
-        for hora in horas:
-            print(f"\n=== Processando OPF para hora {hora} ===")
+        # Primeiro, descobrir quantas horas estão disponíveis
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+        
+        cursor.execute('SELECT DISTINCT hora FROM resultados_fluxo ORDER BY hora')
+        horas_disponiveis = [row[0] for row in cursor.fetchall()]
+        conn.close()
+        
+        print(f"\nHoras disponíveis para processamento: {horas_disponiveis}")
+        
+        for hora in horas_disponiveis:
+            print(f"\n{'='*80}")
+            print(f"=== Processando OPF para hora {hora} ===")
+            print(f"{'='*80}")
             
             try:
                 resultados_pf = self.carregar_resultados_pf(db_path, hora)
-                resultado_opf = self.resolver_opf_pyomo(resultados_pf)
+                resultado_opf = self.resolver_opf_pyomo(resultados_pf, hora)
                 
                 if resultado_opf.sucesso:
                     resultados[hora] = resultado_opf
-                    print(f"OPF para hora {hora} resolvido com sucesso")
-                    print(f"Custo total: {resultado_opf.custo_total:.6f}")
-                    print(f"  - Custo desvio: {resultado_opf.custo_desvio:.6f}")
-                    print(f"  - Custo geração: {resultado_opf.custo_geracao:.6f}")
-                    print(f"  - Custo perdas: {resultado_opf.custo_perdas:.6f}")
-                    print(f"  - Custo curtailment: {resultado_opf.custo_curtailment:.6f}")
-                    print(f"Perdas ativas: {resultado_opf.perdas_ativas:.4f} pu")
-                    print(f"Perdas reativas: {resultado_opf.perdas_reativas:.4f} pu")
-                    print(f"Curtailment total: {resultado_opf.curtailment_total:.4f} pu")
+                    print(f"\n✓ OPF para hora {hora} resolvido com sucesso")
+                    print(f"  Custo total: {resultado_opf.custo_total:.6f}")
+                    print(f"    - Custo déficit: {resultado_opf.custo_deficit:.6f}")
+                    print(f"    - Custo desvio: {resultado_opf.custo_desvio:.6f}")
+                    print(f"    - Custo geração: {resultado_opf.custo_geracao:.6f}")
+                    print(f"    - Custo perdas: {resultado_opf.custo_perdas:.6f}")
+                    print(f"    - Custo curtailment: {resultado_opf.custo_curtailment:.6f}")
+                    print(f"  Perdas ativas: {resultado_opf.perdas_ativas:.4f} pu ({resultado_opf.perdas_ativas * self.S_base:.2f} MW)")
+                    print(f"  Perdas reativas: {resultado_opf.perdas_reativas:.4f} pu ({resultado_opf.perdas_reativas * self.S_base:.2f} MVAr)")
+                    print(f"  Curtailment total: {resultado_opf.curtailment_total:.4f} pu ({resultado_opf.curtailment_total * self.S_base:.2f} MW)")
+                    print(f"  Déficit total: {resultado_opf.deficit_total:.4f} pu ({resultado_opf.deficit_total * self.S_base:.2f} MW)")
                 else:
-                    print(f"Falha ao resolver OPF para hora {hora}")
+                    print(f"\n✗ Falha ao resolver OPF para hora {hora}")
                     
             except Exception as e:
                 print(f"Erro processando hora {hora}: {e}")
@@ -650,6 +783,7 @@ class OPFNaoLinear:
             perdas_ativas REAL,
             perdas_reativas REAL,
             curtailment_total REAL,
+            deficit_total REAL,
             tensoes_mag_json TEXT,
             tensoes_ang_json TEXT,
             P_gerado_json TEXT,
@@ -667,11 +801,12 @@ class OPFNaoLinear:
             if resultado.sucesso:
                 cursor.execute('''
                 INSERT INTO resultados_OPF 
-                (hora, sucesso, custo_total, custo_desvio, custo_geracao, custo_perdas, custo_curtailment,
-                 iteracoes, perdas_ativas, perdas_reativas, curtailment_total,
+                (hora, sucesso, custo_total, custo_desvio, custo_geracao, custo_perdas, 
+                 custo_curtailment, iteracoes, perdas_ativas, perdas_reativas,
+                 curtailment_total, deficit_total,
                  tensoes_mag_json, tensoes_ang_json, P_gerado_json, Q_gerado_json,
                  P_carga_json, Q_carga_json, fluxos_json, geradores_json, eolicos_json, timestamp)
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 ''', (
                     hora, 1, 
                     float(resultado.custo_total), 
@@ -683,6 +818,7 @@ class OPFNaoLinear:
                     float(resultado.perdas_ativas), 
                     float(resultado.perdas_reativas),
                     float(resultado.curtailment_total),
+                    float(resultado.deficit_total),
                     json.dumps([float(v) for v in resultado.V_mag]),
                     json.dumps([float(v) for v in resultado.V_ang]),
                     json.dumps([float(v) for v in resultado.P_gerado]),
@@ -698,20 +834,18 @@ class OPFNaoLinear:
         conn.commit()
         conn.close()
         
-        print(f"\nResultados OPF salvos em: {db_path}")
+        print(f"\n✅ Resultados OPF salvos em: {db_path}")
     
     def gerar_tabela_resultados(self, resultados: Dict[int, ResultadoOPF]):
         """
-        Gera tabela com resultados por hora no formato solicitado
-        
-        Colunas: Hora | Carga Total | G1 | G2 | GWD | Curtailment | Perdas Ativas | Perdas Reativas
+        Gera tabela com resultados por hora
         """
-        print("\n" + "="*90)
-        print("TABELA DE RESULTADOS OPF - 24 HORAS")
-        print("="*90)
-        print(f"{'Hora':<6} | {'Carga Total':<12} | {'G1':<10} | {'G2':<10} | {'GWD':<10} | "
-              f"{'Curtailment':<12} | {'Perdas Ativas':<14} | {'Perdas Reativas':<15}")
-        print("-"*90)
+        print("\n" + "="*120)
+        print("TABELA DE RESULTADOS OPF")
+        print("="*120)
+        print(f"{'Hora':<6} | {'Carga Total':<12} | {'G Conv':<10} | {'GWD':<10} | "
+              f"{'Curtailment':<12} | {'Déficit':<10} | {'Perdas Ativas':<14} | {'Perdas Reativas':<15}")
+        print("-"*120)
         
         horas_ordenadas = sorted(resultados.keys())
         
@@ -723,63 +857,48 @@ class OPFNaoLinear:
                 carga_total = sum(r.P_carga)
                 
                 # Extrair valores dos geradores
-                geradores_por_tipo = {'G1': 0.0, 'G2': 0.0, 'GWD': 0.0}
+                g_conv_total = 0.0
+                gwd_total = 0.0
                 
                 for ger_id, detalhes in r.detalhes_geradores.items():
                     if detalhes['tipo'] == 'GWD':
-                        geradores_por_tipo['GWD'] += detalhes['P_ger']
+                        gwd_total += detalhes['P_ger']
                     else:
-                        if geradores_por_tipo['G1'] == 0:
-                            geradores_por_tipo['G1'] = detalhes['P_ger']
-                        else:
-                            geradores_por_tipo['G2'] = detalhes['P_ger']
+                        g_conv_total += detalhes['P_ger']
                 
-                print(f"{hora:02d}:00 | {carga_total:<12.4f} | {geradores_por_tipo['G1']:<10.4f} | "
-                      f"{geradores_por_tipo['G2']:<10.4f} | {geradores_por_tipo['GWD']:<10.4f} | "
-                      f"{r.curtailment_total:<12.4f} | {r.perdas_ativas:<14.4f} | {r.perdas_reativas:<15.4f}")
+                print(f"{hora:02d}:00 | {carga_total:<12.4f} | {g_conv_total:<10.4f} | "
+                      f"{gwd_total:<10.4f} | {r.curtailment_total:<12.4f} | {r.deficit_total:<10.4f} | "
+                      f"{r.perdas_ativas:<14.4f} | {r.perdas_reativas:<15.4f}")
         
-        print("="*90)
-        
-        # Estatísticas totais
-        if resultados:
-            horas_sucesso = [h for h, r in resultados.items() if r.sucesso]
-            if horas_sucesso:
-                print("\nRESUMO GERAL:")
-                print(f"Horas processadas com sucesso: {len(horas_sucesso)}")
-                
-                perdas_ativas_total = sum(resultados[h].perdas_ativas for h in horas_sucesso)
-                perdas_reativas_total = sum(resultados[h].perdas_reativas for h in horas_sucesso)
-                curtailment_total = sum(resultados[h].curtailment_total for h in horas_sucesso)
-                
-                print(f"Perdas ativas totais (24h): {perdas_ativas_total:.4f} pu")
-                print(f"Perdas reativas totais (24h): {perdas_reativas_total:.4f} pu")
-                print(f"Curtailment total (24h): {curtailment_total:.4f} pu")
+        print("="*120)
     
-    def gerar_relatorio(self, resultado: ResultadoOPF):
+    def gerar_relatorio(self, resultado: ResultadoOPF, hora: int):
         """
-        Gera relatório detalhado dos resultados
+        Gera relatório detalhado dos resultados para uma hora específica
         """
         if not resultado.sucesso:
-            print("\nOPF não convergiu!")
+            print(f"\nOPF para hora {hora} não convergiu!")
             return
             
-        print("\n" + "="*80)
-        print("RELATÓRIO DO FLUXO DE POTÊNCIA ÓTIMO (OPF) COM GWD")
-        print("="*80)
+        print(f"\n{'='*80}")
+        print(f"RELATÓRIO DO FLUXO DE POTÊNCIA ÓTIMO (OPF) - Hora {hora}")
+        print(f"{'='*80}")
         
         print(f"\nStatus: {'SUCESSO' if resultado.sucesso else 'FALHA'}")
         print(f"Custo total: {resultado.custo_total:.6f}")
         print(f"Componentes do custo:")
+        print(f"  - Déficit: {resultado.custo_deficit:.6f} (peso: {self.peso_deficit})")
         print(f"  - Desvio: {resultado.custo_desvio:.6f} (peso: {self.peso_desvio})")
         print(f"  - Geração: {resultado.custo_geracao:.6f} (peso: {self.peso_custo_ger})")
         print(f"  - Perdas: {resultado.custo_perdas:.6f} (peso: {self.peso_perdas})")
-        print(f"  - Curtailment: {resultado.custo_curtailment:.6f} (peso: {self.peso_curtailment})")
+        print(f"  - Curtailment: {resultado.custo_curtailment:.6f} USD")
         print(f"Iterações: {resultado.iteracoes}")
-        print(f"Perdas ativas: {resultado.perdas_ativas:.6f} pu")
-        print(f"Perdas reativas: {resultado.perdas_reativas:.6f} pu")
-        print(f"Curtailment total: {resultado.curtailment_total:.6f} pu")
+        print(f"Perdas ativas: {resultado.perdas_ativas:.6f} pu ({resultado.perdas_ativas * self.S_base:.2f} MW)")
+        print(f"Perdas reativas: {resultado.perdas_reativas:.6f} pu ({resultado.perdas_reativas * self.S_base:.2f} MVAr)")
+        print(f"Curtailment total: {resultado.curtailment_total:.6f} pu ({resultado.curtailment_total * self.S_base:.2f} MW)")
+        print(f"Déficit total: {resultado.deficit_total:.6f} pu ({resultado.deficit_total * self.S_base:.2f} MW)")
         
-        print("\n" + "-"*80)
+        print(f"\n{'-'*80}")
         print("GERADORES EÓLICOS (GWD)")
         print("-"*80)
         print(f"{'Gerador':<10} {'Barra':<6} {'Disponível':<12} {'Utilizado':<12} {'Curtailment':<12} {'Curt%':<10}")
@@ -790,7 +909,7 @@ class OPFNaoLinear:
                   f"{detalhes['P_ger']:<12.4f} {detalhes.get('curtailment', 0):<12.4f} "
                   f"{detalhes.get('curtailment_percent', 0):<10.1f}")
         
-        print("\n" + "-"*80)
+        print(f"\n{'-'*80}")
         print("GERADORES CONVENCIONAIS")
         print("-"*80)
         print(f"{'Gerador':<10} {'Barra':<6} {'P (pu)':<12} {'Q (pu)':<12} {'Min':<8} {'Max':<8} {'Uso %':<10}")
@@ -799,10 +918,10 @@ class OPFNaoLinear:
         for ger_id, detalhes in resultado.detalhes_geradores.items():
             if detalhes['tipo'] != 'GWD':
                 print(f"{ger_id:<10} {detalhes['barra']:<6} {detalhes['P_ger']:<12.4f} "
-                      f"{detalhes['Q_ger']:<12.4f} {detalhes['P_min']:<8.2f} "
-                      f"{detalhes['P_max']:<8.2f} {detalhes.get('percentual_uso', 0):<10.1f}")
+                      f"{detalhes['Q_ger']:<12.4f} {detalhes['P_min']:<8.4f} "
+                      f"{detalhes['P_max']:<8.4f} {detalhes.get('percentual_uso', 0):<10.1f}")
         
-        print("\n" + "-"*80)
+        print(f"\n{'-'*80}")
         print("FLUXOS NAS LINHAS")
         print("-"*80)
         print(f"{'Linha':<12} {'P_ij (pu)':<12} {'Q_ij (pu)':<12} {'Perda (pu)':<12} {'Uso %':<10} {'Status':<10}")
@@ -824,18 +943,17 @@ def executar_etapa_3():
     """Função principal para executar a etapa 3"""
     
     # 1. Carregar dados da rede
-    with open('DATA/input/3barras_BASE.json', 'r') as f:
+    with open('DATA/input/B6L8_BASE.json', 'r') as f:
         dados_rede = json.load(f)
     
     # 2. Inicializar sistema OPF
     opf_system = OPFNaoLinear(dados_rede)
     
-    # 3. Especificar banco de dados com resultados PF e horas a processar
+    # 3. Especificar banco de dados com resultados PF
     db_pf = 'DATA/SMA/resultados_PF.db' 
-    horas = [0]  # Corrigido: começa em 1
     
-    # 4. Resolver OPF para múltiplas horas
-    resultados_opf = opf_system.resolver_opf_multiplas_horas(db_pf, horas)
+    # 4. Resolver OPF para múltiplas horas (todas disponíveis)
+    resultados_opf = opf_system.resolver_opf_multiplas_horas(db_pf)
     
     # 5. Salvar resultados
     opf_system.salvar_resultados_opf(resultados_opf, 'DATA/SMA/resultados_OPF.db')
@@ -844,9 +962,10 @@ def executar_etapa_3():
     if resultados_opf:
         opf_system.gerar_tabela_resultados(resultados_opf)
     
-    # 7. Gerar relatório para primeira hora (se disponível)
-    if 1 in resultados_opf and resultados_opf[0].sucesso:
-        opf_system.gerar_relatorio(resultados_opf[0])
+    # 7. Gerar relatórios para as primeiras 3 horas (se disponível)
+    for hora in sorted(resultados_opf.keys())[:3]:
+        if resultados_opf[hora].sucesso:
+            opf_system.gerar_relatorio(resultados_opf[hora], hora)
     
     return resultados_opf
 
@@ -855,15 +974,22 @@ if __name__ == "__main__":
     print("=" * 80)
     print("ETAPA 3: FLUXO DE POTÊNCIA ÓTIMO NÃO LINEAR COM GWD E CURTAILMENT")
     print("=" * 80)
-    print("Função objetivo: Minimizar [desvio + custo geração + perdas + curtailment]")
-    print(f"Pesos: Desvio={10.0}, Custo Geração={1.0}, Perdas={0.5}, Curtailment={1000.0}")
+    print("Função objetivo: Minimizar [déficit + desvio + custo geração + perdas + curtailment]")
+    print(f"Pesos: Déficit={10000.0}, Desvio={10.0}, Custo Geração={1.0}, Perdas={0.5}, Curtailment={1000.0}")
     print("=" * 80)
     
     try:
         resultados = executar_etapa_3()
-        print("\nEtapa 3 concluída com sucesso!")
+        
+        if resultados:
+            horas_com_sucesso = sum(1 for r in resultados.values() if r.sucesso)
+            print(f"\n{'='*80}")
+            print(f"ETAPA 3 CONCLUÍDA: {horas_com_sucesso}/{len(resultados)} horas processadas com sucesso")
+            print(f"{'='*80}")
+        else:
+            print("\n✗ Nenhum resultado obtido na Etapa 3")
         
     except Exception as e:
-        print(f"Erro na execução da Etapa 3: {e}")
+        print(f"\nErro na execução da Etapa 3: {e}")
         import traceback
         traceback.print_exc()

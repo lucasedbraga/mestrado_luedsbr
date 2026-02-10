@@ -865,9 +865,9 @@ class FluxoPotenciaComPLSimplificado:
         # Salvar figura
         timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
         filename = f'DATA/SMA/resultados_fluxo_potencia_{timestamp}.png'
-        plt.savefig(filename, dpi=150)
-        print(f"\nGrágico salvo como: {filename}")
-        plt.show()
+        # plt.savefig(filename, dpi=150)
+        # print(f"\nGrágico salvo como: {filename}")
+        # plt.show()
         
         # Adicional: Plotar tensões para uma hora específica (última hora convergida)
         if horas_convergidas:
@@ -896,9 +896,9 @@ class FluxoPotenciaComPLSimplificado:
             ax6.grid(True, alpha=0.3)
             ax6.axhline(y=0, color='r', linestyle='--', alpha=0.5)
             
-            plt.tight_layout()
-            plt.savefig(f'DATA/SMA/detalhes_barras_hora_{ultima_hora:02d}.png', dpi=150)
-            plt.show()
+            # plt.tight_layout()
+            # plt.savefig(f'DATA/SMA/detalhes_barras_hora_{ultima_hora:02d}.png', dpi=150)
+            # plt.show()
 
 # ============================================================================
 # SCRIPT PRINCIPAL
