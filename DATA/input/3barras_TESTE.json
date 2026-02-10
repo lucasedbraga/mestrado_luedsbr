@@ -82,7 +82,7 @@
       "X_Unidade": "pu",
       "Bsh": 0.0,
       "Bsh_Unidade": "pu",
-      "LIM_Fluxo": 0.8,
+      "LIM_Fluxo": 1.0,
       "LIM_Fluxo_Unidade": "pu"
     },
     {
@@ -108,7 +108,7 @@
       "X_Unidade": "pu",
       "Bsh": 0.0,
       "Bsh_Unidade": "pu",
-      "LIM_Fluxo": 0.9,
+      "LIM_Fluxo": 1.0,
       "LIM_Fluxo_Unidade": "pu"
     }
   ] ,

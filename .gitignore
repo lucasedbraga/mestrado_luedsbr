@@ -14,3 +14,10 @@ SRC/__pycache__/*
 SRC/modelos_matematicos/__pycache__/*
 SRC/SistemaMultiAgente/__pycache__/*
 DATA/SMA/*
+SRC/SOLVER/__pycache__/*
+SRC/SOLVER/DB/__pycache__/*
+SRC/SOLVER/FOB/__pycache__/*
+SRC/SOLVER/models/__pycache__/*
+SRC/SOLVER/RES/__pycache__/*
+STUDIES/temp/*
+STUDIES/__pycache__/*
