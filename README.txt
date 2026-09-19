@@ -2,17 +2,16 @@
  REPOSITÓRIO DE SCRIPTS - DISSERTAÇÃO DE MESTRADO
 ==============================================================
 
-Lucas Eduardo Diniz Braga  
-Matrícula: [INSERIR SUA MATRÍCULA]  
+Lucas Eduardo Silva Braga  
 Programa de Mestrado: Pesquisa Operacional / Sistemas de Energia Elétrica  
-Última atualização: 01/08/2025  
+Última atualização: 19/09/2026  
 
 --------------------------------------------------------------
 CONTATO
 --------------------------------------------------------------
 
 Para dúvidas ou colaborações, entre em contato:
-lucasedbraga [at] gmail.com  
+lucasedbraga@gmail.com  
 GitHub: https://github.com/lucasedbraga  
 
 ==============================================================
@@ -21,18 +20,9 @@ GitHub: https://github.com/lucasedbraga
 SOBRE A PESQUISA
 --------------------------------------------------------------
 
-Esta dissertação investiga abordagens multicritério aplicadas 
-ao problema do despacho econômico com compromisso de unidades
-(Unit Commitment - UC), considerando aspectos de segurança 
-energética de longo prazo sob incertezas operacionais e 
-estruturais.
+Esta dissertação investiga o problema do despacho econômico com compromisso de unidades
+(Unit Commitment - UC), considerando aspectos de segurança energética de longo prazo sob incertezas operacionais 
 
---------------------------------------------------------------
-ESTRUTURA DO REPOSITÓRIO
---------------------------------------------------------------
-
-- `/relatorios/`  
-  Resultados dos cenários simulados
 
 --------------------------------------------------------------
 REFERÊNCIAS INSTITUCIONAIS
